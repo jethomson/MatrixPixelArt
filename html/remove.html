@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html class="" lang="en">
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+	<title>Remove Files</title>
+	<style>
+	
+	:root {
+		--switch-color: white;
+	}
+	
+	body {
+		text-align: center;
+		font-family: verdana, sans-serif;
+		color: white;
+		background: black;
+	}
+	
+	.grid-container {
+		display: grid;
+		width: 95vw;
+		/*height: 85vh;*/
+		max-width: 600px;
+		max-height: 800px;
+		align-items: center;
+		margin: 0 auto;
+	}
+	.grid-checkbox-row {
+		color: white;
+		text-align: left;
+		width: 100%;
+		display: block;
+		white-space: nowrap;
+		/*background: red;*/
+	}
+	.grid-item-button {
+		font-weight: bold;
+		color: white;
+		text-align: center;
+		width: 100%;
+		align-items: center;
+	}
+	.grid-item:active {
+		background: #0e70a4;
+	}
+	.span-regular-file {
+		padding-left: 1em;
+	}
+
+	button {
+		border: 0;
+		border-radius: 0.3rem;
+		background: #1fa3ec;
+		color: #faffff;
+		line-height: 2.4rem;
+		font-size: 1.2rem;
+		width: 100%;
+		-webkit-transition-duration: 0.4s;
+		transition-duration: 0.4s;
+		cursor: pointer;
+		margin: 5px 0px;
+	}
+	
+	button:hover {
+		background: #0e70a4;
+	}
+	</style>
+</head>
+<body>
+
+
+	<h3>Deleting files takes awhile. Reload this page to see an updated file list.</h3>
+	<form id="delete_form" method="POST" action="delete"></form>
+	<div id="container" class="grid-container">
+		<div id="checkbox_div"></div>
+
+		<div class="grid-item-button">
+			<button id="delete_btn" type="submit" form="delete_form">Queue File(s) For Deletion</button>
+		</div>
+		
+		<div id="main_button" class="grid-item-button">
+			<a href="/"><button name="">Main Menu</button></a>
+		</div>
+	</div>
+
+
+	<script type="text/javascript">
+	base_url = "";
+	if (window.location.protocol == "file:") {
+		// makes for easier debugging.
+		// if html is loaded locally, can see the results of editing more easily.
+		// otherwise every change to html would require uploading new version to microcontroller.
+		base_url = "http://192.168.1.243";
+	}
+
+	function insert_file_list(responseText) {
+		let container = document.getElementById("container");
+		let form = document.getElementById("delete_form");
+		let insert_point = document.getElementById("insert_file_list_before_here");
+
+		let checkbox_div = document.getElementById("checkbox_div");
+		if (responseText != "") {
+			var files = responseText.split("\n");
+			for (var i in files) {
+				if (files[i] != "") {
+					let row = document.createElement("div");
+					row.classList.add("grid-checkbox-row");
+					let checkbox_input = document.createElement("input");
+					checkbox_input.setAttribute("type", "checkbox");
+					checkbox_input.setAttribute("id", files[i]);
+					checkbox_input.setAttribute("name", files[i]);
+					checkbox_input.setAttribute("form", "delete_form");
+	
+					row.appendChild(checkbox_input);
+
+					let label_anchor = document.createElement("a");
+	
+					let label_text = files[i];
+					if (label_text.indexOf("\t") > -1) {
+						label_anchor.classList.add("span-regular-file");
+						label_href = base_url+label_text.substring(0, label_text.indexOf("\t"));
+						label_anchor.href = label_href;
+						//label_text = "├──"+label_text;
+						//label_text = "\\___"+label_text;
+						label_text = label_text.replace("\t", "\t(");
+						label_text += " bytes)";
+					}
+				
+					label_anchor.appendChild(document.createTextNode(label_text));
+
+					row.appendChild(label_anchor);
+					checkbox_div.appendChild(row);
+				}
+			}
+		}
+		else {
+			let not_found_div = document.createElement("div");
+			not_found_div.innerText = "No files found.";
+			not_found_div.style = "color: white; text-align: center; width: 100%;"
+			container.insertBefore(not_found_div, insert_point);
+		}
+		container.style.visibility = "visible"; 
+	}
+
+	function pull_file_list() {
+		fetch(base_url+"/file_list")
+			.then(response => response.text())
+			.then(data => insert_file_list(data));
+	}
+	
+	pull_file_list();
+	
+	</script>
+</body>
+</html>
