@@ -75,9 +75,10 @@ void handle_delete_list(void);
 String form_path(String root, String id);
 
 bool save_data(String fs_path, String json, String* message);
+bool load_image_to_layer(String json, String* message = nullptr);
 bool load_composite_from_json(String json, String* message = nullptr);
-bool load_composite_from_file(String fs_path, String* message = nullptr);
-bool load_composite_from_playlist(String id, String* message = nullptr);
+bool load_file(String fs_path, String* message = nullptr);
+bool load_from_playlist(String id, String* message = nullptr);
 void demo(void);
 void web_server_initiate(void);
 
@@ -329,16 +330,6 @@ String form_path(String root, String id) {
 }
 
 
-
-
-
-
-
-
-
-
-
-
 bool save_data(String fs_path, String json, String* message = nullptr) {
   if (fs_path == "") {
     if (message) {
@@ -369,6 +360,27 @@ bool save_data(String fs_path, String json, String* message = nullptr) {
   return true;
 }
 
+
+
+
+
+bool load_image_to_layer(String fs_path, String* message) {
+
+  for (uint8_t i = 0; i < NUM_LAYERS; i++) {
+    if (onions[i] != nullptr) {
+      delete onions[i];
+      onions[i] = nullptr;
+    }
+ }
+
+ if (onions[0] == nullptr) {
+   onions[0] = new Layer();
+   onions[0]->load_image_from_file(fs_path);
+ }
+
+  //??? actual success ??? need to set message too
+  return true;
+}
 
 
 // Re: delete onions[i]
@@ -512,29 +524,35 @@ bool load_composite_from_json(String json, String* message) {
   return true;
 }
 
-bool load_composite_from_file(String fs_path, String* message) {
+
+bool load_file(String fs_path, String* message) {
   File file = LittleFS.open(fs_path, "r");
   
   if(!file){
     if (message) {
-      *message = F("load_composite(): File not found.");
+      *message = F("load_file(): File not found.");
     }
     return false;
   }
 
   if (file.available()) {
-    load_composite_from_json(file.readString());
+    if (fs_path.startsWith(CM_ROOT)) {
+      load_composite_from_json(file.readString());
+    }
+    else if (fs_path.startsWith(IM_ROOT)) {      
+      load_image_to_layer(fs_path);
+    }
   }
   file.close();
 
   if (message) {
-    *message = F("load_composite(): Composite loaded.");
+    *message = F("load_file(): File loaded.");
   }
   return true;
 }
 
 
-bool load_composite_from_playlist(String id = "", String* message) {
+bool load_from_playlist(String id = "", String* message) {
   static String _id;
   static uint32_t pm = 0;
   static uint32_t am_duration = 0;
@@ -575,7 +593,7 @@ bool load_composite_from_playlist(String id = "", String* message) {
         gplaylist_enabled = false;
         refresh_needed = false;
         if (message) {
-          *message = "load_composite_from_playlist(): deserializeJson failed.";
+          *message = "load_from_playlist(): deserializeJson failed.";
         }
         return refresh_needed;
       }
@@ -585,8 +603,9 @@ bool load_composite_from_playlist(String id = "", String* message) {
       if (!arr.isNull() && arr.size() > 0) {
         if(arr[i].is<JsonVariant>()) {
           JsonVariant am = arr[i];
-          //String msg = "load_composite_from_playlist(): playlist disabled.";
-          if(load_composite_from_file(am[F("id")])) {
+          //String msg = "load_from_playlist(): playlist disabled.";
+          String path = am[F("id")];
+          if(load_file(path)) {
             if(am[F("d")].is<JsonInteger>()) {
               am_duration = am[F("d")];
             }
@@ -604,7 +623,7 @@ bool load_composite_from_playlist(String id = "", String* message) {
         gplaylist_enabled = false;
         refresh_needed = false;
         if (message) {
-          *message = "load_composite_from_playlist(): Invalid playlist.";
+          *message = "load_from_playlist(): Invalid playlist.";
         }
       }
     }
@@ -862,8 +881,8 @@ void setup() {
 
   //load_matrix_from_file("/files/am/blinky.json");
   
-  //load_composite_from_playlist("/files/pl/tinyrick.json");
-  //load_composite_from_playlist("/files/pl/nyan.json");
+  //load_from_playlist("/files/pl/tinyrick.json");
+  //load_from_playlist("/files/pl/nyan.json");
 
   //load_matrix_from_file("/files/am/mushroom_hole_.json");
 
@@ -871,7 +890,7 @@ void setup() {
 
   //load_matrix_from_file("/files/art/test.json");
 
-  load_composite_from_file("/files/cm/mycomp.json");
+  load_file("/files/cm/mycomp.json");
 
   //debug_print_test();
 
@@ -896,17 +915,17 @@ void loop() {
   // otherwise changes we make could be undo once the interrupt hands back control which could be in the middle of code setting up a different animation
   if (gnextup.filename) {
     if (gnextup.type == "pl") {
-      load_composite_from_playlist(gnextup.filename);
+      load_from_playlist(gnextup.filename);
     }
     else if (gnextup.type == "cm") {
-      load_composite_from_file(gnextup.filename);
+      load_file(gnextup.filename);
     }
     gnextup.type = "";
     gnextup.filename = "";
   }
 
   if (gplaylist_enabled) {
-    refresh_now = load_composite_from_playlist();
+    refresh_now = load_from_playlist();
   }
 
   //if(gdemo_enabled) {

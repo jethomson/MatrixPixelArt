@@ -238,18 +238,24 @@ let playlist = new Sortable(ul_playlist, {
   preventOnFilter: false
 });
 
-async function fetch_source() {
-  const t = await fetch(base_url+"/file_list.json");
-  let reply = await t.json();
-  for (let i = 0; i < reply.length; i++) {
-    let type = reply[i]["type"]; 
-    let id = reply[i]["path"];
-    let name = reply[i]["name"];
-    if(type && id && name && type === "file" && id.startsWith("/files/im/")) { 
+
+function populate_effects(list) {
+  for (let i = 0; i < list.length; i++) {
+    let type = list[i]["type"]; 
+    let id = list[i]["path"];
+    let name = list[i]["name"];
+    if(type && id && name && type === "file" && (id.startsWith("/files/im/") || id.startsWith("/files/cm/"))) { 
       ul_source.insertAdjacentHTML("beforeend", `<li data-amid="${id}">${name}</li>`)
     }
     ul_playlist.style.minHeight = ul_source.offsetHeight;
   }
+}
+
+
+async function fetch_source() {
+  const t = await fetch(base_url+"/file_list.json");
+  let reply = await t.json();
+  populate_effects(reply);
 }
 
 
