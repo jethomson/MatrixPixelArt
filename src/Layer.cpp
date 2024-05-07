@@ -156,15 +156,8 @@ bool Layer::load_image_from_json(String json, String* message) {
   }
 
   JsonObject object = doc.as<JsonObject>();
-  //const char* alfx = object["alfx"]; // const char* doesn't work with Serial.print() perhaps?
-  //String alfx = object["alfx"];
 
-  //set_alfx(object["alfx"]);
-  //set_plfx(object["plfx"]);
-
-  //gimage_layer_alpha = object["ila"];
-
-  //for (uint16_t i = 0; i < NUM_LEDS; i++) il[i] = 0;
+  for (uint16_t i = 0; i < NUM_LEDS; i++) leds[i] = 0;
   deserializeSegment(object, leds, NUM_LEDS);
 
   String plfx = object["plfx"];
