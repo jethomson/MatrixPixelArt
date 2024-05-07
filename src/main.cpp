@@ -12,7 +12,6 @@
 #include "FastLED_RGBA.h"
 
 #include "ArduinoJson-v6.h"
-#include "minjson.h"
 
 #include "project.h"
 //#include "ReAnimator.h"
@@ -35,23 +34,20 @@ AsyncWebServer web_server(80);
 
 CRGB leds[NUM_LEDS] = {0}; // output
 
-Layer* onions[NUM_LAYERS];
+Layer* layers[NUM_LAYERS];
 
 
 uint8_t gmax_brightness = 255;
 //const uint8_t gmin_brightness = 2;
 uint8_t gdynamic_hue = 0;
-uint8_t gstatic_hue = HUE_ALIEN_GREEN;
 uint8_t grandom_hue = 0;
 CRGB gdynamic_rgb = 0x000000;
-CRGB gdynamic_comp_rgb = 0x000000;
+//CRGB gdynamic_comp_rgb = 0x000000; // complementary color to the dynamic color
+CRGB gdynamic_comp_rgb = 0xF0AAF0; // complementary color to the dynamic color
 
-uint8_t gimage_layer_alpha = 255;
-bool gdemo_enabled = false;
-
+//uint8_t gimage_layer_alpha = 255;
 
 bool gplaylist_enabled = false;
-bool gpattern_layer_enable = true;
 
 struct {
   String type;
@@ -66,84 +62,22 @@ const String patterns_json = "[\"Rainbow\", \"Solid\", \"Orbit\", \"Running Ligh
 const String accents_json = "[\"Glitter\", \"Confetti\", \"Flicker\", \"Frozen Decay\"]";
 
 
-
 void create_dirs(String path);
 void list_files(File dir, String parent);
 void handle_file_list(void);
 void delete_files(String name, String parent);
 void handle_delete_list(void);
+String get_root(String type);
 String form_path(String root, String id);
-
-bool save_data(String fs_path, String json, String* message);
-bool load_image_to_layer(String json, String* message = nullptr);
-bool load_composite_from_json(String json, String* message = nullptr);
-bool load_file(String fs_path, String* message = nullptr);
-bool load_from_playlist(String id, String* message = nullptr);
-void demo(void);
+bool save_data(String fs_path, String json, String* message = nullptr);
+bool load_layer(uint8_t lnum, JsonVariant layer_json);
+bool load_image(String fs_path);
+bool load_composite(String fs_path);
+bool load_file(String fs_path);
+bool load_from_playlist(String id = "");
 void web_server_initiate(void);
 
 
-
-/*
-void create_layer(uint8_t type) {
-
-  if (onions[0] != nullptr) {
-    delete onions[0];
-  }
-  onions[0] = new Layer(&gdynamic_rgb);
-
-}
-*/
-
-
-/*
-String list_accents() {
-
-}
-*/
-
-/*
-String list_patterns() {
-  DynamicJsonDocument root(4000);
-  JsonArray rxh = root.createNestedArray("rx");
-  for (char i = 0; i < rxc; i++) {
-    rxh.add(rxhex[i]);
-  }
-  String json;
-  serializeJson(root, json);
-}
-*/
-
-/*
-String list_patterns() {
-  const size_t CAPACITY = JSON_ARRAY_SIZE(3);
-  StaticJsonDocument<CAPACITY> doc;
-  deserializeJson(doc, "[1,2,3]");
-
-  JsonArray array = doc.as<JsonArray>();
-  for(JsonVariant v : array) {
-    Serial.println(v.as<int>());
-  }
-}
-*/
-
-
-
-
-
-
-String get_root(String type) {
-  if (type == "im") {
-    return IM_ROOT;
-  }
-  if (type == "pl") {
-    return PL_ROOT;
-  }
-  if (type == "cm") {
-    return CM_ROOT;
-  }
-  return "";
-}
 
 void create_dirs(String path) {
   int f = path.indexOf('/');
@@ -311,6 +245,20 @@ void handle_delete_list(void) {
 }
 
 
+String get_root(String type) {
+  if (type == "im") {
+    return IM_ROOT;
+  }
+  if (type == "pl") {
+    return PL_ROOT;
+  }
+  if (type == "cm") {
+    return CM_ROOT;
+  }
+  return "";
+}
+
+
 String form_path(String root, String id) {
   String fs_path = "";
   String param_path_top_dir = "/";
@@ -330,7 +278,7 @@ String form_path(String root, String id) {
 }
 
 
-bool save_data(String fs_path, String json, String* message = nullptr) {
+bool save_data(String fs_path, String json, String* message) {
   if (fs_path == "") {
     if (message) {
       *message = F("save_data(): Filename is empty. Data not saved.");
@@ -362,197 +310,124 @@ bool save_data(String fs_path, String json, String* message = nullptr) {
 
 
 
+bool load_layer(uint8_t lnum, JsonVariant layer_json) {
 
+  if (layer_json[F("t")] == "e") {
+    if (layers[lnum] != nullptr) {
+      delete layers[lnum];
+      layers[lnum] = nullptr;
+    }
+    return true;
+  }
 
-bool load_image_to_layer(String fs_path, String* message) {
+  if (layers[lnum] == nullptr) {
+    layers[lnum] = new Layer();
+  }
 
+  // color is not yet used for images. may be implemented in the future to change color palettes.
+  uint8_t ct = layer_json[F("ct")];
+  if (ct == 0) {          
+    layers[lnum]->set_color(&gdynamic_rgb);
+  }
+  else if (ct == 1) {          
+    layers[lnum]->set_color(&gdynamic_comp_rgb);
+  }
+  else {
+    std::string s = layer_json[F("c")];
+    uint32_t fc = std::stoul(s, nullptr, 16);
+    layers[lnum]->set_color(fc);
+  }
+
+  if (layer_json[F("t")] == "i") {
+    layers[lnum]->load_image_from_file(layer_json[F("id")]);
+  }
+  else if (layer_json[F("t")] == "p") {
+    layers[lnum]->set_plfx(layer_json[F("id")]);
+  }
+  else if (layer_json[F("t")] == "a") {
+    layers[lnum]->set_alfx(layer_json[F("id")]);
+  }
+  else if (layer_json[F("t")] == "t") {
+    // need to check layer_json[F("id")] // text or time
+    layers[lnum]->set_text(layer_json[F("w")]);
+  }
+
+  return true;
+}
+
+bool load_image(String fs_path) {
+  bool retval = false;
   for (uint8_t i = 0; i < NUM_LAYERS; i++) {
-    if (onions[i] != nullptr) {
-      delete onions[i];
-      onions[i] = nullptr;
+    if (layers[i] != nullptr) {
+      delete layers[i];
+      layers[i] = nullptr;
     }
- }
+  }
 
- if (onions[0] == nullptr) {
-   onions[0] = new Layer();
-   onions[0]->load_image_from_file(fs_path);
- }
+  if (layers[0] == nullptr) {
+    layers[0] = new Layer();
+    retval = layers[0]->load_image_from_file(fs_path);
+  }
 
-  //??? actual success ??? need to set message too
-  return true;
+  // can also load image to layer like this to be more consistent with load_composite()
+  //StaticJsonDocument<256> doc;
+  //JsonVariant layer_json = doc.to<JsonVariant>();
+  //layer_json["t"] = "i";
+  //layer_json["id"] = fs_path;
+  //layer_json["ct"] = 0;
+  //layer_json["m"] = 0;
+  //retval = load_layer(0, layer_json);
+
+  return retval;
 }
 
 
-// Re: delete onions[i]
-//This sort of code is brittle because it is not exception-safe: if an exception is thrown between when you create the object and when you delete it, you will leak that object.
-//It is far better to use a smart pointer container,
-// need to use smart pointers
-//use unique_ptr or shared_ptr?
-bool load_composite_from_json(String json, String* message) {
-  //const size_t CAPACITY = JSON_OBJECT_SIZE(6) + JSON_ARRAY_SIZE(360);
-  //StaticJsonDocument<CAPACITY> doc;
-  DynamicJsonDocument doc(768);
-
-  DeserializationError error = deserializeJson(doc, json);
-  if (error) {
-    //Serial.print("deserializeJson() failed: ");
-    //Serial.println(error.c_str());
-    if (message) {
-      *message = F("load_composite_from_json: deserializeJson() failed.");
-    }
-    return false;
-  }
-
-  JsonObject object = doc.as<JsonObject>();
-
-  JsonArray arr = object[F("l")];
-  if (!arr.isNull() && arr.size() > 0) {
-    for (uint8_t i = 0; i < arr.size(); i++) {
-      if(arr[i].is<JsonVariant>()) {
-        JsonVariant jlyr = arr[i];
-        String type = jlyr[F("t")];
-        Serial.print(i);
-        Serial.print(" type: ");
-        Serial.println(type);
-
-        if (jlyr[F("t")] == "e") {
-          if (onions[i] != nullptr) {
-            delete onions[i];
-            onions[i] = nullptr;
-          }
-        }
-        else if (jlyr[F("t")] == "i") {
-          if (onions[i] == nullptr) {
-            onions[i] = new Layer();
-          }
-
-          // images do not use the layer color variable currently. possibly in the future they will.
-          // layer color variable still need to be set to avoid dereferencing a nullptr.
-          uint8_t ct = jlyr[F("ct")];
-          if (ct == 0) {          
-            onions[i]->set_color(&gdynamic_rgb);
-          }
-          else if (ct == 1) {          
-            onions[i]->set_color(&gdynamic_comp_rgb);
-          }
-          else {
-            std::string s = jlyr[F("c")];
-            uint32_t fc = std::stoul(s, nullptr, 16);
-            onions[i]->set_color(fc);
-          }
-          onions[i]->load_image_from_file(jlyr[F("id")]);
-        }
-        else if (jlyr[F("t")] == "p") {
-          if(jlyr[F("id")].is<JsonInteger>()) {
-            String plfx = jlyr[F("id")];
-            Serial.print("pattern id: ");
-            Serial.println(plfx);
-
-            if (onions[i] == nullptr) {
-              onions[i] = new Layer();
-            }
-
-            uint8_t ct = jlyr[F("ct")];
-            if (ct == 0) {          
-              onions[i]->set_color(&gdynamic_rgb);
-            }
-            else if (ct == 1) {          
-              onions[i]->set_color(&gdynamic_comp_rgb);
-            }
-            else {
-              std::string s = jlyr[F("c")];
-              uint32_t fc = std::stoul(s, nullptr, 16);
-              onions[i]->set_color(fc);
-            }
-            onions[i]->set_plfx(jlyr[F("id")]);
-          }
-        }
-        else if (jlyr[F("t")] == "a") {
-          if(jlyr[F("id")].is<JsonInteger>()) {
-            String alfx = jlyr[F("id")];
-            Serial.print("accent id: ");
-            Serial.println(alfx);
-            if (onions[i] == nullptr) {
-              onions[i] = new Layer();
-            }
-
-            uint8_t ct = jlyr[F("ct")];
-            if (ct == 0) {          
-              onions[i]->set_color(&gdynamic_rgb);
-            }
-            else if (ct == 1) {          
-              onions[i]->set_color(&gdynamic_comp_rgb);
-            }
-            else {
-              std::string s = jlyr[F("c")];
-              uint32_t fc = std::stoul(s, nullptr, 16);
-              onions[i]->set_color(fc);
-            }
-            onions[i]->set_alfx(jlyr[F("id")]);
-          }
-        }
-        else if (jlyr[F("t")] == "t") {
-          if(jlyr[F("id")].is<JsonInteger>()) {
-            String s = jlyr[F("id")];
-            Serial.print("text id: ");
-            Serial.println(s);
-            if (onions[i] == nullptr) {
-              onions[i] = new Layer();
-            }
-
-            uint8_t ct = jlyr[F("ct")];
-            if (ct == 0) {          
-              onions[i]->set_color(&gdynamic_rgb);
-            }
-            else if (ct == 1) {          
-              onions[i]->set_color(&gdynamic_comp_rgb);
-            }
-            else {
-              std::string s = jlyr[F("c")];
-              uint32_t fc = std::stoul(s, nullptr, 16);
-              onions[i]->set_color(fc);
-            }
-
-            // need to check jlyr[F("id")] // text or time
-            onions[i]->set_text(jlyr[F("w")]);
-          }
-        }
-      }
-    }
-  }
-  //??? actual success ??? need to check deserializeSegment()
-  return true;
-}
-
-
-bool load_file(String fs_path, String* message) {
+bool load_composite(String fs_path) {
+  bool retval = false;
   File file = LittleFS.open(fs_path, "r");
   
   if(!file){
-    if (message) {
-      *message = F("load_file(): File not found.");
-    }
     return false;
   }
 
   if (file.available()) {
-    if (fs_path.startsWith(CM_ROOT)) {
-      load_composite_from_json(file.readString());
+    DynamicJsonDocument doc(768);
+    String json = file.readString();
+    DeserializationError error = deserializeJson(doc, json);
+    if (error) {
+      //DEBUG_PRINT("deserializeJson() failed: ");
+      //DEBUG_PRINTLN(error.c_str());
+      return false;
     }
-    else if (fs_path.startsWith(IM_ROOT)) {      
-      load_image_to_layer(fs_path);
+
+    JsonObject object = doc.as<JsonObject>();
+    JsonArray arr = object[F("l")];
+    if (!arr.isNull() && arr.size() > 0) {
+      for (uint8_t i = 0; i < arr.size(); i++) {
+        if(arr[i].is<JsonVariant>()) {
+          retval = load_layer(i, arr[i]);
+        }
+      }
     }
   }
-  file.close();
 
-  if (message) {
-    *message = F("load_file(): File loaded.");
+  return retval;
+}
+
+
+bool load_file(String fs_path) {
+  bool retval = false;
+  if (fs_path.startsWith(CM_ROOT)) {
+    retval = load_composite(fs_path);
+  }
+  else if (fs_path.startsWith(IM_ROOT)) {      
+    retval = load_image(fs_path);
   }
   return true;
 }
 
 
-bool load_from_playlist(String id = "", String* message) {
+bool load_from_playlist(String id) {
   static String _id;
   static uint32_t pm = 0;
   static uint32_t am_duration = 0;
@@ -571,20 +446,12 @@ bool load_from_playlist(String id = "", String* message) {
     pm = millis();
     am_duration = 1000; // set to a safe value which will be replaced below
 
-    //String fs_path = form_path(_id, PL_ROOT);
-    //File file = LittleFS.open(form_path(_id, PL_ROOT), "r");
     File file = LittleFS.open(_id, "r");
     if (file && file.available()) {
-      //Serial.print("i: ");
-      //Serial.println(i);
-
       String json = file.readString();
       file.close();
 
-      // allocate the memory for the document
-      //const size_t CAPACITY = JSON_OBJECT_SIZE(6) + JSON_ARRAY_SIZE(60);
-      //StaticJsonDocument<CAPACITY> doc;
-      DynamicJsonDocument doc(2048);
+      DynamicJsonDocument doc(2048); //DynamicJsonDocument (vs StaticJsonDocument) recommended for documents larger than 1KB
 
       DeserializationError error = deserializeJson(doc, json);
       if (error) {
@@ -592,9 +459,6 @@ bool load_from_playlist(String id = "", String* message) {
         Serial.println(error.c_str());
         gplaylist_enabled = false;
         refresh_needed = false;
-        if (message) {
-          *message = "load_from_playlist(): deserializeJson failed.";
-        }
         return refresh_needed;
       }
 
@@ -609,8 +473,6 @@ bool load_from_playlist(String id = "", String* message) {
             if(am[F("d")].is<JsonInteger>()) {
               am_duration = am[F("d")];
             }
-            //Serial.print("duration: ");
-            //Serial.println(am_duration);
             refresh_needed = true;
           }
           else {
@@ -622,62 +484,12 @@ bool load_from_playlist(String id = "", String* message) {
       else {
         gplaylist_enabled = false;
         refresh_needed = false;
-        if (message) {
-          *message = "load_from_playlist(): Invalid playlist.";
-        }
       }
     }
   }
   return refresh_needed;
 }
 
-
-
-
-/*
-void demo() {
-  const uint8_t PATTERNS_NUM = 21;
-
-  const Pattern patterns[PATTERNS_NUM] = {DYNAMIC_RAINBOW, SOLID, ORBIT, RUNNING_LIGHTS,
-                                          JUGGLE, SPARKLE, WEAVE, CHECKERBOARD, BINARY_SYSTEM,
-                                          SOLID, SOLID, SOLID, SOLID, DYNAMIC_RAINBOW,
-                                          SHOOTING_STAR, //MITOSIS, BUBBLES, MATRIX,
-                                          BALLS, CYLON,
-                                          //STARSHIP_RACE
-                                          //PAC_MAN, // PAC_MAN crashes ???
-                                          //SOUND_BLOCKS, SOUND_BLOCKS, SOUND_RIBBONS, SOUND_RIBBONS,
-                                          //SOUND_ORBIT, SOUND_ORBIT, SOUND_RIPPLE, SOUND_RIPPLE
-                                          };
-
-
-
-  const Overlay overlays[PATTERNS_NUM] = {NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY,
-                                          NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY,
-                                          GLITTER, BREATHING, CONFETTI, FLICKER, FROZEN_DECAY,
-                                          NO_OVERLAY, //NO_OVERLAY, NO_OVERLAY, NO_OVERLAY,
-                                          NO_OVERLAY, NO_OVERLAY
-                                          //NO_OVERLAY
-                                          //NO_OVERLAY
-                                          //NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY,
-                                          //NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY
-                                          };
-
-  static uint8_t poi = 0;
-
-  EVERY_N_MILLISECONDS(19200) {
-    poi = (poi+1) % PATTERNS_NUM;
-    GlowSerum.set_pattern(patterns[poi]);
-    GlowSerum.set_overlay(overlays[poi], false);
-
-    //if (poi >= 22 && poi <= 25) {
-    //    GlowSerum.set_flipflop_enabled(true);
-    //}
-    //else {
-    //    GlowSerum.set_flipflop_enabled(false);
-    //}
-  }
-}
-*/
 
 void web_server_initiate() {
 
@@ -732,6 +544,7 @@ void web_server_initiate() {
 
 
   web_server.on("/save", HTTP_POST, [](AsyncWebServerRequest *request) {
+    int rc = 400;
     String message;
 
     String type = request->getParam("t", true)->value();
@@ -745,17 +558,19 @@ void web_server_initiate() {
         gnextup.type = type;
         gnextup.filename = fs_path;
         gfile_list_needs_refresh = true;
+        rc = 200;
       }
     }
     else {
       message = "Invalid type.";
     }
 
-    request->send(200, "application/json", "{\"message\": \""+message+"\"}");
+    request->send(rc, "application/json", "{\"message\": \""+message+"\"}");
   });
 
 
   web_server.on("/load", HTTP_POST, [](AsyncWebServerRequest *request) {
+    int rc = 400;
     String message;
 
     String type = request->getParam("t", true)->value();
@@ -764,12 +579,14 @@ void web_server_initiate() {
     if (id != "" && (type == "im" || type == "cm" || type == "pl")) {
       gnextup.type = type;
       gnextup.filename = id;
+      message = gnextup.filename + " queued.";
+      rc = 200;
     }
     else {
       message = "Invalid type.";
     }
 
-    request->send(200, "application/json", "{\"message\": \""+message+"\"}");
+    request->send(rc, "application/json", "{\"message\": \""+message+"\"}");
   });
 
   // memory hog?
@@ -821,7 +638,7 @@ void web_server_initiate() {
 void setup() {
 
   for (uint8_t i = 0; i < NUM_LAYERS; i++) {
-    onions[i] = nullptr;
+    layers[i] = nullptr;
   }
 
   Serial.begin(115200);
@@ -831,14 +648,12 @@ void setup() {
   //FastLED.setCorrection(TypicalPixelString);
   FastLED.setCorrection(TypicalSMD5050);  // ??? use this instead
   FastLED.addLeds<WS2812B, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
-  //FastLED.addLeds<WS2812B, DATA_PIN, RGB>(ledsRGB, getRGBAsize(NUM_LEDS));
 
-  //determine the maximum brightness allowed within POWER limits if 6, 9, 12, and 3 o'clock are a third brightness, and
-  //the hour and minute hands are max brightness
   FastLED.clear();
-  FastLED.show(); // clear the matrix
+  FastLED.show(); // clear the matrix on startup
+
+
   for (uint16_t i = 0; i < NUM_LEDS; i++) {
-    //leds[i] = CHSV(0, 0, 255); // white
     leds[i] = 0xFFFFFF; // white
   }
   gmax_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, 255, LED_STRIP_VOLTAGE, LED_STRIP_MILLIAMPS);
@@ -871,29 +686,11 @@ void setup() {
 
   handle_file_list(); // refresh file list before starting loop() because refreshing is slow
 
-
-  // for testing how layers handle background
-  for (uint16_t i = 0; i < NUM_LEDS; i++) {
-    leds[i] = 0xFF00FF;
-  }
-  FastLED.show();
-
-
-  //load_matrix_from_file("/files/am/blinky.json");
-  
-  //load_from_playlist("/files/pl/tinyrick.json");
-  //load_from_playlist("/files/pl/nyan.json");
-
-  //load_matrix_from_file("/files/am/mushroom_hole_.json");
-
-  //load_matrix_from_file("/files/art/bottle_semitransparent.json");
-
-  //load_matrix_from_file("/files/art/test.json");
+  // initialzie dynamic colors because otherwise they won't be set until after layer.run() has been called which can lead to partially black text
+  gdynamic_rgb = CHSV(gdynamic_hue, 255, 255);
+  gdynamic_comp_rgb = CRGB::White - gdynamic_rgb;
 
   load_file("/files/cm/mycomp.json");
-
-  //debug_print_test();
-
 }
 
 
@@ -909,9 +706,7 @@ void loop() {
   //  Serial.println(esp_get_free_heap_size());
   //}
 
-
-
-  // since web_server interrupts we have to queue changes instead of running them directly from the web_server on functions
+  // since web_server interrupts we have to queue changes instead of running them directly from web_server's on functions
   // otherwise changes we make could be undo once the interrupt hands back control which could be in the middle of code setting up a different animation
   if (gnextup.filename) {
     if (gnextup.type == "pl") {
@@ -933,120 +728,41 @@ void loop() {
     refresh_now = load_from_playlist();
   }
 
-  //if(gdemo_enabled) {
-  //  demo(); // cycles through all of the patterns
-  //}
-
-  //if (gpattern_layer_enable && (image_has_transparency || gimage_layer_alpha != 255)) {
-  if (true) {
-    // draw layers. changes here are not drawn until they are copied to leds[] when the refresh_block
-    for (uint8_t i = 0; i < NUM_LAYERS; i++) {
-      if (onions[i] != nullptr) {
-        onions[i]->run();
-      }
+  // draw layers. changes in layers are not displayed until they are copied to leds[] in the refresh block
+  for (uint8_t i = 0; i < NUM_LAYERS; i++) {
+    if (layers[i] != nullptr) {
+      layers[i]->run();
     }
   }
 
-  static bool dim = 0;
-  //EVERY_N_SECONDS(2) { flip(il, dim); dim = !dim;}
-  //EVERY_N_SECONDS(1) { move(il, dim, 1); dim = !dim;}
-  //EVERY_N_MILLISECONDS(750) { move(il, 1, 1); dim = !dim;}
-
-  static int16_t d = -16;
-  //EVERY_N_MILLISECONDS(50) { shift(il, tl, LTR, d, 5); d++; d = (d<=106) ? d : 0;}
-  //EVERY_N_MILLISECONDS(50) { uint8_t gap = 5; shift(il, tl, RTL, d, gap); d++; d = d % (16+gap);}
-  //EVERY_N_MILLISECONDS(50) {shift(il, tl, RTL, true, 5);}
-  //EVERY_N_MILLISECONDS(50) {shift(il, tl, RTL, true, 0);}
-
-/*
   // refresh block
   if((millis()-pm) > 100 || refresh_now) {
-    pm = millis();  // worked without this ???
-    refresh_now = false;
-    image_has_transparency = false;
-    gdynamic_hue+=3;
-    //gdynamic_hue+=1;
-    grandom_hue = random8();
-
-    //sx: + is RTL, - is LTR
-    //sy: + is DOWN, - is UP
-    //posmove(il, tl, -17, 0, 1, 0, true, 5);
-
-
-    //sx: + is RTL, - is LTR
-    //sy: + is DOWN, - is UP
-    //position(il, tl, -5, 0, 1, 0, true, -1);
-
-
-    // would it work better to write everything to leds[] here first?
-
-    //FYI: !leds[n] does not invert the blue channel, so invert each channel individually
-    for (uint16_t i = 0; i < NUM_LEDS; i++) {
-
-      CRGBA ilpixel = il[i];
-      uint8_t pixel_alpha = il[i].a;
-      if (ilpixel == COLORSUB) {
-        ilpixel = CHSV(gdynamic_hue+96, 255, 255); // CHSV overwrites the alpha value
-        ilpixel.a = pixel_alpha;
-      }
-
-      // transparency is used in two different ways here.
-      // 1) if the pixels of the image have an alpha less than 100% (255) then they will be replaced with the background layer.
-      // 2) Pixel Art Convertor has an Alpha slider which is separate from the image's alpha channel. This slider controls how much of the
-      //    non-transparent parts of the original image are blended with the layers below it.
-      // in short 1) local/pixel level effect and 2) global effect
-      //
-
-      // nblend destructively overwrites the first argument so need to use temp bgpixel instead of pl[i]
-      // otherwise the output would flicker.
-      CRGB bgpixel = pl[i];
-      uint8_t alpha = scale8(pixel_alpha, gimage_layer_alpha);
-      if (alpha != 255) {
-        image_has_transparency = true;
-        bgpixel.fadeLightBy(64); // fading the background areas make the pixel art stand out
-      }
-
-      leds[i] = nblend(bgpixel, (CRGB)ilpixel, alpha);
-
-      //matrix_text("Hello world! ");
-      //String s = "Hello world!";
-      ftext.s = "Hello world!";
-      ftext.vmargin = (MD-get_text_height(ftext.s))/2;
-      matrix_text_shift(ftext);
-      leds[i] = nblend(leds[i], tl[i], 224);
-    }
-    // calling FastLED.show(); at the bottom of loop() instead of here gives smoother transitions
-  }
-*/
-
-  if((millis()-pm) > 100 || refresh_now) {
-    pm = millis();  // worked without this ???
+    pm = millis();
     refresh_now = false;
     image_has_transparency = false;
     gdynamic_hue+=3;
     gdynamic_rgb = CHSV(gdynamic_hue, 255, 255);
     gdynamic_comp_rgb = CRGB::White - gdynamic_rgb;
-    //gdynamic_hue = 128;
-    //gdynamic_hue+=1;
     grandom_hue = random8();
 
 
-CRGBA pixel;
-    //FastLED.clear(); // background has an interesting blurry fade effect without this.
+    CRGBA pixel;
     bool is_bg_layer = true;
     for (uint8_t i = 0; i < NUM_LAYERS; i++) {
-      if (onions[i] != nullptr) {
+      if (layers[i] != nullptr) {
         for (uint16_t j = 0; j < NUM_LEDS; j++) {
           // transparency is used in two different ways here.
           // 1) if the pixels of the image have an alpha less than 100% (255) then they will be replaced with the background layer.
-          // 2) Pixel Art Convertor has an Alpha slider which is separate from the image's alpha channel. This slider controls how much of the
+          // 2) !!NOT IMPLEMENTED!! Layer composer has an Alpha slider which is separate from the image's alpha channel. This slider controls how much of the
           //    non-transparent parts of the original image are blended with the layers below it.
           // in short 1) local/pixel level effect and 2) global effect
           //
 
           image_has_transparency = true; // for testing
-          pixel = onions[i]->get_pixel(j);
+          pixel = layers[i]->get_pixel(j);
 
+
+          // color substitution experiment. hard to get exact color in the Pixel Art Creator
           //uint8_t pixel_alpha = pixel.a;
           //if (pixel == COLORSUB) {
           //  pixel = CHSV(gdynamic_hue+96, 255, 255); // CHSV overwrites the alpha value
@@ -1054,12 +770,20 @@ CRGBA pixel;
           //}
 
           // treat the first non-empty layer we touch as the background layer and give it zero transparency to completely overwrite the previous frame.
+          uint8_t alpha = pixel.a;
           if (is_bg_layer) {
-            pixel.a = 255;
+            alpha = 255;
           }
-          leds[j] = nblend(leds[j], (CRGB)pixel, pixel.a);
-          //leds[j] = (CRGB)pixel;
 
+          CRGB bgpixel = leds[j];
+          // before implementing pixel level transparency previously used a global alpha that is not currently implemented
+          //alpha = scale8(alpha, gimage_layer_alpha);
+          if (alpha != 255) {
+            image_has_transparency = true;
+            //bgpixel.fadeLightBy(64); // fading the background areas make the pixel art stand out
+          }
+          leds[j] = nblend(bgpixel, (CRGB)pixel, alpha);
+          //leds[j] = (CRGB)pixel;
         }
         /*
         Serial.print("layer ");

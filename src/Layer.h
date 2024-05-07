@@ -27,7 +27,6 @@
 #include "ReAnimator.h"
 #include <LittleFS.h>
 #include "ArduinoJson-v6.h"
-#include "minjson.h"
 
 #include "lv_font.h"
 
@@ -90,16 +89,21 @@ class Layer {
 
     void set_color(CRGB color);
     void set_color(CRGB* color);
-    void run();
-    void clear();
     void set_type(LayerType ltype);
+    void clear();
     CRGBA get_pixel(uint16_t i);
+    void run();
+
+    bool colorFromHexString(byte* rgb, const char* in);
+    bool deserializeSegment(JsonObject root, CRGBA leds[], uint16_t leds_len);
     bool load_image_from_json(String json, String* message = nullptr);
     bool load_image_from_file(String fs_path, String* message = nullptr);
+
     void pac_man_cb(uint8_t event);
     void noop_cb(uint8_t event);
-    void set_alfx(uint8_t alfx);
     void set_plfx(uint8_t plfx);
+    void set_alfx(uint8_t alfx);
+
     Point serp2cart(uint8_t i);
     int16_t cart2serp(Point p);
     void flip(CRGB sm[NUM_LEDS], bool dim);
@@ -108,6 +112,7 @@ class Layer {
     void position_OLD(CRGB in[NUM_LEDS], CRGB out[NUM_LEDS], int8_t x0 = 0, int8_t y0 = 0, bool wrap=true, uint8_t gap=0);
     void position(CRGB in[NUM_LEDS], CRGB out[NUM_LEDS], int8_t xi = 0, int8_t yi = 0, int8_t sx = 1, int8_t sy = 1, bool wrap = true, int8_t gap = 0);
     void posmove(CRGB in[NUM_LEDS], CRGB out[NUM_LEDS], int8_t xi = 0, int8_t yi = 0, int8_t sx = 1, int8_t sy = 1, bool wrap=true, uint8_t gap=0);
+
     uint8_t get_text_height_old(String s);
     uint8_t get_text_height(String s);
     void matrix_char(char c);

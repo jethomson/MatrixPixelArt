@@ -23,6 +23,13 @@
 #include "Layer.h"
 
 
+//color mangling macros from WLED wled.h
+//modified slightly for alpha channel instead of white channel
+#ifndef RGBA32
+#define RGBA32(r,g,b,a) (uint32_t((byte(a) << 24) | (byte(r) << 16) | (byte(g) << 8) | (byte(b))))
+#endif
+
+
 Layer::Layer(){
   // ??? better to pass a reference to LittleFS from main?
   if (!LittleFS.begin()) {
@@ -57,29 +64,32 @@ void Layer::set_color(CRGB* color) {
 }
 
 
-void Layer::run() {
-  if (rgb == nullptr) {
-    internal_rgb = CRGB::Yellow;
-    rgb = &internal_rgb;
-  }
-  CHSV chsv = rgb2hsv_approximate(*rgb);
-  hue = chsv.h; // !!BUG!! if color is 0x000000 (black) then hue will be 0 which is red when CHSV(hue, 255, 255)
+void Layer::set_type(LayerType ltype) {
+  // type 2 is an image, type 3 is text
+  //if (type == 2) {
+  //
+  //}
 
-  if (GlowSerum != nullptr) {
-    // accents only light up a few pixels leaving the rest black
-    if (_ltype == Accent_t) {
-      clear();
+  if (ltype == Pattern_t || ltype == Accent_t) {
+    if (GlowSerum != nullptr) {
+      delete GlowSerum;
+      GlowSerum = nullptr;
     }
-    if (_ltype == Pattern_t || _ltype == Accent_t) {
-      GlowSerum->reanimate();
-    }
-  }
+    GlowSerum = new ReAnimator((CRGB *)&leds[0], rgb, LED_STRIP_MILLIAMPS);
+    
+    GlowSerum->set_pattern(NONE);
+    GlowSerum->set_overlay(NO_OVERLAY, false);
+    //GlowSerum->set_cb(&Layer::noop_cb);
 
-  if (_ltype == Text_t) {
-    matrix_text_shift();
+    GlowSerum->set_autocycle_interval(10000);
+    GlowSerum->set_autocycle_enabled(false);
+    GlowSerum->set_flipflop_interval(6000);
+    GlowSerum->set_flipflop_enabled(false);
   }
-
+  
+  _ltype = ltype;
 }
+
 
 void Layer::clear() {
   for (uint16_t i = 0; i < NUM_LEDS; i++) {
@@ -112,34 +122,112 @@ CRGBA Layer::get_pixel(uint16_t i) {
   return pixel_out;
 }
 
-void Layer::set_type(LayerType ltype) {
-  // type 2 is an image, type 3 is text
-  //if (type == 2) {
-  //
-  //}
 
-  if (ltype == Pattern_t || ltype == Accent_t) {
-    if (GlowSerum != nullptr) {
-      delete GlowSerum;
-      GlowSerum = nullptr;
-    }
-    GlowSerum = new ReAnimator((CRGB *)&leds[0], rgb, LED_STRIP_MILLIAMPS);
-    
-    GlowSerum->set_pattern(NONE);
-    GlowSerum->set_overlay(NO_OVERLAY, false);
-    //GlowSerum->set_cb(&Layer::noop_cb);
-
-    GlowSerum->set_autocycle_interval(10000);
-    GlowSerum->set_autocycle_enabled(false);
-    GlowSerum->set_flipflop_interval(6000);
-    GlowSerum->set_flipflop_enabled(false);
+void Layer::run() {
+  if (rgb == nullptr) {
+    internal_rgb = CRGB::Yellow;
+    rgb = &internal_rgb;
   }
-  
-  _ltype = ltype;
+  CHSV chsv = rgb2hsv_approximate(*rgb);
+  hue = chsv.h; // !!BUG!! if color is 0x000000 (black) then hue will be 0 which is red when CHSV(hue, 255, 255)
+
+  if (GlowSerum != nullptr) {
+    // accents only light up a few pixels leaving the rest black
+    if (_ltype == Accent_t) {
+      clear();
+    }
+    if (_ltype == Pattern_t || _ltype == Accent_t) {
+      GlowSerum->reanimate();
+    }
+  }
+
+  if (_ltype == Text_t) {
+    matrix_text_shift();
+  }
+
+}
+
+
+//****************
+// IMAGE FUNCTIONS
+//****************
+
+
+// from WLED colors.cpp
+//this uses RRGGBB / RRGGBBWW (RRGGBBAA) order
+bool Layer::colorFromHexString(byte* rgb, const char* in) {
+  if (in == nullptr) return false;
+  size_t inputSize = strnlen(in, 9);
+  if (inputSize != 6 && inputSize != 8) return false;
+
+  uint32_t c = strtoul(in, NULL, 16);
+
+  if (inputSize == 6) {
+    rgb[0] = (c >> 16);
+    rgb[1] = (c >>  8);
+    rgb[2] =  c       ;
+  } else {
+    rgb[0] = (c >> 24);
+    rgb[1] = (c >> 16);
+    rgb[2] = (c >>  8);
+    rgb[3] =  c       ;
+  }
+  return true;
+}
+
+
+// slightly modified version of deserializeSegment() from WLED json.cpp
+bool Layer::deserializeSegment(JsonObject root, CRGBA leds[], uint16_t leds_len)
+{
+  JsonVariant elem = root["seg"];
+  if (elem.is<JsonObject>())
+  {
+    JsonArray iarr = elem[F("i")]; //set individual LEDs
+    if (!iarr.isNull()) {
+      uint16_t start = 0, stop = 0;
+      byte set = 0; //0 nothing set, 1 start set, 2 range set
+
+      for (size_t i = 0; i < iarr.size(); i++) {
+        if(iarr[i].is<JsonInteger>()) {
+          if (!set) {
+            start = abs(iarr[i].as<int>());
+            set++;
+          } else {
+            stop = abs(iarr[i].as<int>());
+            set++;
+          }
+        } else { //color
+          uint8_t rgba[] = {0,0,0,0};
+          JsonArray icol = iarr[i];
+          if (!icol.isNull()) { //array, e.g. [255,0,0]
+            byte sz = icol.size();
+            if (sz > 0 && sz < 5) copyArray(icol, rgba);
+          } else { //hex string, e.g. "FF0000"
+            byte brgba[] = {0,0,0,0};
+            const char* hexCol = iarr[i];
+            if (colorFromHexString(brgba, hexCol)) {
+              for (size_t c = 0; c < 4; c++) rgba[c] = brgba[c];
+            }
+          }
+
+          if (set < 2 || stop <= start) stop = start + 1;
+          // can use FastLED gamma function?
+          //uint32_t c = gamma32(RGBA32(rgba[0], rgba[1], rgba[2], rgba[3]));
+          uint32_t c = RGBA32(rgba[0], rgba[1], rgba[2], rgba[3]);
+          //while (start < stop && start < leds_len) leds[start++] = c;
+          while (start < stop) leds[start++] = c;
+          set = 0;
+        }
+      }
+    }
+  }
+  return true;
 }
 
 bool Layer::load_image_from_json(String json, String* message) {
   set_type(Image_t);
+
+  bool retval = false;
   //const size_t CAPACITY = JSON_OBJECT_SIZE(6) + JSON_ARRAY_SIZE(360);
   //StaticJsonDocument<CAPACITY> doc;
   DynamicJsonDocument doc(8192);
@@ -157,21 +245,15 @@ bool Layer::load_image_from_json(String json, String* message) {
   JsonObject object = doc.as<JsonObject>();
 
   for (uint16_t i = 0; i < NUM_LEDS; i++) leds[i] = 0;
-  deserializeSegment(object, leds, NUM_LEDS);
+  retval = deserializeSegment(object, leds, NUM_LEDS);
 
-  String plfx = object["plfx"];
-  //Serial.print("plfx: ");
-  //Serial.println(plfx);
-  //Serial.println("load_image_from_json finished");
-  //if (message) {
-  // *message = F("load_image_from_json: finished.");
-  //}
-
-  //??? actual success ??? need to check deserializeSegment()
-  return true;
+  return retval;
 }
 
 bool Layer::load_image_from_file(String fs_path, String* message) {
+  set_type(Image_t);
+
+  bool retval = false;
   File file = LittleFS.open(fs_path, "r");
   
   if(!file){
@@ -182,15 +264,34 @@ bool Layer::load_image_from_file(String fs_path, String* message) {
   }
 
   if (file.available()) {
-    load_image_from_json(file.readString());
+    retval = load_image_from_json(file.readString());
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, file.readString());
+    if (error) {
+      //Serial.print("deserializeJson() failed: ");
+      //Serial.println(error.c_str());
+      if (message) {
+        *message = F("load_image_from_json: deserializeJson() failed.");
+      }
+      return false;
+    }
+
+    JsonObject object = doc.as<JsonObject>();
+
+    for (uint16_t i = 0; i < NUM_LEDS; i++) leds[i] = 0;
+    retval = deserializeSegment(object, leds, NUM_LEDS);
   }
   file.close();
 
   if (message) {
     *message = F("load_image_from_file(): Matrix loaded.");
   }
-  return true;
+  return retval;
 }
+
+//******************
+// PATTERN FUNCTIONS
+//******************
 
 /*
 void Layer::pac_man_cb(uint8_t event) {
@@ -289,6 +390,10 @@ void Layer::set_plfx(uint8_t plfx) {
 }
 
 
+//*****************
+// ACCENT FUNCTIONS
+//*****************
+
 //accent layer effects
 void Layer::set_alfx(uint8_t alfx) {
   set_type(Accent_t);
@@ -315,10 +420,56 @@ void Layer::set_alfx(uint8_t alfx) {
 }
 
 
+/*
+void demo() {
+  const uint8_t PATTERNS_NUM = 21;
+
+  const Pattern patterns[PATTERNS_NUM] = {DYNAMIC_RAINBOW, SOLID, ORBIT, RUNNING_LIGHTS,
+                                          JUGGLE, SPARKLE, WEAVE, CHECKERBOARD, BINARY_SYSTEM,
+                                          SOLID, SOLID, SOLID, SOLID, DYNAMIC_RAINBOW,
+                                          SHOOTING_STAR, //MITOSIS, BUBBLES, MATRIX,
+                                          BALLS, CYLON,
+                                          //STARSHIP_RACE
+                                          //PAC_MAN, // PAC_MAN crashes ???
+                                          //SOUND_BLOCKS, SOUND_BLOCKS, SOUND_RIBBONS, SOUND_RIBBONS,
+                                          //SOUND_ORBIT, SOUND_ORBIT, SOUND_RIPPLE, SOUND_RIPPLE
+                                          };
 
 
 
+  const Overlay overlays[PATTERNS_NUM] = {NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY,
+                                          NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY,
+                                          GLITTER, BREATHING, CONFETTI, FLICKER, FROZEN_DECAY,
+                                          NO_OVERLAY, //NO_OVERLAY, NO_OVERLAY, NO_OVERLAY,
+                                          NO_OVERLAY, NO_OVERLAY
+                                          //NO_OVERLAY
+                                          //NO_OVERLAY
+                                          //NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY,
+                                          //NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY
+                                          };
 
+  static uint8_t poi = 0;
+
+  EVERY_N_MILLISECONDS(19200) {
+    poi = (poi+1) % PATTERNS_NUM;
+    GlowSerum.set_pattern(patterns[poi]);
+    GlowSerum.set_overlay(overlays[poi], false);
+
+    //if (poi >= 22 && poi <= 25) {
+    //    GlowSerum.set_flipflop_enabled(true);
+    //}
+    //else {
+    //    GlowSerum.set_flipflop_enabled(false);
+    //}
+  }
+}
+*/
+
+
+
+//**********************
+// POSITIONING FUNCTIONS
+//**********************
 
 Layer::Point Layer::serp2cart(uint8_t i) {
   const uint8_t rl = 16;
@@ -611,6 +762,10 @@ void Layer::posmove(CRGB in[NUM_LEDS], CRGB out[NUM_LEDS], int8_t xi, int8_t yi,
     //y0 = (y0+sy)%(MD+gap);
 }
 
+
+//******************
+// TEXT FUNCTIONS
+//******************
 
 uint8_t Layer::get_text_height(String s) {
   uint8_t min_row = MD;

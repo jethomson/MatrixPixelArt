@@ -1,5 +1,5 @@
 /*
-  This code is copyright 2019 Jonathan Thomson, jethomson.wordpress.com
+  This code is copyright 2024 Jonathan Thomson, jethomson.wordpress.com
 
   Permission to use, copy, modify, and distribute this software
   and its documentation for any purpose and without fee is hereby
