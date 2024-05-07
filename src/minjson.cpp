@@ -26,7 +26,7 @@ SOFTWARE.
 #include <FastLED.h>
 #include "FastLED_RGBA.h"
 
-#include "src/dependencies/json/ArduinoJson-v6.h"
+#include "ArduinoJson-v6.h"
 #include "minjson.h"
 
 

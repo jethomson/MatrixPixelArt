@@ -23,10 +23,13 @@
 #include "ReAnimator.h"
 
 
-ReAnimator::ReAnimator(CRGB leds_in[NUM_LEDS], uint8_t *hue_type, uint16_t led_strip_milliamps) : freezer(*this) {
+ReAnimator::ReAnimator(CRGB leds_in[NUM_LEDS], CRGB *color, uint16_t led_strip_milliamps) : freezer(*this) {
+
     leds = leds_in;
 
-    selected_hue = hue_type;
+    rgb = color;
+    CHSV chsv = rgb2hsv_approximate(*color);
+    hue = chsv.h;
     selected_led_strip_milliamps = led_strip_milliamps;
 
     homogenized_brightness = 255;
@@ -91,8 +94,10 @@ void ReAnimator::homogenize_brightness() {
 }
 
 
-void ReAnimator::set_selected_hue(uint8_t *hue_type) {
-    selected_hue = hue_type;
+void ReAnimator::set_color(CRGB *color) {
+    rgb = color;
+    CHSV chsv = rgb2hsv_approximate(*color);
+    hue = chsv.h;
 }
 
 
@@ -403,6 +408,9 @@ void ReAnimator::set_cb(void(*_cb)(uint8_t)) {
 
 
 void ReAnimator::reanimate() {
+    CHSV chsv = rgb2hsv_approximate(*rgb);
+    hue = chsv.h;
+
     if (autocycle_enabled) {
         autocycle();
     }
@@ -602,7 +610,8 @@ void ReAnimator::orbit(uint16_t draw_interval, int8_t delta) {
             }
         }
 
-        leds[pos] = CHSV(*selected_hue, 255, 255);
+        //leds[pos] = CHSV(*hue, 255, 255);
+        leds[pos] = *rgb;
         pos = pos + delta;
 
         loop_num = (pos == NUM_LEDS) ? loop_num+1 : loop_num; 
@@ -617,7 +626,7 @@ void ReAnimator::theater_chase_old(uint16_t draw_interval, uint16_t(ReAnimator::
         fadeToBlackBy(leds, NUM_LEDS, 230);
 
         for (uint16_t i = 0; i+delta < NUM_LEDS; i=i+3) {
-            leds[(this->*dfp)(i+delta)] = CHSV(*selected_hue, 255, 255);
+            leds[(this->*dfp)(i+delta)] = CHSV(hue, 255, 255);
         }
 
         delta = (delta + 1) % 3;
@@ -637,7 +646,8 @@ void ReAnimator::theater_chase(uint16_t draw_interval, uint16_t(ReAnimator::*dfp
         fadeToBlackBy(leds, NUM_LEDS, 128);
 
         for (uint16_t i = 0; i+delta < NUM_LEDS; i=i+16) {
-            leds[(this->*dfp)(i+delta)] = CHSV(*selected_hue, 255, 255);
+            //leds[(this->*dfp)(i+delta)] = CHSV(*hue, 255, 255);
+            leds[(this->*dfp)(i+delta)] = *rgb;
         }
 
         delta = (delta + 1) % 16;
@@ -653,7 +663,8 @@ void ReAnimator::general_chase(uint16_t draw_interval, uint16_t genparam, uint16
         fadeToBlackBy(leds, NUM_LEDS, (255-(genparam*8)));
 
         for (uint16_t i = 0; i+delta < NUM_LEDS; i=i+genparam) {
-            leds[(this->*dfp)(i+delta)] = CHSV(*selected_hue, 255, 255);
+            //leds[(this->*dfp)(i+delta)] = CHSV(*hue, 255, 255);
+            leds[(this->*dfp)(i+delta)] = *rgb;
         }
 
         delta = (delta + 1) % genparam;
@@ -671,7 +682,8 @@ void ReAnimator::running_lights(uint16_t draw_interval, uint16_t genparam, uint1
             uint16_t a = genparam*(i+delta)*255/(NUM_LEDS-1);
             // this pattern normally runs from right-to-left, so flip it by using negative indexing
             uint16_t ni = (NUM_LEDS-1) - i;
-            leds[(this->*dfp)(ni)] = CHSV(*selected_hue, 255, sin8(a));
+            //leds[(this->*dfp)(ni)] = CHSV(*hue, 255, sin8(a));
+            leds[(this->*dfp)(ni)] = *rgb;
         }
 
         delta = (delta + 1) % (NUM_LEDS/genparam);
@@ -703,7 +715,8 @@ void ReAnimator::shooting_star(uint16_t draw_interval, uint8_t star_size, uint8_
 
         if ( (millis() - cdi_pm) > cool_down_interval ) {
             for (uint8_t i = 0; i < star_size; i++) {
-                leds[(this->*dfp)(pos+(star_size-1)-i)] += CHSV(*selected_hue, 255, 255);
+                //leds[(this->*dfp)(pos+(star_size-1)-i)] += CHSV(*hue, 255, 255);
+                leds[(this->*dfp)(pos+(star_size-1)-i)] += *rgb;
                 // we have to subtract 1 from star_size because one piece goes at pos
                 // example, if star_size = 3: [*]  [*]  [*]
                 //                            pos pos+1 pos+2
@@ -732,7 +745,8 @@ void ReAnimator::cylon(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16
     if (is_wait_over(draw_interval)) {
         fadeToBlackBy(leds, NUM_LEDS, 20);
 
-        leds[(this->*dfp)(pos)] += CHSV(*selected_hue, 255, 192);
+        //leds[(this->*dfp)(pos)] += CHSV(*hue, 255, 192);
+        leds[(this->*dfp)(pos)] += *rgb;
 
         pos = pos + delta;
         if (pos == 0 || pos == NUM_LEDS-1) {
@@ -744,7 +758,13 @@ void ReAnimator::cylon(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16
 
 void ReAnimator::solid(uint16_t draw_interval) {
     if (is_wait_over(draw_interval)) {
-        fill_solid(leds, NUM_LEDS, CHSV(*selected_hue, 255, 255));
+        //fill_solid(leds, NUM_LEDS, CHSV(hue, 255, 255));
+        fill_solid(leds, NUM_LEDS, *rgb);
+        
+        
+        //CHSV chsv = rgb2hsv_approximate(*rgb);
+        //chsv.h += 128;
+        //fill_solid(leds, NUM_LEDS, chsv);
     }
 }
 
@@ -775,8 +795,10 @@ void ReAnimator::mitosis(uint16_t draw_interval, uint8_t cell_size) {
         for (uint8_t i = 0; i < cell_size; i++) {
             uint16_t pi = pos+(cell_size-1)-i;
             uint16_t ni = (NUM_LEDS-1) - pi;
-            leds[pi] = CHSV(*selected_hue, 255, 255);
-            leds[ni] = CHSV(*selected_hue, 255, 255);
+            //leds[pi] = CHSV(*hue, 255, 255);
+            //leds[ni] = CHSV(*hue, 255, 255);
+            leds[pi] = *rgb;
+            leds[ni] = *rgb;
         }
         pos++;
         if (pos+(cell_size-1) >= NUM_LEDS) {
@@ -814,7 +836,7 @@ void ReAnimator::bubbles(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint
                 }
 
                 uint16_t pos = lerp16by16(0, NUM_LEDS-1, d);
-                leds[(this->*dfp)(pos)] += CHSV(i*(256/num_bubbles) + *selected_hue, 255, 192);
+                leds[(this->*dfp)(pos)] += CHSV(i*(256/num_bubbles) + hue, 255, 192);
                 motion_blur((3*pos)/NUM_LEDS, pos, dfp);
 
                 if (t < UINT8_MAX) {
@@ -836,7 +858,7 @@ void ReAnimator::bubbles(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint
 
 
 void ReAnimator::sparkle(uint16_t draw_interval, bool random_color, uint8_t fade) {
-    uint8_t hue = (random_color) ? random8() : *selected_hue;
+    uint8_t hue = (random_color) ? random8() : hue;
 
     // it's necessary to use finished_waiting() here instead of is_wait_over()
     // because sparkle can be an overlay
@@ -855,6 +877,8 @@ void ReAnimator::matrix(uint16_t draw_interval) {
 
         if (random8() > 205) {
             leds[0] = CHSV(HUE_GREEN, 255, 255);
+            //leds[0] = CRGB::Green; // is this noticeably different from HUE_GREEN ?
+            leds[0] = 0x00FF40; // result of using a HSV to RGB calculator to convert 96 (HUE_GREEN) to RGB. (96/256)*360 = 135. 135, 100%, 100% --> 0x00FF40
         }
         else {
             leds[0] = CRGB::Black;
@@ -873,9 +897,10 @@ void ReAnimator::weave(uint16_t draw_interval) {
     if (is_wait_over(draw_interval)) {
         fadeToBlackBy(leds, NUM_LEDS, 20);
 
-        leds[pos] += CHSV(*selected_hue, 255, 128);
-        leds[NUM_LEDS-1-pos] += CHSV(*selected_hue+(HUE_PURPLE-HUE_ALIEN_GREEN), 255, 128);
-
+        //leds[pos] += CHSV(*hue, 255, 128);
+        //leds[NUM_LEDS-1-pos] += CHSV(*hue+(HUE_PURPLE-HUE_ALIEN_GREEN), 255, 128);
+        leds[pos] += *rgb;
+        leds[NUM_LEDS-1-pos] += (CRGB::White - *rgb);
         pos = (pos + 2) % NUM_LEDS;
     }
 }
@@ -990,7 +1015,7 @@ void ReAnimator::pac_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint
         fill_solid(leds, NUM_LEDS, CRGB::Black);
 
         if (pac_man_pos == 0) {
-            (*cb)(0);
+            //(*cb)(0);
             blinky_pos = (-2 + NUM_LEDS) % NUM_LEDS;
             pinky_pos  = (-3 + NUM_LEDS) % NUM_LEDS;
             inky_pos   = (-4 + NUM_LEDS) % NUM_LEDS;
@@ -1038,7 +1063,7 @@ void ReAnimator::pac_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint
             leds[(this->*dfp)(clyde_pos)]  = CHSV(HUE_ORANGE, 255, clyde_visible*255);
         }
         else if (blinky_visible || pinky_visible || inky_visible || clyde_visible) {
-            (*cb)(1);
+            //(*cb)(1);
             //pac_man_delta = -3;
             //ghost_delta = -2;
 
@@ -1054,7 +1079,7 @@ void ReAnimator::pac_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint
             speed_jump_cnt++;
 
             if (pac_man_pos == blinky_pos) {
-                (*cb)(2);
+                //(*cb)(2);
                 blinky_visible = 0;
             }
             else if (pac_man_pos == pinky_pos) {
@@ -1200,8 +1225,9 @@ void ReAnimator::sound_ribbons(uint16_t draw_interval) {
     if (is_wait_over(draw_interval)) {
         fadeToBlackBy(leds, NUM_LEDS, 20);
 
-        leds[NUM_LEDS/2] = CHSV(*selected_hue, 255, sound_value);
-        leds[(NUM_LEDS/2)-1] = CHSV(*selected_hue, 255, sound_value);
+        leds[NUM_LEDS/2] = CHSV(hue, 255, sound_value);
+        leds[(NUM_LEDS/2)-1] = CHSV(hue, 255, sound_value);
+
         fission();
     }                                                                                
 }
@@ -1229,13 +1255,13 @@ void ReAnimator::sound_ripple(uint16_t draw_interval, bool trigger) {
 
         if (enabled) {
             // waves created by primary droplet
-            leds[(NUM_LEDS+center+delta) % NUM_LEDS] = CHSV(*selected_hue, 255, pow(0.8, delta)*255);
-            leds[(NUM_LEDS+center-delta) % NUM_LEDS] = CHSV(*selected_hue, 255, pow(0.8, delta)*255);
+            leds[(NUM_LEDS+center+delta) % NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta)*255);
+            leds[(NUM_LEDS+center-delta) % NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta)*255);
 
             if (delta > 3) {
                 // waves created by rebounded droplet
-                leds[(NUM_LEDS+center+(delta-3)) % NUM_LEDS] = CHSV(*selected_hue, 255, pow(0.8, delta - 2)*255);
-                leds[(NUM_LEDS+center-(delta-3)) % NUM_LEDS] = CHSV(*selected_hue, 255, pow(0.8, delta - 2)*255);
+                leds[(NUM_LEDS+center+(delta-3)) % NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta - 2)*255);
+                leds[(NUM_LEDS+center-(delta-3)) % NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta - 2)*255);
             }
 
             delta++;
@@ -1255,7 +1281,7 @@ void ReAnimator::sound_orbit(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(
             leds[(this->*dfp)(i)] = leds[(this->*dfp)(i-1)];
         }
 
-        leds[(this->*dfp)(0)] = CHSV(*selected_hue, 255, sound_value);
+        leds[(this->*dfp)(0)] = CHSV(hue, 255, sound_value);
     }
 }
 
@@ -1370,9 +1396,9 @@ uint16_t ReAnimator::backwards(uint16_t index) {
 // function and an overlay function are both called at the same time.
 // Patterns should use is_wait_over() and overlays should use finished_waiting(). 
 bool ReAnimator::is_wait_over(uint16_t interval) {
-    static uint32_t pm = 0; // previous millis
-    if ( (millis() - pm) > interval ) {
-        pm = millis();
+    //static uint32_t iwopm = 0; // previous millis
+    if ( (millis() - iwopm) > interval ) {
+        iwopm = millis();
         return true;
     }
     else {
@@ -1382,9 +1408,9 @@ bool ReAnimator::is_wait_over(uint16_t interval) {
 
 
 bool ReAnimator::finished_waiting(uint16_t interval) {
-    static uint32_t pm = 0; // previous millis
-    if ( (millis() - pm) > interval ) {
-        pm = millis();
+    //static uint32_t fwpm = 0; // previous millis
+    if ( (millis() - fwpm) > interval ) {
+        fwpm = millis();
         return true;
     }
     else {

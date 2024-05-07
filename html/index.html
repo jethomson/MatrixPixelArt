@@ -1,14 +1,83 @@
-<html>
+<!DOCTYPE html>
+<html lang="en" class="">
+
+<head>
+	<meta charset='utf-8'>
+	<meta http-equiv="Cache-Control" content="private, no-store" />
+	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+	<title>LED Matrix Art Creator</title>
+	<style>
+	body {
+		text-align: center;
+		font-family: Arial, sans-serif;
+		color: #faffff;
+		background: #111
+	}
+
+	div {
+		padding: 5px;
+		font-size: 1em;
+	}
+	
+	p {
+		margin: 0.5em 0;
+	}
+
+	button {
+		border: 0;
+		border-radius: 0.3rem;
+		background: #1fa3ec;
+		color: #faffff;
+		line-height: 2.4rem;
+		font-size: 1.2rem;
+		width: 100%;
+		-webkit-transition-duration: 0.4s;
+		transition-duration: 0.4s;
+		cursor: pointer;
+	}
+	
+	button:hover {
+		background: #0e70a4;
+	}
+
+	.bred {
+		background: #d43535;
+	}
+	
+	.bred:hover {
+		background: #931f1f;
+	}
+	
+	</style>
+</head>
+
 <body>
-
-<a href="/art.html">Art</a>
-</br>
-<a href="/playlist_maker.html">Playlist Maker</a>
-</br>
-<a href="/play.html">Play</a>
-</br>
-<a href="/remove.html">Delete Files</a>
-</br>
-
+	<div style='text-align:left;display:inline-block;color:#eaeaea;min-width:340px;'>
+		<div style='text-align:center;color:#eaeaea;'>
+		<div style='text-align:center;'>
+		<details>
+		<summary>Instructions</summary>
+    Use the Art Creator page to upload pixel art and pick light patterns.
+		</details>
+		</div>
+		<br>
+		<p>
+		<div id="art_button" class="grid-item-button">
+			<a href="./art.html"><button name="">Art Creator</button></a>
+		</div>
+		<div id="compose_button" class="grid-item-button">
+			<a href="./compose.html"><button name="">Combine Effects</button></a>
+		</div>
+		<div id="play_button" class="grid-item-button">
+			<a href="./play.html"><button name="">Play</button></a>
+		</div>
+		<div id="plm_button" class="grid-item-button">
+			<a href="./playlist_maker.html"><button name="">Playlist Maker</button></a>
+		</div>
+		<div id="manage_button" class="grid-item-button">
+			<a href="./remove.html"><button name="">Manage Files</button></a>
+		</div>
+		</p>
+	</div>
 </body>
 </html>

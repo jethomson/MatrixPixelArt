@@ -15,12 +15,12 @@ struct CRGBA  {
   union {
     struct {
       union {
-        uint8_t g;
-        uint8_t green;
-      };
-      union {
         uint8_t r;
         uint8_t red;
+      };
+      union {
+        uint8_t g;
+        uint8_t green;
       };
       union {
         uint8_t b;
@@ -36,6 +36,21 @@ struct CRGBA  {
 
   CRGBA(){}
 
+  CRGBA(CRGB c) {
+    r = c.r;
+    g = c.g;
+    b = c.b;
+    a = 255;
+  }
+
+  CRGBA(uint32_t c) {
+    r = (c >> 16) & 0xFF;
+    g = (c >>  8) & 0xFF;
+    b = (c >>  0) & 0xFF;
+    a = (c >> 24) & 0xFF;
+  }
+
+
   CRGBA(uint8_t rd, uint8_t grn, uint8_t blu, uint8_t alph) {
     r = rd;
     g = grn;
@@ -43,15 +58,14 @@ struct CRGBA  {
     a = alph;
   }
 
-  inline void operator = (const CRGB c) __attribute__((always_inline)) { 
+  inline void operator= (const CRGB c) __attribute__((always_inline)) { 
     this->r = c.r;
     this->g = c.g;
     this->b = c.b;
     this->a = 255;
   }
   
-  inline void operator= (const uint32_t c) __attribute__((always_inline))
-  {
+  inline void operator= (const uint32_t c) __attribute__((always_inline)) {
     this->r = (c >> 16) & 0xFF;
     this->g = (c >>  8) & 0xFF;
     this->b = (c >>  0) & 0xFF;
@@ -75,14 +89,42 @@ struct CRGBA  {
             uint32_t{b};
   }
 
+  inline CRGBA& operator+= (const CRGBA& rhs) {
+    r = qadd8(r, rhs.r);
+    g = qadd8(g, rhs.g);
+    b = qadd8(b, rhs.b);
+    return *this;
+  }
+
+  inline CRGBA& operator+= (const CRGB& rhs) {
+    r = qadd8(r, rhs.r);
+    g = qadd8(g, rhs.g);
+    b = qadd8(b, rhs.b);
+    return *this;
+  }
+
+  inline CRGBA& fadeToBlackBy (uint8_t fadefactor) {
+    nscale8x3( r, g, b, 255 - fadefactor);
+    return *this;
+  }
+
 };
 
+
 inline __attribute__((always_inline)) bool operator== (const CRGBA& lhs, const uint32_t rhs) {
-    //return (lhs.r == (rhs & 0xFF0000) >> 16) && (lhs.g == (rhs & 0x00FF00) >> 8) && (lhs.b == (rhs & 0x0000FF));
-    return (lhs.r == (rhs >> 16) & 0xFF) && (lhs.g == (rhs >> 8) & 0xFF) && (lhs.b == (rhs & 0xFF));
+    return (lhs.a == (uint8_t)(rhs >> 24) & 0xFF) && (lhs.r == (uint8_t)(rhs >> 16) & 0xFF) && (lhs.g == (uint8_t)(rhs >> 8) & 0xFF) && (lhs.b == (uint8_t)(rhs & 0xFF));
+
 }
  
 inline __attribute__((always_inline)) bool operator!= (const CRGBA& lhs, const uint32_t rhs) {
+    return !(lhs == rhs);
+}
+
+inline __attribute__((always_inline)) bool operator== (const CRGBA& lhs, const CRGB& rhs) {
+    return (lhs.r == rhs.r) && (lhs.g == rhs.g) && (lhs.b == rhs.b);
+}
+ 
+inline __attribute__((always_inline)) bool operator!= (const CRGBA& lhs, const CRGB& rhs) {
     return !(lhs == rhs);
 }
 

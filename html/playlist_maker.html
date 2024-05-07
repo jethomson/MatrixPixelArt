@@ -39,15 +39,18 @@
 
   html {
     touch-action: manipulation
+    overflow: auto;
   }
 
   body {
     margin: 0;
-    background-color: var(--c-1);
-    font-family: Helvetica, Verdana, sans-serif;
+		font-family: Arial, sans-serif;
+		color: #faffff;
+		background: #111;
     font-size: 17px;
     color: var(--c-f);
     text-align: center;
+
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     -moz-user-select: none;
@@ -57,13 +60,11 @@
     scrollbar-width: 6px;
     scrollbar-color: var(--c-sb) transparent
   }
-
+  
   body,
   html {
     height: 100%;
     width: 100%;
-    position: fixed;
-    overscroll-behavior: none
   }
 
 
@@ -91,10 +92,10 @@
   li {
     list-style: none;
     padding: 12px 16px;
-    background-color: var(--c-5);
-    margin: 2px 0;
+		background-color: #0e81ec;
+    margin: 4px;
     cursor: move;
-    border: 2px solid blue;
+		border-radius: 0.3rem;
   }
 
   li.selected {
@@ -106,13 +107,15 @@
     background: var(--c-3);
     color: var(--c-f);
     border: 0 solid #fff;
-    border-radius: 25px;
-    padding: 8px;
-    margin: 6px 6px 6px 0;
+		border-radius: 0.3rem;
+    margin: 0px 6px;
     font-size: 19px;
     transition: background-color .2s;
     outline: 0;
     width: 100px;
+    -webkit-appearance: textfield;
+    -moz-appearance: textfield;
+    appearance: textfield
   }
   
   ::selection {
@@ -145,24 +148,24 @@
 
   .rmbutton {
     color: var(--c-f);
+		border-radius: 0.3rem;
     background-color: red;
-    float: left;
   }
-
+  
   .btn {
+		border: 0;
+		border-radius: 0.3rem;
+		background: #1fa3ec;
+		color: #faffff;
+		line-height: 2.4rem;
+		font-size: 1.2rem;
     padding: 8px;
     margin: 10px;
     width: 230px;
-    font-size: 19px;
-    background-color: var(--c-3);
-    color: var(--c-f);
-    cursor: pointer;
-    border: 0 solid #fff;
-    border-radius: 25px;
-    transition-duration: .5s;
-    -webkit-backface-visibility: hidden;
-    -webkit-transform: translate3d(0, 0, 0)
-  }
+		-webkit-transition-duration: 0.4s;
+		transition-duration: 0.4s;
+		cursor: pointer;
+	}
 
 </style>
 </head>
@@ -175,7 +178,7 @@
       <ul id="ul_source">
       </ul>
     </div>
-    <div>
+    <div class="dropzone">
       <h4>New Playlist</h4>
       <ul id="ul_playlist">
       </ul>
@@ -229,7 +232,10 @@ let playlist = new Sortable(ul_playlist, {
     if (Sortable.utils.is(ctrl, ".rmbutton")) {
       item.parentNode.removeChild(item);
     }
-  }
+  },
+  // prevents input field from being an area that be grabbed so cursor works normally
+  filter: 'input',
+  preventOnFilter: false
 });
 
 async function fetch_source() {
@@ -239,7 +245,7 @@ async function fetch_source() {
     let type = reply[i]["type"]; 
     let id = reply[i]["path"];
     let name = reply[i]["name"];
-    if(type && id && name && type === "file" && id.startsWith("/files/am/")) { 
+    if(type && id && name && type === "file" && id.startsWith("/files/im/")) { 
       ul_source.insertAdjacentHTML("beforeend", `<li data-amid="${id}">${name}</li>`)
     }
     ul_playlist.style.minHeight = ul_source.offsetHeight;

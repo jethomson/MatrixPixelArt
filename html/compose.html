@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+	<title>Combine</title>
+	<style>
+	:root {
+		--switch-color: white;
+	}
+	
+	body {
+		color: #eaeaea;
+		background: black;
+		text-align: center;
+		font-family: verdana, sans-serif;
+	}
+	.grid-container {
+		display: grid;
+		grid-template-columns: repeat(8, minmax(20px, 120px)); /*fixes select element overflow grid width problem in chrome*/
+		grid-column-gap: 50px;
+    grid-row-gap: 5px;
+		max-width: 100vw;
+		/*width: 100%;*/
+		/*height: 85vh;*/
+		/*max-width: 600px;*/
+		/*max-height: 800px;*/
+		justify-content: center;
+		margin: 5px auto;
+		padding: 5px;
+		border-style: solid;
+	}
+	
+	.item-a {
+		grid-column-start: 1;
+	}
+  /* this allows children element of section to be displayed as if they were direct children of the div grid */
+  section {
+	  display: contents;
+	}
+	button {
+		margin: 5px 0px;
+	}
+	button,
+	input[type="button"] {
+		border: 0;
+		border-radius: 0.3rem;
+		background: #1fa3ec;
+		color: #faffff;
+		line-height: 2.4rem;
+		font-size: 1.2rem;
+		width: 100%;
+		-webkit-transition-duration: 0.4s;
+		transition-duration: 0.4s;
+		cursor: pointer;
+	}
+	button:hover,
+	input[type="button"]:hover {
+		background: #0e70a4;
+	}
+	.break {
+		flex-basis: 100%;
+		height: 0;
+	}
+	</style>
+</head>
+<body>
+
+  <div id="maindiv">
+    <h3>Combine images and other effects using layers to make composites.</h3>
+    <form id="comp_form" method="POST" onsubmit="event.preventDefault(); save()"></form>
+
+    <div class="grid-container">
+        <section>
+            <label class="item-a">Layer</label>
+            <label>Effect</label>
+            <label>Dynamic Color</label>
+            <label>Complementary Dynamic Color</label>
+            <label>Fixed Color</label>
+            <label>Fixed Color Chooser</label>
+            <label>Movement</label>
+            <label>Text</label>
+        </section>
+
+        <section data-layer="l3">
+            <label class="item-a" for="l3">Top</label>
+            <select id="l3" data-key="id" onchange="enable_disable_settings(this)">
+              <option value="0">Empty</option>
+            </select>
+            <input type="radio" id="l3rdc" name="l3cc" data-setting-for="pat" data-key="ct" value=0 autocomplete="off" onchange="enable_disable_color_input(this, 'l3c')" disabled checked />
+            <input type="radio" id="l3rcdc" name="l3cc" data-setting-for="pat" data-key="ct" value=1 autocomplete="off" onchange="enable_disable_color_input(this, 'l3c')" disabled />
+            <input type="radio" id="l3rfc" name="l3cc" data-setting-for="pat" data-key="ct" value=2 autocomplete="off" onchange="enable_disable_color_input(this, 'l3c')" disabled />
+            <input type="color" id="l3c" data-setting-for="pat" data-key="c" autocomplete="off" value="#3584e4" disabled />
+            <select id="l3m" data-setting-for="it" data-key="m" autocomplete="off" disabled />
+              <option value="0">Still</option>
+              <option value="1">RTL</option>
+              <option value="2">LTR</option>
+            </select>
+            <input type="text" id="l3t" data-setting-for="t" data-key="w" autocomplete="off" disabled />
+        </section>
+
+        <section data-layer="l2">
+            <label class="item-a" for="l2">Top Middle</label>
+            <select id="l2" data-key="id" onchange="enable_disable_settings(this)">
+              <option value="0">Empty</option>
+            </select>
+            <input type="radio" id="l2rdc" name="l2cc" data-setting-for="pat" data-key="ct" value="0" autocomplete="off" onchange="enable_disable_color_input(this, 'l2c')" disabled checked />
+            <input type="radio" id="l2rcdc" name="l2cc" data-setting-for="pat" data-key="ct" value="1" autocomplete="off" onchange="enable_disable_color_input(this, 'l2c')" disabled />
+            <input type="radio" id="l2rfc" name="l2cc" data-setting-for="pat" data-key="ct" value="2" autocomplete="off" onchange="enable_disable_color_input(this, 'l2c')" disabled />
+            <input type="color" id="l2c" data-setting-for="pat" data-key="c" autocomplete="off" value="#3584e4" disabled />
+            <select id="l2m" data-setting-for="it" data-key="m" autocomplete="off" disabled />
+              <option value="0">Still</option>
+              <option value="1">RTL</option>
+              <option value="2">LTR</option>
+            </select>
+            <input type="text" id="l2t" data-setting-for="t" data-key="w" autocomplete="off" disabled />
+        </section>
+
+        <section data-layer="l1">
+            <label class="item-a" for="l1">Bottom Middle</label>
+            <select id="l1" data-key="id" autocomplete="off" onchange="enable_disable_settings(this)">
+              <option value="0">Empty</option>
+            </select>
+            <input type="radio" id="l1rdc" name="l1cc" data-setting-for="pat" data-key="ct" value="0" autocomplete="off" onchange="enable_disable_color_input(this, 'l1c')" disabled checked />
+            <input type="radio" id="l1rcdc" name="l1cc" data-setting-for="pat" data-key="ct" value="1" autocomplete="off" onchange="enable_disable_color_input(this, 'l1c')" disabled />
+            <input type="radio" id="l1rfc" name="l1cc" data-setting-for="pat" data-key="ct" value="2" autocomplete="off" onchange="enable_disable_color_input(this, 'l1c')" disabled />
+            <input type="color" id="l1c" data-setting-for="pat" data-key="c" autocomplete="off" value="#3584e4" disabled />
+            <select id="l1m" data-setting-for="it" data-key="m" autocomplete="off" disabled />
+              <option value="0">Still</option>
+              <option value="1">RTL</option>
+              <option value="2">LTR</option>
+            </select>
+            <input type="text" id="l1t" data-setting-for="t" data-key="w" autocomplete="off" disabled />
+        </section>
+
+        <section data-layer="l0">
+            <label class="item-a" for="l0">Bottom</label>
+            <select id="l0" data-key="id" onchange="enable_disable_settings(this)">
+              <option value="0">Empty</option>
+            </select>
+            <input type="radio" id="l0rdc" name="l0cc" data-setting-for="pat" data-key="ct" value="0" autocomplete="off" onchange="enable_disable_color_input(this, 'l0c')" disabled checked />
+            <input type="radio" id="l0rcdc" name="l0cc" data-setting-for="pat" data-key="ct" value="1" autocomplete="off" onchange="enable_disable_color_input(this, 'l0c')" disabled />
+            <input type="radio" id="l0rfc" name="l0cc" data-setting-for="pat" data-key="ct" value="2" autocomplete="off" onchange="enable_disable_color_input(this, 'l0c')" disabled />
+            <input type="color" id="l0c" data-key="c" data-setting-for="pat" autocomplete="off" value="#3584e4" disabled />
+            <select id="l0m" data-setting-for="it" data-key="m" autocomplete="off" disabled />
+              <option value="0">Still</option>
+              <option value="1">RTL</option>
+              <option value="2">LTR</option>
+            </select>
+            <input type="text" id="l0t" data-setting-for="t" data-key="w" autocomplete="off" disabled />
+        </section>
+    </div>
+    <label for="id">Filename: </label><input type="text" id="id" value="mycomp" />
+    <button id="btn_save" type="submit" form="comp_form">Upload Composition</button>
+    <div id="main_button" class="grid-item">
+      <a href="./"><button name="">Main Menu</button></a>
+    </div>
+  </div>
+
+
+
+
+<script>
+base_url = "";
+if (window.location.protocol == "file:") {
+  // makes for easier debugging.
+  // if html is loaded locally, can see the results of editing more easily.
+  // otherwise every change to html would require uploading new version to microcontroller.
+  base_url = "http://192.168.1.243";
+}
+
+
+function enable_disable_color_input(dradio, id) {
+  let el = document.getElementById(id);
+  if (el) {
+    if (dradio.checked && dradio.value == 2) {
+      //el.style.display = "none";
+      el.disabled = false;
+    }
+    else {
+      //el.style.display = "";
+      el.disabled = true;
+    }
+  }
+}
+
+
+function enable_disable_settings(el_select) {
+  let opt = el_select.options[el_select.selectedIndex];
+  let type = "e"; // need to set to e in order to disable all settings when empty layer is chosen.
+  if (opt.parentElement.tagName === "OPTGROUP") {
+    type = opt.parentElement.id;
+  }
+  
+  let id = el_select.id;
+  //let els = document.querySelectorAll(`[id^="${id}"][data-setting-for]:not([data-key="c"])`);
+  let els = document.querySelectorAll(`[id^="${id}"][data-setting-for]`);
+  for (el of els) {
+    //let dnew = "none";
+    let dnew = true;
+    if (el.getAttribute("data-setting-for").includes(type) && el.getAttribute("data-key") != "c") {
+      //dnew = "";
+      dnew = false;
+    }
+    else {
+      // set to defaults - maybe should create a function for this that can be called on page load
+      if (el.getAttribute("data-key") == "ct") {
+        el.checked = (el.value == 0) ? true : false;
+      }
+      if (el.type == "color") {
+        el.value = "#3584e4";
+      }
+      el.selected = false;
+      if (el.type == "text") {
+        el.value = "";
+      }
+    }
+    //el.style.display = dnew;
+    el.disabled = dnew;
+  }
+}
+
+
+function populate_effects(list) {
+  let files = list["files"];
+  if (files) {
+    let el_selects = document.querySelectorAll('select[data-key="id"]');
+    for (el_select of el_selects) {
+      el_select.insertAdjacentHTML("beforeend", '<optgroup id="i" label="Images">');
+    }
+  
+    for (let i = 0; i < files.length; i++) {
+      let type = files[i]["type"];
+      let id = files[i]["path"];
+      let name = files[i]["name"];
+      if (type && id && name && type === "file" && id.startsWith("/files/im/")) { 
+        let el_optgroups = document.querySelectorAll('optgroup[id="i"]');
+        for (el_optgroup of el_optgroups) {
+          el_optgroup.insertAdjacentHTML("beforeend", `<option value="${id}">${name}</option>`);
+        }
+      }
+      //ul_playlist.style.minHeight = ul_source.offsetHeight;
+    }
+  }
+  
+  let patterns = list["patterns"];
+  if (patterns) {
+    let el_selects = document.querySelectorAll('select[data-key="id"]');
+    for (el_select of el_selects) {
+      el_select.insertAdjacentHTML("beforeend", '<optgroup id="p" label="Patterns">');
+    }
+  
+    for (let i = 0; i < patterns.length; i++) {
+      // Start at 1 instead of 0 because there is a NONE Pattern at id = 0 that is not presented as a choice for the user.
+      let id = i+1;
+      let name = patterns[i];
+      let el_optgroups = document.querySelectorAll('optgroup[id="p"]');
+      for (el_optgroup of el_optgroups) {
+        el_optgroup.insertAdjacentHTML("beforeend", `<option value="${id}">${name}</option>`);
+      }
+    }
+  }
+
+  let accents = list["accents"];
+  console.log(accents);
+  if (accents) {
+    let el_selects = document.querySelectorAll('select[data-key="id"]');
+    for (el_select of el_selects) {
+      el_select.insertAdjacentHTML("beforeend", '<optgroup id="a" label="Accents">');
+    }
+
+    for (let i = 0; i < accents.length; i++) {
+      // Start at 1 instead of 0 because there is a NO_OVERLAY Accent at id = 0 that is not presented as a choice for the user.
+      let id = i+1;
+      let name = accents[i];
+      let el_optgroups = document.querySelectorAll('optgroup[id="a"]');
+      for (el_optgroup of el_optgroups) {
+        el_optgroup.insertAdjacentHTML("beforeend", `<option value="${id}">${name}</option>`);
+      }
+    }
+  }
+
+
+  let texts = ["Enter Text", "Date Time"];
+  console.log(texts);
+  if (texts) {
+    let el_selects = document.querySelectorAll('select[data-key="id"]');
+    for (el_select of el_selects) {
+      el_select.insertAdjacentHTML("beforeend", '<optgroup id="t" label="Text">');
+    }
+  
+    for (let i = 0; i < texts.length; i++) {
+      let id = i;
+      let name = texts[i];
+      let el_optgroups = document.querySelectorAll('optgroup[id="t"]');
+      for (el_optgroup of el_optgroups) {
+        el_optgroup.insertAdjacentHTML("beforeend", `<option value="${id}">${name}</option>`);
+      }
+    }
+  }
+}
+
+
+async function fetch_source() {
+  const t = await fetch(base_url+"/options.json");
+  let reply = await t.json();
+  populate_effects(reply);
+}
+
+function upload_status(json) {
+  if (json["upload_status"] == 0) {
+    //console.log("File uploaded successfully.");
+    document.getElementById("btn_save").textContent = "Update Successful!";
+  }
+  else {
+    //console.log("File upload failed.");
+    document.getElementById("btn_save").textContent = "Update Failed :(";
+  }
+}
+
+
+async function save() {
+  let comp_dict = {};
+  let type = "cm";
+  let cmid = document.getElementById("id").value;
+
+  comp_dict["t"] = type;
+  comp_dict["id"] = cmid;
+  comp_dict["l"] = [];
+
+  let layers = document.querySelectorAll("section[data-layer]");
+  for (let i = layers.length-1; i >= 0; i--) {
+    let layer = layers[i];
+    let el_keys = layer.querySelectorAll("[data-key]");
+    let ltype = "e";
+    let lobj = {};
+    lobj["t"] = ltype; // default: e indicates the layer is empty
+    let save_color = false;
+    for (let j = 0; j < el_keys.length; j++) {
+      let el_key = el_keys[j];
+
+      let key = el_key.getAttribute("data-key");
+      let value;
+      if (key === "id") {
+        let opt = el_key.options[el_key.selectedIndex];
+        if (opt.parentElement.tagName === "OPTGROUP") {
+          ltype = opt.parentElement.id;
+        }
+        if (ltype !== "e") {
+          value = opt.value;
+        }
+      }
+
+      // move
+      if ((ltype === "i" || ltype === "t") && key === "m") {
+        let opt = el_key.options[el_key.selectedIndex];
+        value = opt.value;
+      }
+
+      if (ltype !== "e" && key === "ct") {
+        value = null;
+        if (el_key.checked === true) {
+          value = el_key.value;
+        }
+        if (value == 2) {
+          save_color = true;
+        }
+      }
+
+      //stringify() wraps numbers in quotes so wrap numbers in !! to make it easy to remove the quotes.
+      //any number that you want to represented as a number in json should have the value set above here. 
+      if (value && !isNaN(value)) {
+        value = "!!"+value+"!!";
+      }
+      
+      // color
+      if (ltype !== "e" && key === "c" && save_color) {
+        // convert to C format hex. keep below the !! wrap because we want to keep this as a string. 
+        value = el_key.value.replace("#", "0x");
+      }
+
+      // writing
+      if (ltype === "t" && key === "w") {
+        value = el_key.value;
+      }
+
+      if (value) {
+        lobj[key] = value;
+      }
+    }
+    lobj["t"] = ltype;
+    comp_dict["l"].push(lobj);
+  }
+  let json = JSON.stringify(comp_dict);
+  const regex = /"!!(-?[0-9]+\.{0,1}[0-9]*)!!"/g 
+  json = json.replace(regex, '$1')
+
+  console.log(`t=${type}&id=${cmid}&json=` + json);
+
+
+  const t = await fetch("http://192.168.1.243/save", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: `t=${type}&id=${cmid}&json=` + json
+  }),
+  reply = await t.json();
+  console.log(reply)
+
+
+  //let form_data = new FormData();
+  //const blob = new Blob([JSON.stringify(comp_dict)], { type: "application/json" });
+  //form_data.append("upload", blob);
+  ////form_data.append("upload", blob, "/comp.json");
+
+  //fetch(base_url+"/save", {method:"POST", body:form_data})
+  //  .then(response => response.json())
+  //  .then(data => upload_status(data));
+}
+
+/*
+// maybe add functionality to load a previously saved composite file so it can be edited
+async function load(type, id) {
+  const t = await fetch("http://192.168.1.243/load", {
+    method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: `t=${type}&id=${id}`
+  }),
+  reply = await t.json();
+  console.log(reply)
+}
+*/
+
+// trigger onchange for dynamic color radio so previous or default selection takes effect
+let els = document.querySelectorAll('input[type="radio"][data-key="ct"]');
+for (el of els) {
+  el.dispatchEvent(new Event("change"));
+}
+
+window.addEventListener("load", fetch_source);
+
+</script>
+
+</body>
+</html>

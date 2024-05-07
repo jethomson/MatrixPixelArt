@@ -20,12 +20,24 @@
   this software.
 */
 
-#ifndef REANIMATOR_DEMO_H
-#define REANIMATOR_DEMO_H
+#ifndef PROJECT_H
+#define PROJECT_H
 
 #include <FastLED.h>
+#include "FastLED_RGBA.h"
 #include <stdint.h>
 #include "Arduino.h"
+
+#define LED_STRIP_VOLTAGE 5
+#define LED_STRIP_MILLIAMPS 500
+
+// storage locations for animated matrices and playlists.
+// note the pathes are hardcoded in the HTML files, so changing these defines is not enough.
+// do not put a / at the end
+#define FILE_ROOT "/files"
+#define IM_ROOT "/files/im"
+#define PL_ROOT "/files/pl"
+#define CM_ROOT "/files/cm"
 
 #undef DEBUG_CONSOLE
 #define DEBUG_CONSOLE Serial
@@ -48,6 +60,7 @@
 #define LED_STRIP_VOLTAGE 5
 #define SOUND_VALUE_GAIN_INITIAL 2
 #define HUE_ALIEN_GREEN 112
+
 
 
 /*

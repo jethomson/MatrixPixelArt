@@ -44,7 +44,10 @@
 class ReAnimator {
 
     CRGB *leds;
-    uint8_t *selected_hue;
+    // the frontend color picker is focused on RGB so try to honor the RGB color picked.
+    // sometimes it makes more sense to work with a hue, so we have a hue variable that is derived from rgb.
+    CRGB *rgb;
+    uint8_t hue;
     uint16_t selected_led_strip_milliamps;
 
     uint8_t homogenized_brightness;
@@ -97,10 +100,14 @@ class ReAnimator {
     uint16_t sound_value;
     uint8_t sound_value_gain;
 
-  public:
-    ReAnimator(CRGB leds[NUM_LEDS], uint8_t *hue_type, uint16_t led_strip_milliamps);
+    uint32_t iwopm = 0; // previous millis for is_wait_over()
+    uint32_t fwpm = 0; // previous millis for finished_waiting()
 
-    void set_selected_hue(uint8_t *hue_type);
+  public:
+    //ReAnimator(CRGB leds[NUM_LEDS], uint8_t *hue_type, uint16_t led_strip_milliamps);
+    ReAnimator(CRGB leds[NUM_LEDS], CRGB *color, uint16_t led_strip_milliamps);
+
+    void set_color(CRGB *color);
     void set_selected_led_strip_milliamps(uint16_t led_strip_milliamps);
 
     void homogenize_brightness();
