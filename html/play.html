@@ -2,80 +2,95 @@
 <html lang="en" class="">
 
 <head>
-	<meta charset='utf-8'>
-	<meta http-equiv="Cache-Control" content="private, no-store" />
-	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+  <meta charset='utf-8'>
+  <meta http-equiv="Cache-Control" content="private, no-store" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
   <title>Play</title>
-	<style>
-	
-	body {
-		text-align: center;
-		font-family: Arial, sans-serif;
-		color: #faffff;
-		background: #111
-	}
-	
-	div {
-		padding: 5px;
-		font-size: 1em;
-	}
-	
-	p {
-		margin: 0.5em 0;
-	}
+  <style>
+  
+  body {
+    text-align: center;
+    font-family: Arial, sans-serif;
+    color: #faffff;
+    background: #111
+  }
 
-  .btn {
-		border: 0;
-		border-radius: 0.3rem;
-		background: #1fa3ec;
-		color: #faffff;
-		line-height: 2.4rem;
-		font-size: 1.2rem;
-		width: 100%;
-		-webkit-transition-duration: 0.4s;
-		transition-duration: 0.4s;
-		cursor: pointer;
-	}
-	
-	.btn:hover {
-		background: #0e70a4;
-	}	
-  .plm {
+  .flc {
     display: flex;
     justify-content: center;
   }
 
-  .plm div {
+  .flc div {
     flex: 300px 0 0;
     border:1px solid #fff;
   }
+
+  div {
+    padding: 5px;
+    font-size: 1em;
+  }
+  
+  p {
+    margin: 0.5em 0;
+  }
+
+  button,
+  input[type="button"] {
+    margin: 3px;
+    border: 0;
+    border-radius: 0.3rem;
+    background: #1fa3ec;
+    color: #faffff;
+    line-height: 2.4rem;
+    font-size: 1.2rem;
+    width: 100%;
+    -webkit-transition-duration: 0.4s;
+    transition-duration: 0.4s;
+    cursor: pointer;
+  }
+  button:hover,
+  input[type="button"]:hover {
+    background: #0e70a4;
+  }
+
+  .break {
+    flex-basis: 100%;
+    height: 0;
+  }
+
 </style>
 </head>
 <body>
 
 <body>
-  <div class="plm">
-    <div id="am_btns">
-      <h4>Saved Animations</h4>
+  <div class="flc">
+    <div id="im_btns">
+      <h4>Saved Images</h4>
+    </div>
+    <div id="cm_btns">
+      <h4>Saved Compositess</h4>
     </div>
     <div id="pl_btns">
       <h4>Saved Playlists</h4>
     </div>
   </div>
-
+  <div id="main_button">
+    <a href="./"><button name="">Main Menu</button></a>
+  </div>
 <script>
 
 let base_url = "";
 if (window.location.protocol == "file:") {
-	// makes for easier debugging.
-	// if html is loaded locally, can see the results of editing more easily.
-	// otherwise every change to html would require uploading new version to microcontroller.
-	base_url = "http://192.168.1.243";
+  // makes for easier debugging.
+  // if html is loaded locally, can see the results of editing more easily.
+  // otherwise every change to html would require uploading new version to microcontroller.
+  base_url = "http://192.168.1.243";
 }
 
 async function fetch_source() {
 
-  let am_btns_div = document.getElementById("am_btns");
+  let im_btns_div = document.getElementById("im_btns");
+  let cm_btns_div = document.getElementById("cm_btns");
   let pl_btns_div = document.getElementById("pl_btns");
 
   const t = await fetch(base_url+"/file_list.json");
@@ -83,15 +98,18 @@ async function fetch_source() {
   console.log(reply)
   
   for (let i = 0; i < reply.length; i++) {
-    console.log(i);
-    console.log(reply[i]);
-    console.log(reply[i]["type"]);
+    //console.log(i);
+    //console.log(reply[i]);
+    //console.log(reply[i]["type"]);
     let type = reply[i]["type"]; 
     let id = reply[i]["path"];
     let name = reply[i]["name"];
     if(type && id && name && type === "file") { 
-      if (id.startsWith("/files/am/")) {
-        am_btns_div.insertAdjacentHTML("beforeend", `<input type="button" id="${id}" class="btn" data-type="am" value="${name}" onclick="load('am', '${id}')">`)
+      if (id.startsWith("/files/im/")) {
+        im_btns_div.insertAdjacentHTML("beforeend", `<input type="button" id="${id}" class="btn" data-type="im" value="${name}" onclick="load('im', '${id}')">`)
+      }
+      else if (id.startsWith("/files/cm/")) {
+        cm_btns_div.insertAdjacentHTML("beforeend", `<input type="button" id="${id}" class="btn" data-type="cm" value="${name}" onclick="load('cm', '${id}')">`)
       }
       else if (id.startsWith("/files/pl/")) {
         pl_btns_div.insertAdjacentHTML("beforeend", `<input type="button" id="${id}" class="btn" data-type="pl" value="${name}" onclick="load('pl', '${id}')">`)
@@ -102,15 +120,15 @@ async function fetch_source() {
 
 
 async function load(type, id) {
-	const t = await fetch("http://192.168.1.243/load", {
-	  method: "POST",
-		  headers: {
-			  "Content-Type": "application/x-www-form-urlencoded"
-			},
-			body: `t=${type}&id=${id}`
-	}),
+  const t = await fetch("http://192.168.1.243/load", {
+    method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: `t=${type}&id=${id}`
+  }),
   reply = await t.json();
-	console.log(reply)
+  console.log(reply)
 }
 
 window.addEventListener("load", fetch_source);

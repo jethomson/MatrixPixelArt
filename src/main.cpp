@@ -761,7 +761,7 @@ void web_server_initiate() {
     String type = request->getParam("t", true)->value();
     String id = request->getParam("id", true)->value();
 
-    if (id != "" && (type == "im" || type == "pl")) {
+    if (id != "" && (type == "im" || type == "cm" || type == "pl")) {
       gnextup.type = type;
       gnextup.filename = id;
     }
@@ -918,6 +918,9 @@ void loop() {
       load_from_playlist(gnextup.filename);
     }
     else if (gnextup.type == "cm") {
+      load_file(gnextup.filename);
+    }
+    else if (gnextup.type == "im") {
       load_file(gnextup.filename);
     }
     gnextup.type = "";
