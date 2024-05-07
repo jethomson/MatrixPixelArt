@@ -918,9 +918,11 @@ void loop() {
       load_from_playlist(gnextup.filename);
     }
     else if (gnextup.type == "cm") {
+      gplaylist_enabled = false;
       load_file(gnextup.filename);
     }
     else if (gnextup.type == "im") {
+      gplaylist_enabled = false;
       load_file(gnextup.filename);
     }
     gnextup.type = "";
