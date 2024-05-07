@@ -59,7 +59,6 @@ void Layer::set_color(CRGB* color) {
 
 void Layer::run() {
   if (rgb == nullptr) {
-    Serial.println("Error: layer variable rgb was not set.");
     internal_rgb = CRGB::Yellow;
     rgb = &internal_rgb;
   }
@@ -679,10 +678,7 @@ void Layer::matrix_text(String s) {
 
 
 bool Layer::matrix_char_shift(char c, uint8_t vmargin) {
-  static uint8_t column = 0;
-  static uint8_t tracking = 0; // spacing between letters
-
-  if (tracking) {
+  if (mcs_tracking) {
     for (uint8_t i = 0; i < MD; i++) {
       for (uint8_t j = 0; j < MD-1; j++) {
         uint8_t k = (MD-1)-j;
@@ -700,7 +696,7 @@ bool Layer::matrix_char_shift(char c, uint8_t vmargin) {
       leds[cart2serp(p)] = 0x00000000; // transparent black
 
     }
-    tracking--;
+    mcs_tracking--;
     return false;
   }
 
@@ -725,7 +721,7 @@ bool Layer::matrix_char_shift(char c, uint8_t vmargin) {
       p.x = 0;
       p.y = i;
       if (vmargin <= i && i < font->h_px) {
-        uint16_t n = (i-vmargin)*width + column;
+        uint16_t n = (i-vmargin)*width + mcs_column;
         CRGB pixel = *rgb;
         pixel.scale8(glyph[n]); // not all glyph subpixels are completely off or on, so dim for those in between.
         leds[cart2serp(p)] = pixel;
@@ -739,10 +735,10 @@ bool Layer::matrix_char_shift(char c, uint8_t vmargin) {
     }
   }
 
-  column = (column+1)%width;
-  if (column == 0) {
+  mcs_column = (mcs_column+1)%width;
+  if (mcs_column == 0) {
     finished_shifting = true;  // character fully shifted onto matrix.
-    tracking = 1; // add tracking (spacing between letters) on next call
+    mcs_tracking = 1; // add tracking (spacing between letters) on next call
   }
   return finished_shifting;
 }
@@ -750,13 +746,10 @@ bool Layer::matrix_char_shift(char c, uint8_t vmargin) {
 
 //void Layer::matrix_text_shift(struct fstring ftext) {
 void Layer::matrix_text_shift() {
-  //Serial.println("mts");
-  static uint32_t pm = 0;
-  static uint16_t i = 0;
-  if ((millis()-pm) > 200) {
-    pm = millis();
-    if(matrix_char_shift(ftext.s[i], ftext.vmargin)) {
-      i = (i+1) % ftext.s.length();
+  if ((millis()-mts_pm) > 200) {
+    mts_pm = millis();
+    if(matrix_char_shift(ftext.s[mts_i], ftext.vmargin)) {
+      mts_i = (mts_i+1) % ftext.s.length();
     }
   }
 }

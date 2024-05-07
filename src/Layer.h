@@ -77,6 +77,12 @@ class Layer {
       uint8_t y;
     };
 
+    uint32_t mts_pm = 0;
+    uint16_t mts_i = 0;
+
+    uint8_t mcs_column = 0;
+    uint8_t mcs_tracking = 0; // spacing between letters
+
   public:
 
     Layer();
