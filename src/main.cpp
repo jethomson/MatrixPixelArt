@@ -312,7 +312,7 @@ bool save_data(String fs_path, String json, String* message) {
 
 bool load_layer(uint8_t lnum, JsonVariant layer_json) {
 
-  if (layer_json[F("t")] == "e") {
+  if (layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull() || (layer_json[F("t")] == "t" && layer_json[F("w")].isNull()) ) {
     if (layers[lnum] != nullptr) {
       delete layers[lnum];
       layers[lnum] = nullptr;
@@ -324,8 +324,16 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     layers[lnum] = new Layer();
   }
 
+  // sane default in case data is missing.
+  // if this data is missing json is perhaps it is better to not show the layer at all.
+  uint8_t ct = 0; // dynamic color
+  std::string c = "0xFFFF00"; // yellow if the fixed color
+  uint8_t m = 0; // no movement
+
   // color is not yet used for images. may be implemented in the future to change color palettes.
-  uint8_t ct = layer_json[F("ct")];
+  if (!layer_json[F("ct")].isNull()) {
+    ct = layer_json[F("ct")];
+  }
   if (ct == 0) {          
     layers[lnum]->set_color(&gdynamic_rgb);
   }
@@ -333,27 +341,34 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     layers[lnum]->set_color(&gdynamic_comp_rgb);
   }
   else {
-    std::string s = layer_json[F("c")];
-    uint32_t fc = std::stoul(s, nullptr, 16);
+    if (!layer_json[F("c")].isNull()) {
+      c = layer_json[F("c")].as<std::string>();
+    }
+    uint32_t fc = std::stoul(c, nullptr, 16);
     layers[lnum]->set_color(fc);
+  }
+
+
+  if (!layer_json[F("m")].isNull()) {
+    m = layer_json[F("m")];
   }
 
   if (layer_json[F("t")] == "i") {
     layers[lnum]->load_image_from_file(layer_json[F("id")]);
-    layers[lnum]->set_direction(layer_json[F("m")]);
+    layers[lnum]->set_direction(m);
   }
   else if (layer_json[F("t")] == "p") {
     layers[lnum]->set_plfx(layer_json[F("id")]);
-    layers[lnum]->set_direction(layer_json[F("m")]);
+    layers[lnum]->set_direction(m);
   }
   else if (layer_json[F("t")] == "a") {
     layers[lnum]->set_alfx(layer_json[F("id")]);
-    layers[lnum]->set_direction(layer_json[F("m")]);
+    layers[lnum]->set_direction(m);
   }
   else if (layer_json[F("t")] == "t") {
     // need to check layer_json[F("id")] // text or time
     layers[lnum]->set_text(layer_json[F("w")]);
-    layers[lnum]->set_direction(layer_json[F("m")]);
+    //layers[lnum]->set_direction(layer_json[F("m")]);
   }
 
   return true;
@@ -399,8 +414,8 @@ bool load_composite(String fs_path) {
     String json = file.readString();
     DeserializationError error = deserializeJson(doc, json);
     if (error) {
-      //DEBUG_PRINT("deserializeJson() failed: ");
-      //DEBUG_PRINTLN(error.c_str());
+      DEBUG_PRINT("deserializeJson() failed: ");
+      DEBUG_PRINTLN(error.c_str());
       return false;
     }
 
