@@ -70,6 +70,7 @@ void Layer::set_type(LayerType ltype) {
       delete GlowSerum;
       GlowSerum = nullptr;
     }
+    // cast CRGBA array to CRGB wastes 1 byte * NUM_LEDS. might update ReAnimator to work with CRGBA one day.
     GlowSerum = new ReAnimator((CRGB *)&leds[0], rgb, LED_STRIP_MILLIAMPS);
     
     GlowSerum->set_pattern(NONE);
