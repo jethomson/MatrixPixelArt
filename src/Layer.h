@@ -32,23 +32,15 @@
 
 #define MD 16 // width or height of matrix in number of LEDs
 
-#define TRANSPARENT (uint32_t)0x424242
-
-
-
-// pl - pattern layer. currently background. could possibly dynamically change the z height of where a pattern is drawn such that it is sometimes above an image, text, etc.
-// il - image layer. pixel art is written here. if the image is completely transparent then only effects will be shown.
-// al - accent layer. currently accent effects are implemented for the overlay, but they could possibly be put underneath. for example, an image could sparkle from underneath. twinkling stars?
-// tl - text layer. not used yet.
-
 extern lv_font_t ascii_sector;
 
 class Layer {
     enum LayerType {Pattern_t = 0, Accent_t = 1, Image_t = 2, Text_t = 3};
-    enum Direction {RTL = 0, LTR = 1, DOWN = 2, UP = 3};
+    //enum Direction {STILL = 0, N = 1, NE = 2, E = 3, SE = 4, S = 5, SW = 6, W = 7, NW = 8};
 
     LayerType _ltype;
     CRGBA leds[NUM_LEDS];
+    CRGBA tleds[NUM_LEDS];
     ReAnimator* GlowSerum = nullptr;
     //ReAnimator* MiskaTonic;
     
@@ -56,25 +48,32 @@ class Layer {
     
     // the frontend color picker is focused on RGB so try to honor the RGB color picked.
     // sometimes it makes more sense to work with a hue, so we have a hue variable that is derived from rgb.
-    // instead of rgb being determined somewhere else (hence the pointer) the layer's color is explicitly set
-    // by saving a color to internal_rgb and point rgb to that.
+    // color can be determined externally (*rgb) or internally (internal_rgb) to the layer.
+    // if internal_rgb is user rgb points to that.
     CRGB* rgb = nullptr;
     uint8_t hue;
     CRGB internal_rgb;
-
-    lv_font_t* font = &ascii_sector;
-
-    struct fstring {
-      String s;
-      uint8_t vmargin = 0;
-      uint8_t tracking = 1;
-    } ftext;
-
 
     struct Point {
       uint8_t x;
       uint8_t y;
     };
+
+    uint8_t direction = 0;
+    uint32_t pos_pm = 0;
+    bool initial = true;
+    bool has_entered = false;
+    int8_t dx = 0;
+    int8_t dy = 0;
+    bool visible = false;
+
+    lv_font_t* font = &ascii_sector;
+
+    struct fstring {
+      String s;
+      uint8_t vmargin = 0; // for centering text vertically
+      uint8_t tracking = 1; // spacing between letters
+    } ftext;
 
     uint32_t mts_pm = 0;
     uint16_t mts_i = 0;
@@ -90,13 +89,14 @@ class Layer {
     void set_color(CRGB color);
     void set_color(CRGB* color);
     void set_type(LayerType ltype);
+    void set_direction(uint8_t d);
     void clear();
     CRGBA get_pixel(uint16_t i);
     void run();
 
     bool colorFromHexString(byte* rgb, const char* in);
     bool deserializeSegment(JsonObject root, CRGBA leds[], uint16_t leds_len);
-    bool load_image_from_json(String json, String* message = nullptr);
+    //bool load_image_from_json(String json, String* message = nullptr);
     bool load_image_from_file(String fs_path, String* message = nullptr);
 
     void pac_man_cb(uint8_t event);
@@ -107,11 +107,9 @@ class Layer {
     Point serp2cart(uint8_t i);
     int16_t cart2serp(Point p);
     void flip(CRGB sm[NUM_LEDS], bool dim);
-    void move(CRGB sm[NUM_LEDS], bool dim, uint8_t d);
-    void shift(CRGB in[NUM_LEDS], CRGB out[NUM_LEDS], Direction t=RTL, bool loop=false, uint8_t gap=0);
-    void position_OLD(CRGB in[NUM_LEDS], CRGB out[NUM_LEDS], int8_t x0 = 0, int8_t y0 = 0, bool wrap=true, uint8_t gap=0);
-    void position(CRGB in[NUM_LEDS], CRGB out[NUM_LEDS], int8_t xi = 0, int8_t yi = 0, int8_t sx = 1, int8_t sy = 1, bool wrap = true, int8_t gap = 0);
-    void posmove(CRGB in[NUM_LEDS], CRGB out[NUM_LEDS], int8_t xi = 0, int8_t yi = 0, int8_t sx = 1, int8_t sy = 1, bool wrap=true, uint8_t gap=0);
+    uint16_t translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8_t sy, bool wrap, int8_t gap);
+    void ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi = 0, int8_t yi = 0, int8_t sx = 1, int8_t sy = 1, bool wrap = true, int8_t gap = 0);
+    uint16_t director(uint16_t i);
 
     uint8_t get_text_height_old(String s);
     uint8_t get_text_height(String s);
@@ -131,6 +129,5 @@ class Layer {
 
 
 };
-
 
 #endif

@@ -65,11 +65,6 @@ void Layer::set_color(CRGB* color) {
 
 
 void Layer::set_type(LayerType ltype) {
-  // type 2 is an image, type 3 is text
-  //if (type == 2) {
-  //
-  //}
-
   if (ltype == Pattern_t || ltype == Accent_t) {
     if (GlowSerum != nullptr) {
       delete GlowSerum;
@@ -91,6 +86,13 @@ void Layer::set_type(LayerType ltype) {
 }
 
 
+void Layer::set_direction(uint8_t d) {
+  initial = true;
+  direction = d;
+}
+
+
+
 void Layer::clear() {
   for (uint16_t i = 0; i < NUM_LEDS; i++) {
     //leds[i] = CRGB::Black;
@@ -100,22 +102,24 @@ void Layer::clear() {
 
 CRGBA Layer::get_pixel(uint16_t i) {
 
-  CRGBA pixel_out = 0xFF000000;
+  //CRGBA pixel_out = 0xFF000000; // if black with no transparency is used it creates a sort of spotlight effect
+  CRGBA pixel_out = 0x00000000;
+
   if (_ltype == Image_t || _ltype == Text_t) {
-    pixel_out = leds[i];
+    uint16_t ti = director(i);
+    if (0 <= ti && ti < NUM_LEDS) {
+      pixel_out = leds[ti];
+    }
   }
   else if (_ltype == Pattern_t || _ltype == Accent_t) {
-    //CRGB pixel = ((CRGB*)&leds[0])[i];  // this works
-
-    //CRGB* pl = (CRGB *) &leds[0];   // this works too
-    //CRGB pixel = pl[i];
-
-    // leds[] was cast as CRGB when passed to ReAnimator, so the pixels need to be
-    // read back out as CRGB
-    //pixel_out = pixel;
-    pixel_out = ((CRGB*)leds)[i]; // does this cause crashing?
-    if (pixel_out == 0xFF000000) {
-      pixel_out.a = 0;
+    uint16_t ti = director(i);
+    if (0 <= ti && ti < NUM_LEDS) {
+      // leds[] was cast as CRGB when passed to ReAnimator, so the pixels need to be
+      // read back out as CRGB
+      pixel_out = ((CRGB*)leds)[ti];
+      if (pixel_out == 0xFF000000) {
+        pixel_out.a = 0;
+      }
     }
   }
 
@@ -141,6 +145,14 @@ void Layer::run() {
     }
   }
 
+
+  //if (_ltype == Image_t) {
+  //  if ((millis()-pos_pm) > 200) {
+  //    pos_pm = millis();
+  //    position(leds, tleds, -5, 0, 1, 1, true, -1);
+  //  }
+  //}
+
   if (_ltype == Text_t) {
     matrix_text_shift();
   }
@@ -151,8 +163,6 @@ void Layer::run() {
 //****************
 // IMAGE FUNCTIONS
 //****************
-
-
 // from WLED colors.cpp
 //this uses RRGGBB / RRGGBBWW (RRGGBBAA) order
 bool Layer::colorFromHexString(byte* rgb, const char* in) {
@@ -224,6 +234,7 @@ bool Layer::deserializeSegment(JsonObject root, CRGBA leds[], uint16_t leds_len)
   return true;
 }
 
+/*
 bool Layer::load_image_from_json(String json, String* message) {
   set_type(Image_t);
 
@@ -249,6 +260,7 @@ bool Layer::load_image_from_json(String json, String* message) {
 
   return retval;
 }
+*/
 
 bool Layer::load_image_from_file(String fs_path, String* message) {
   set_type(Image_t);
@@ -264,7 +276,6 @@ bool Layer::load_image_from_file(String fs_path, String* message) {
   }
 
   if (file.available()) {
-    retval = load_image_from_json(file.readString());
     DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, file.readString());
     if (error) {
@@ -505,188 +516,83 @@ void Layer::flip(CRGB sm[NUM_LEDS], bool dim) {
 }
 
 
-// only works for moving one pixel at a time
-void Layer::move(CRGB sm[NUM_LEDS], bool dim, uint8_t d) {
-  const uint8_t rl = 16;
-  if ((d % rl) == 0) {
-    return;
-  }
-
-  Layer::Point p1;
-  Layer::Point p2;
-  CRGB tmp;
-  for (uint8_t j = 0; j < rl; j++) {
-    for (uint8_t k = rl-1; k > 0; k--) {
-      p1.x = dim ? j : k;
-      p1.y = dim ? k : j;
-      p2.x = dim ? j : k+d;
-      p2.y = dim ? k+d : j;
-      p2.x = p2.x % rl;
-      p2.y = p2.y % rl;
-      if (k == rl-1) {
-        tmp = sm[cart2serp(p2)];
-      }
-
-      sm[cart2serp(p2)] = sm[cart2serp(p1)];
-
-      //gone never to return
-      //if (k+d < rl) {
-      //  sm[cart2serp(p2)] = sm[cart2serp(p1)];
-      //}
-      //else {
-      //  sm[cart2serp(p1)] = TRANSPARENT;
-      //}
-    }
-    sm[cart2serp(p1)] = tmp;
-  }
-}
-
-
-
-void Layer::shift(CRGB in[NUM_LEDS], CRGB out[NUM_LEDS], Direction t, bool loop, uint8_t gap) {
-  // this logic treats entering the matrix from the left (LTR) or bottom (UP) as the basic case
-  // and flips those to get RTL and DOWN.
-  // this approach simplifies the code because d and v will be positive (after initial conditions) 
-  // which lets us just use mod to loop the output instead of having to account for looping when d is
-  // positive or negative.
-  const uint8_t rl = 16;
-  static int8_t d = -rl; // use negative for initial condition to start from outside the matrix
-
-  if (!loop && d > rl) {
-      return;
-  }
-
-  Layer::Point p1;
-  Layer::Point p2;
-
-  //bool dim = 0;
-  //bool dir = 1;
-  uint8_t dim = 0;
-  uint8_t dir = 0;
-  switch (t) {
-    case RTL:
-      dim = 0;
-      dir = 1;
-      break;
-    case LTR:
-      dim = 0;
-      dir = 0;
-      break;
-    case DOWN:
-      dim = 1;
-      dir = 1;
-      break;
-    case UP:
-      dim = 1;
-      dir = 0;
-      break;
-    default:
-      dim = 0;
-      dir = 1;
-  }
-
-  //dir = 1; //for testing
-
-  //static uint8_t tt = 0;
-  //if (tt % 2) {
-  //    dim = 0;
-  //    dir = 1;
-  //}
-  //else  {
-  //    dim = 1;
-  //    dir = 0;
-  //}
-  //tt++;
-
-  for (uint8_t j = 0; j < rl; j++) {
-    for (uint8_t k = 0; k < rl; k++) {
-      uint8_t u = dir ? rl-1-k: k; // flip direction output travels
-      p1.x = dim ? j : u; // change axis output travels on
-      p1.y = dim ? u : j;
-
-      int8_t v = k+d; // shift input over into output by d
-      if (loop) {
-        v = v % (rl+gap);
-      }
-
-      if ( 0 <= v && v < rl ) {
-        v = dir ? rl-1-v : v; // flip image
-        p2.x = dim ? j : v;
-        p2.y = dim ? v : j;
-        //p2.x = v;
-        //p2.y = v;
-        out[cart2serp(p1)] = in[cart2serp(p2)];
-      }
-      else {
-        out[cart2serp(p1)] = TRANSPARENT;
-      }
-    }
-  }
-
-  d++;
-  if (loop) {
-      d = d % (rl+gap);
-  }
-}
-
-
-
-void Layer::position_OLD(CRGB in[NUM_LEDS], CRGB out[NUM_LEDS], int8_t x0, int8_t y0, bool wrap, uint8_t gap) {
-  const uint8_t rl = 16;
-
-  //if (!wrap && (x0 <= -MD || y0 <= -MD || x0 > MD || y0 > MD)) {
-  //  return;
-  //}
-
-  Layer::Point p1;
-  Layer::Point p2;
-
-  int8_t u = 0;
-  int8_t v = 0;
-
-  for (uint8_t j = 0; j < MD; j++) {
-    for (uint8_t k = 0; k < MD; k++) {
-      p1.x = j;
-      p1.y = k;
-      out[cart2serp(p1)] = TRANSPARENT;
-
-      u = j-x0;
-      v = k-y0;
-      if (wrap) {
-        u = u % (MD+gap);
-        v = v % (MD+gap);
-
-        u = (u < -gap) ? u+MD+gap : u;
-        v = (v < -gap) ? v+MD+gap : v;
-      }
-
-      if ( 0 <= u && u < MD && 0 <= v && v < MD) {
-        p2.x = u;
-        p2.y = v;
-        out[cart2serp(p1)] = in[cart2serp(p2)];
-      }
-      //else {
-      //  out[cart2serp(p1)] = TRANSPARENT;
-      //}
-    }
-  }
-}
-
-
-// !!! TODO: need a way to reset static variables !!! perhaps some of the code can be shifted to posmove
-//sx: + is RTL, - is LTR
-//sy: + is DOWN, - is UP
-void Layer::position(CRGB in[NUM_LEDS], CRGB out[NUM_LEDS], int8_t xi, int8_t yi, int8_t sx, int8_t sy, bool wrap, int8_t gap) {
-  // the origin of the matrix is in the upper right corner, so positive moves head leftwards and downwards
-  // this functions logic treats entering the matrix from the right (RTL) or top (DOWN) as the basic case
-  // and flips those to get LTR and UP.
+//sx: + is WEST, - is EAST
+//sy: + is SOUTH, - is NORTH
+// where WEST means right to left, EAST means left to right, SOUTH means down, and NORTH means up
+uint16_t Layer::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8_t sy, bool wrap, int8_t gap) {
+  // the origin of the matrix is in the NORTHEAST corner, so positive moves head WEST and SOUTH
+  // this function's logic treats entering the matrix from the EAST border (WESTWARD movement) or NORTH border (SOUTHWARD movement)
+  // as the basic case and flips those to get EAST and NORTH.
   // this approach simplifies the code because d and v will be positive (after transient period) 
   // which lets us just use mod to wrap the output instead of having to account for wrapping around
   // when d is positive or negative.
-  static bool has_entered = false;
-  static int8_t dx = (xi >= MD) ? -abs(xi) : xi;
-  static int8_t dy = (yi >= MD) ? -abs(yi) : yi;
-  static bool visible = false;
+
+  if (initial) {
+    initial = false;
+    dx = (xi >= MD) ? -abs(xi) : xi;
+    dy = (yi >= MD) ? -abs(yi) : yi;
+  }
+
+  uint16_t ti = NUM_LEDS; // used to indicate pixel is not in bounds and should not be drawn.
+
+  Point p1 = serp2cart(i);
+  Point p2;
+
+  if (has_entered && !wrap && !visible) {
+    // wrapping is not turned on and input has passed through matrix never to return
+    return ti;
+  }
+
+  visible = false;
+  gap = (gap == -1) ? MD : gap; // if gap is -1 set gap to MD so that the input only appears in one place but will still loop around
+
+  uint8_t ux = (sx > 0) ? MD-1-p1.x: p1.x; // flip direction output travels
+  uint8_t uy = (sy > 0) ? MD-1-p1.y: p1.y;
+
+  int8_t vx = ux+dx; // shift input over into output by d
+  int8_t vy = uy+dy;
+  if (has_entered && wrap) {
+    vx = vx % (MD+gap);
+    vy = vy % (MD+gap);
+  }
+
+  if ( 0 <= vx && vx < MD && 0 <= vy && vy < MD ) {
+    visible = true;
+    vx = (sx > 0) ? MD-1-vx : vx; // flip image
+    vy = (sy > 0) ? MD-1-vy : vy;
+    p2.x = vx;
+    p2.y = vy;
+    ti = cart2serp(p2);
+  }
+
+  if (i == NUM_LEDS-1) {
+    dx += abs(sx%MD);
+    dy += abs(sy%MD);
+    // need to track when input has entered into view for the first time
+    // to prevent wrapping until the transient period has ended
+    // this allows controlling how long it takes the input to enter the matrix
+    // by setting abs(xi) or abs(yi) to higher numbers.
+    if (dx >= 0 && dy >= 0) {
+      has_entered = true;
+    }
+
+    if (has_entered && wrap) {
+        dx = dx % (MD+gap);
+        dy = dy % (MD+gap);
+    }
+  }
+  return ti;
+}
+
+
+void Layer::ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi, int8_t yi, int8_t sx, int8_t sy, bool wrap, int8_t gap) {
+// an output array is required to use this function. out[] should be what is displayed on the matrix.
+  if (initial) {
+    initial = false;
+    dx = (xi >= MD) ? -abs(xi) : xi;
+    dy = (yi >= MD) ? -abs(yi) : yi;
+  }
+
   Layer::Point p1;
   Layer::Point p2;
 
@@ -705,7 +611,7 @@ void Layer::position(CRGB in[NUM_LEDS], CRGB out[NUM_LEDS], int8_t xi, int8_t yi
 
       p1.x = ux;
       p1.y = uy;
-      out[cart2serp(p1)] = TRANSPARENT;
+      out[cart2serp(p1)] = CRGB::Black; // ??? TRANSPARENT 0x424242
 
       int8_t vx = k+dx; // shift input over into output by d
       int8_t vy = j+dy;
@@ -723,7 +629,7 @@ void Layer::position(CRGB in[NUM_LEDS], CRGB out[NUM_LEDS], int8_t xi, int8_t yi
         out[cart2serp(p1)] = in[cart2serp(p2)];
       }
       //else {
-      //  out[cart2serp(p1)] = TRANSPARENT;
+      //  out[cart2serp(p1)] = CRGB::Black; // ??? TRANSPARENT 0x424242
       //}
     }
   }
@@ -744,22 +650,39 @@ void Layer::position(CRGB in[NUM_LEDS], CRGB out[NUM_LEDS], int8_t xi, int8_t yi
   }
 }
 
-
-void Layer::posmove(CRGB in[NUM_LEDS], CRGB out[NUM_LEDS], int8_t xi, int8_t yi, int8_t sx, int8_t sy, bool wrap, uint8_t gap) {
-    static int8_t x0 = xi;
-    static int8_t y0 = yi;
-    static bool _wrap = false;
-
-    if ( abs(xi-x0) > (MD+gap) && abs(yi-y0) > (MD+gap) ) {
-      Serial.println("set _wrap");
-      _wrap = wrap;
-    }
-    //Serial.println(_wrap);
-    //position_OLD(il, tl, x0, y0, _wrap, gap);
-    x0 += sx;
-    y0 += sy;
-    //x0 = (x0+sx)%(MD+gap);
-    //y0 = (y0+sy)%(MD+gap);
+uint16_t Layer::director(uint16_t i) {
+  uint16_t ti;
+  switch (direction) {
+    default:
+    case 0:
+      ti = i;
+      break;
+    case 1:
+      ti = translate(i, 0, MD, 0, -1, true, -1);
+      break;
+    case 2:
+      ti = translate(i, MD, MD, -1, -1, true, -1);
+      break;
+    case 3:
+      ti = translate(i, MD, 0, -1, 0, true, -1);
+      break;
+    case 4:
+      ti = translate(i, MD, -MD, -1, 1, true, -1);
+      break;
+    case 5:
+      ti = translate(i, 0, -MD, 0, 1, true, -1);
+      break;
+    case 6:
+      ti = translate(i, -MD, -MD, 1, 1, true, -1);
+      break;
+    case 7:
+      ti = translate(i, -MD, 0, 1, 0, true, -1);
+      break;
+    case 8:
+      ti = translate(i, -MD, MD, 1, -1, true, -1);
+      break;
+  }
+  return ti;
 }
 
 

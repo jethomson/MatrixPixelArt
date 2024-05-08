@@ -340,16 +340,20 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
 
   if (layer_json[F("t")] == "i") {
     layers[lnum]->load_image_from_file(layer_json[F("id")]);
+    layers[lnum]->set_direction(layer_json[F("m")]);
   }
   else if (layer_json[F("t")] == "p") {
     layers[lnum]->set_plfx(layer_json[F("id")]);
+    layers[lnum]->set_direction(layer_json[F("m")]);
   }
   else if (layer_json[F("t")] == "a") {
     layers[lnum]->set_alfx(layer_json[F("id")]);
+    layers[lnum]->set_direction(layer_json[F("m")]);
   }
   else if (layer_json[F("t")] == "t") {
     // need to check layer_json[F("id")] // text or time
     layers[lnum]->set_text(layer_json[F("w")]);
+    layers[lnum]->set_direction(layer_json[F("m")]);
   }
 
   return true;
