@@ -485,14 +485,14 @@ void demo() {
 
 Layer::Point Layer::serp2cart(uint8_t i) {
   const uint8_t rl = 16;
-  Layer::Point p;
+  Point p;
   p.y = i/rl;
   p.x = (p.y % 2) ? (rl-1) - (i % rl) : i % rl;
   return p;
 }
 
 
-int16_t Layer::cart2serp(Layer::Point p) {
+int16_t Layer::cart2serp(Point p) {
   const uint8_t rl = 16;
   int16_t i = (p.y % 2) ? (rl*p.y + rl-1) - p.x : rl*p.y + p.x;
   return i;
@@ -500,8 +500,8 @@ int16_t Layer::cart2serp(Layer::Point p) {
 
 
 void Layer::flip(CRGB sm[NUM_LEDS], bool dim) {
-  Layer::Point p1;
-  Layer::Point p2;
+  Point p1;
+  Point p2;
   const uint8_t rl = 16;
   for (uint8_t j = 0; j < rl; j++) {
     for (uint8_t k = 0; k < rl/2; k++) {
@@ -594,8 +594,8 @@ void Layer::ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi, int8_
     dy = (yi >= MD) ? -abs(yi) : yi;
   }
 
-  Layer::Point p1;
-  Layer::Point p2;
+  Point p1;
+  Point p2;
 
   if (has_entered && !wrap && !visible) {
     // wrapping is not turned on and input has passed through matrix never to return
@@ -733,7 +733,7 @@ void Layer::matrix_char(char c) {
     for (uint8_t i = 0; i < MD; i++) {
       for (uint8_t j = 0; j < width; j++) {
         uint8_t k = (MD-1)-pad-j;
-        Layer::Point p;
+        Point p;
         p.x = k;
         p.y = i;
         leds[cart2serp(p)] = CHSV(hue, 255, glyph[n]);
@@ -760,15 +760,15 @@ bool Layer::matrix_char_shift(char c, int8_t vmargin) {
     for (uint8_t i = 0; i < MD; i++) {
       for (uint8_t j = 0; j < MD-1; j++) {
         uint8_t k = (MD-1)-j;
-        Layer::Point p1;
-        Layer::Point p2;
+        Point p1;
+        Point p2;
         p1.x = k;
         p1.y = i;
         p2.x = k-1;
         p2.y = i;
         leds[cart2serp(p1)] = leds[cart2serp(p2)];
       }
-      Layer::Point p;
+      Point p;
       p.x = 0;
       p.y = i;
       leds[cart2serp(p)] = 0x00000000; // transparent black
@@ -787,15 +787,15 @@ bool Layer::matrix_char_shift(char c, int8_t vmargin) {
     for (uint8_t i = 0; i < MD; i++) {
       for (uint8_t j = 0; j < MD-1; j++) {
         uint8_t k = (MD-1)-j;
-        Layer::Point p1;
-        Layer::Point p2;
+        Point p1;
+        Point p2;
         p1.x = k;
         p1.y = i;
         p2.x = k-1;
         p2.y = i;
         leds[cart2serp(p1)] = leds[cart2serp(p2)];
       }
-      Layer::Point p;
+      Point p;
       p.x = 0;
       p.y = i;
 
