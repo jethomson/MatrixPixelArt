@@ -690,8 +690,7 @@ uint16_t Layer::director(uint16_t i) {
 //******************
 // TEXT FUNCTIONS
 //******************
-
-uint8_t Layer::get_text_height(String s) {
+uint8_t Layer::get_text_center(String s) {
   uint8_t min_row = MD;
   uint8_t max_row = 0;
   for (uint8_t i = 0; i < s.length(); i++) {
@@ -703,8 +702,8 @@ uint8_t Layer::get_text_height(String s) {
         for (uint8_t k = 0; k < width; k++) {
           uint16_t n = j*width + k;
           if(glyph[n]) {
-            min_row = (j < min_row) ? j : min_row;
-            max_row = (j > max_row) ? j : max_row;
+            min_row = min(j, min_row);
+            max_row = max(j, max_row);
             break;
           }
         }
@@ -712,8 +711,8 @@ uint8_t Layer::get_text_height(String s) {
     }
   }
 
-  if (max_row-min_row+1 > 0) {
-    return max_row-min_row+1;
+  if ((max_row-min_row+1)/2 + min_row > 0) {
+    return (max_row-min_row+1)/2 + min_row;
   }
   return 0;
 }
@@ -756,7 +755,7 @@ void Layer::matrix_text(String s) {
 */
 
 
-bool Layer::matrix_char_shift(char c, uint8_t vmargin) {
+bool Layer::matrix_char_shift(char c, int8_t vmargin) {
   if (mcs_tracking) {
     for (uint8_t i = 0; i < MD; i++) {
       for (uint8_t j = 0; j < MD-1; j++) {
@@ -783,7 +782,7 @@ bool Layer::matrix_char_shift(char c, uint8_t vmargin) {
   uint8_t width = 0;
 
   const uint8_t* glyph = font->get_bitmap(font, c);
-  if (glyph) {
+  if (glyph != nullptr) {
     width = font->get_width(font, c);
     for (uint8_t i = 0; i < MD; i++) {
       for (uint8_t j = 0; j < MD-1; j++) {
@@ -799,8 +798,9 @@ bool Layer::matrix_char_shift(char c, uint8_t vmargin) {
       Layer::Point p;
       p.x = 0;
       p.y = i;
-      if (vmargin <= i && i < font->h_px) {
-        uint16_t n = (i-vmargin)*width + mcs_column;
+
+      uint16_t n = (i-vmargin)*width + mcs_column;
+      if (0 <= n && n < width*font->h_px) {
         CRGB pixel = *rgb;
         pixel.scale8(glyph[n]); // not all glyph subpixels are completely off or on, so dim for those in between.
         leds[cart2serp(p)] = pixel;
@@ -812,13 +812,14 @@ bool Layer::matrix_char_shift(char c, uint8_t vmargin) {
         leds[cart2serp(p)] = 0x00000000; // transparent black
       }
     }
+
+    mcs_column = (mcs_column+1)%width;
+    if (mcs_column == 0) {
+      finished_shifting = true;  // character fully shifted onto matrix.
+      mcs_tracking = 1; // add tracking (spacing between letters) on next call
+    }
   }
 
-  mcs_column = (mcs_column+1)%width;
-  if (mcs_column == 0) {
-    finished_shifting = true;  // character fully shifted onto matrix.
-    mcs_tracking = 1; // add tracking (spacing between letters) on next call
-  }
   return finished_shifting;
 }
 
@@ -836,7 +837,11 @@ void Layer::matrix_text_shift() {
 
 void Layer::set_text(String s) {
   set_type(Text_t);
+
+  // need to reinitialize when one string was already being written and new string is set
+  mts_i = 0; // start at the beginning of a string
+
   ftext.s = s;
-  ftext.vmargin = (MD-get_text_height(ftext.s))/2;
+  ftext.vmargin = MD/2 - get_text_center(ftext.s);
 }
 

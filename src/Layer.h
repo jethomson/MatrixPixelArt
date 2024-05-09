@@ -71,7 +71,7 @@ class Layer {
 
     struct fstring {
       String s;
-      uint8_t vmargin = 0; // for centering text vertically
+      int8_t vmargin = 0; // for centering text vertically
       uint8_t tracking = 1; // spacing between letters
     } ftext;
 
@@ -111,10 +111,9 @@ class Layer {
     void ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi = 0, int8_t yi = 0, int8_t sx = 1, int8_t sy = 1, bool wrap = true, int8_t gap = 0);
     uint16_t director(uint16_t i);
 
-    uint8_t get_text_height_old(String s);
-    uint8_t get_text_height(String s);
+    uint8_t get_text_center(String s);
     void matrix_char(char c);
-    bool matrix_char_shift(char c, uint8_t vmargin = 0);
+    bool matrix_char_shift(char c, int8_t vmargin = 0);
     void matrix_text(String s);
     //void matrix_text_shift(struct fstring ftext);
     void matrix_text_shift();
