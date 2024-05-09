@@ -840,6 +840,7 @@ void Layer::set_text(String s) {
 
   // need to reinitialize when one string was already being written and new string is set
   mts_i = 0; // start at the beginning of a string
+  mcs_column = 0; // start at the beginning of a glyph
 
   ftext.s = s;
   ftext.vmargin = MD/2 - get_text_center(ftext.s);
