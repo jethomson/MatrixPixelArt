@@ -858,14 +858,13 @@ void ReAnimator::bubbles(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint
 
 
 void ReAnimator::sparkle(uint16_t draw_interval, bool random_color, uint8_t fade) {
-    uint8_t hue = (random_color) ? random8() : hue;
+    CRGB c = (random_color) ? CHSV(random8(), 255, 255) : *rgb;
 
     // it's necessary to use finished_waiting() here instead of is_wait_over()
     // because sparkle can be an overlay
     if (finished_waiting(draw_interval)) {
         fadeToBlackBy(leds, NUM_LEDS, fade);
-
-        leds[random16(NUM_LEDS)] = CHSV(hue, 255, 255);
+        leds[random16(NUM_LEDS)] = c;
     }
 }
 
