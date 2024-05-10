@@ -3,9 +3,9 @@
 //https://lvgl.io/tools/font_conv_v5_3
 //https://fontstruct.com/fontstructions/show/2414528/asciisec-main-st-1-1-1
 
-#define USE_ascii_sector 8
+#define USE_ASCII_SECTOR 8
 
-#if USE_ascii_sector != 0	/*Can be enabled in lv_conf.h*/
+#if USE_ASCII_SECTOR != 0	/*Can be enabled in lv_conf.h*/
 
 /***********************************************************************************
  * ascii_sector-16x16-tileset.ttf 16 px Font in U+0020 ( ) .. U+01a0 (Ơ)  range with all bpp
@@ -14,7 +14,7 @@
 /*Store the image of the letters (glyph)*/
 static const uint8_t ascii_sector_glyph_bitmap[] = 
 {
-#if USE_ascii_sector == 1
+#if USE_ASCII_SECTOR == 1
   /*Unicode: U+0020 ( ) , Width: 5 */
   0x00,  //..... 
   0x00,  //..... 
@@ -7331,7 +7331,7 @@ static const uint8_t ascii_sector_glyph_bitmap[] =
 
 
 
-#elif USE_ascii_sector == 2
+#elif USE_ASCII_SECTOR == 2
   /*Unicode: U+0020 ( ) , Width: 5 */
   0x00, 0x00,  //..... 
   0x00, 0x00,  //..... 
@@ -14648,7 +14648,7 @@ static const uint8_t ascii_sector_glyph_bitmap[] =
 
 
 
-#elif USE_ascii_sector == 4
+#elif USE_ASCII_SECTOR == 4
   /*Unicode: U+0020 ( ) , Width: 5 */
   0x00, 0x00, 0x00,  //..... 
   0x00, 0x00, 0x00,  //..... 
@@ -21965,7 +21965,7 @@ static const uint8_t ascii_sector_glyph_bitmap[] =
 
 
 
-#elif USE_ascii_sector == 8
+#elif USE_ASCII_SECTOR == 8
   /*Unicode: U+0020 ( ) , Width: 5 */
   0x00, 0x00, 0x00, 0x00, 0x00,  //..... 
   0x00, 0x00, 0x00, 0x00, 0x00,  //..... 
@@ -29289,7 +29289,7 @@ static const uint8_t ascii_sector_glyph_bitmap[] =
 /*Store the glyph descriptions*/
 static const lv_font_glyph_dsc_t ascii_sector_glyph_dsc[] = 
 {
-#if USE_ascii_sector == 1
+#if USE_ASCII_SECTOR == 1
   {.w_px = 5,	.glyph_index = 0},	/*Unicode: U+0020 ( )*/
   {.w_px = 8,	.glyph_index = 16},	/*Unicode: U+0021 (!)*/
   {.w_px = 10,	.glyph_index = 32},	/*Unicode: U+0022 (")*/
@@ -29676,7 +29676,7 @@ static const lv_font_glyph_dsc_t ascii_sector_glyph_dsc[] =
   {.w_px = 11,	.glyph_index = 11904},	/*Unicode: U+019f (Ɵ)*/
   {.w_px = 11,	.glyph_index = 11936},	/*Unicode: U+01a0 (Ơ)*/
 
-#elif USE_ascii_sector == 2
+#elif USE_ASCII_SECTOR == 2
   {.w_px = 5,	.glyph_index = 0},	/*Unicode: U+0020 ( )*/
   {.w_px = 8,	.glyph_index = 32},	/*Unicode: U+0021 (!)*/
   {.w_px = 10,	.glyph_index = 64},	/*Unicode: U+0022 (")*/
@@ -30063,7 +30063,7 @@ static const lv_font_glyph_dsc_t ascii_sector_glyph_dsc[] =
   {.w_px = 11,	.glyph_index = 19184},	/*Unicode: U+019f (Ɵ)*/
   {.w_px = 11,	.glyph_index = 19232},	/*Unicode: U+01a0 (Ơ)*/
 
-#elif USE_ascii_sector == 4
+#elif USE_ASCII_SECTOR == 4
   {.w_px = 5,	.glyph_index = 0},	/*Unicode: U+0020 ( )*/
   {.w_px = 8,	.glyph_index = 48},	/*Unicode: U+0021 (!)*/
   {.w_px = 10,	.glyph_index = 112},	/*Unicode: U+0022 (")*/
@@ -30450,7 +30450,7 @@ static const lv_font_glyph_dsc_t ascii_sector_glyph_dsc[] =
   {.w_px = 11,	.glyph_index = 37168},	/*Unicode: U+019f (Ɵ)*/
   {.w_px = 11,	.glyph_index = 37264},	/*Unicode: U+01a0 (Ơ)*/
 
-#elif USE_ascii_sector == 8
+#elif USE_ASCII_SECTOR == 8
   {.w_px = 5,	.glyph_index = 0},	/*Unicode: U+0020 ( )*/
   {.w_px = 8,	.glyph_index = 80},	/*Unicode: U+0021 (!)*/
   {.w_px = 10,	.glyph_index = 208},	/*Unicode: U+0022 (")*/
@@ -30851,18 +30851,18 @@ lv_font_t ascii_sector =
     .unicode_list = NULL,	/*Every character in the font from 'unicode_first' to 'unicode_last'*/
     .get_bitmap = lv_font_get_bitmap_continuous,	/*Function pointer to get glyph's bitmap*/
     .get_width = lv_font_get_width_continuous,	/*Function pointer to get glyph's width*/
-#if USE_ascii_sector == 1
+#if USE_ASCII_SECTOR == 1
     .bpp = 1,				/*Bit per pixel*/
- #elif USE_ascii_sector == 2
+ #elif USE_ASCII_SECTOR == 2
     .bpp = 2,				/*Bit per pixel*/
- #elif USE_ascii_sector == 4
+ #elif USE_ASCII_SECTOR == 4
     .bpp = 4,				/*Bit per pixel*/
- #elif USE_ascii_sector == 8
+ #elif USE_ASCII_SECTOR == 8
     .bpp = 8,				/*Bit per pixel*/
 #endif
     .monospace = 0,				/*Fix width (0: if not used)*/
     .next_page = NULL,		/*Pointer to a font extension*/
 };
 
-#endif /*USE_ascii_sector*/
+#endif /*USE_ASCII_SECTOR*/
 

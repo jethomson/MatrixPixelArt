@@ -33,14 +33,17 @@
 #define MD 16 // width or height of matrix in number of LEDs
 
 extern lv_font_t ascii_sector;
+extern lv_font_t seven_segment;
+
 
 class Layer {
     enum LayerType {Pattern_t = 0, Accent_t = 1, Image_t = 2, Text_t = 3};
     //enum Direction {STILL = 0, N = 1, NE = 2, E = 3, SE = 4, S = 5, SW = 6, W = 7, NW = 8};
 
     LayerType _ltype;
+    uint8_t _id;
     CRGBA leds[NUM_LEDS];
-    CRGBA tleds[NUM_LEDS];
+    //CRGBA tleds[NUM_LEDS];
     ReAnimator* GlowSerum = nullptr;
     //ReAnimator* MiskaTonic;
     
@@ -68,12 +71,16 @@ class Layer {
     bool visible = false;
 
     lv_font_t* font = &ascii_sector;
+    lv_font_t* clkfont = &seven_segment;
+
 
     struct fstring {
       String s;
       int8_t vmargin = 0; // for centering text vertically
       uint8_t tracking = 1; // spacing between letters
     } ftext;
+
+    uint32_t st_pm = 0;
 
     uint32_t mts_pm = 0;
     uint16_t mts_i = 0;
@@ -101,8 +108,8 @@ class Layer {
 
     void pac_man_cb(uint8_t event);
     void noop_cb(uint8_t event);
-    void set_plfx(uint8_t plfx);
-    void set_alfx(uint8_t alfx);
+    void set_plfx(uint8_t id);
+    void set_alfx(uint8_t id);
 
     Point serp2cart(uint8_t i);
     int16_t cart2serp(Point p);
@@ -111,6 +118,8 @@ class Layer {
     void ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi = 0, int8_t yi = 0, int8_t sx = 1, int8_t sy = 1, bool wrap = true, int8_t gap = 0);
     uint16_t director(uint16_t i);
 
+    void set_tlfx(uint8_t id, String s = "");
+    void show_date_time();
     uint8_t get_text_center(String s);
     void matrix_char(char c);
     bool matrix_char_shift(char c, int8_t vmargin = 0);
@@ -118,6 +127,8 @@ class Layer {
     //void matrix_text_shift(struct fstring ftext);
     void matrix_text_shift();
     void set_text(String s);
+    void setup_clock();
+
 
   private:
 

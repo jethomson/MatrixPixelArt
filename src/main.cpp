@@ -312,7 +312,8 @@ bool save_data(String fs_path, String json, String* message) {
 
 bool load_layer(uint8_t lnum, JsonVariant layer_json) {
 
-  if (layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull() || (layer_json[F("t")] == "t" && layer_json[F("w")].isNull()) ) {
+  //if (layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull() || (layer_json[F("t")] == "t" && layer_json[F("w")].isNull()) ) {
+  if (layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull()) {
     if (layers[lnum] != nullptr) {
       delete layers[lnum];
       layers[lnum] = nullptr;
@@ -366,8 +367,7 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     layers[lnum]->set_direction(m);
   }
   else if (layer_json[F("t")] == "t") {
-    // need to check layer_json[F("id")] // text or time
-    layers[lnum]->set_text(layer_json[F("w")]);
+    layers[lnum]->set_tlfx(layer_json[F("id")], layer_json[F("w")]);
     //layers[lnum]->set_direction(layer_json[F("m")]);
   }
 
