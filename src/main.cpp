@@ -367,8 +367,12 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     layers[lnum]->set_direction(m);
   }
   else if (layer_json[F("t")] == "t") {
-    layers[lnum]->set_tlfx(layer_json[F("id")], layer_json[F("w")]);
+    layers[lnum]->set_text(layer_json[F("w")]);
     //layers[lnum]->set_direction(layer_json[F("m")]);
+  }
+  else if (layer_json[F("t")] == "n") {
+    layers[lnum]->set_nlfx(layer_json[F("id")]);
+    layers[lnum]->set_direction(layer_json[F("m")]);
   }
 
   return true;

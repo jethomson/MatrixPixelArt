@@ -37,7 +37,7 @@ extern lv_font_t seven_segment;
 
 
 class Layer {
-    enum LayerType {Pattern_t = 0, Accent_t = 1, Image_t = 2, Text_t = 3};
+    enum LayerType {Pattern_t = 0, Accent_t = 1, Image_t = 2, Text_t = 3, Info_t = 4};
     //enum Direction {STILL = 0, N = 1, NE = 2, E = 3, SE = 4, S = 5, SW = 6, W = 7, NW = 8};
 
     LayerType _ltype;
@@ -118,8 +118,6 @@ class Layer {
     void ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi = 0, int8_t yi = 0, int8_t sx = 1, int8_t sy = 1, bool wrap = true, int8_t gap = 0);
     uint16_t director(uint16_t i);
 
-    void set_tlfx(uint8_t id, String s = "");
-    void show_date_time();
     uint8_t get_text_center(String s);
     void matrix_char(char c);
     bool matrix_char_shift(char c, int8_t vmargin = 0);
@@ -127,6 +125,9 @@ class Layer {
     //void matrix_text_shift(struct fstring ftext);
     void matrix_text_shift();
     void set_text(String s);
+
+    void set_nlfx(uint8_t id);
+    void show_date_time();
     void setup_clock();
 
 

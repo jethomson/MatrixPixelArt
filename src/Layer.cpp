@@ -109,7 +109,7 @@ CRGBA Layer::get_pixel(uint16_t i) {
   //CRGBA pixel_out = 0xFF000000; // if black with no transparency is used it creates a sort of spotlight effect
   CRGBA pixel_out = 0x00000000;
 
-  if (_ltype == Image_t || _ltype == Text_t) {
+  if (_ltype == Image_t || _ltype == Text_t || _ltype == Info_t) {
     uint16_t ti = director(i);
     if (0 <= ti && ti < NUM_LEDS) {
       pixel_out = leds[ti];
@@ -150,12 +150,11 @@ void Layer::run() {
   }
 
   if (_ltype == Text_t) {
-    if (_id == 0) {
-      matrix_text_shift();
-    }
-    else if (_id == 1 || _id == 2 || _id == 3) {
-      show_date_time();
-    }
+   matrix_text_shift();
+  }
+
+  if (_ltype == Info_t) {
+    show_date_time();
   }
 }
 
@@ -691,92 +690,6 @@ uint16_t Layer::director(uint16_t i) {
 //******************
 // TEXT FUNCTIONS
 //******************
-void Layer::set_tlfx(uint8_t id, String s) {
-  _id = id;
-  set_type(Text_t);
-
-  switch(id) {
-    default:
-      // fall through to next case
-    case 0:
-      set_text(s);
-      break;
-    case 1:
-    case 2:
-    case 3:
-      setup_clock();
-      break;
-    case 4:
-      // may be do scrolling count down here
-      break;
-  }
-}
-
-
-void Layer::show_date_time() {
-  const uint8_t nd = 4;
-  const Point corners[nd] = {{.x = MD-1-3, .y = 0}, {.x = MD-1-9, .y = 0}, {.x = MD-1-3, .y = 8}, {.x = MD-1-9, .y = 8}};
-
-  if ((millis()-st_pm) > 200) {
-    st_pm = millis();
-    struct tm local_now = {0};
-    if (getLocalTime(&local_now)) {
-
-      char ts[nd+1];
-      //char ts[nd+1] = {'0', '6', '1', '2', '\0'};
-      if (_id == 1 || (_id == 3 && local_now.tm_sec % 7 != 0)) {
-        uint8_t hour = (local_now.tm_hour > 12) ? local_now.tm_hour-12 : local_now.tm_hour;
-        snprintf(ts, sizeof ts, "%02d%02d", hour, local_now.tm_min);
-      }
-      else if (_id == 2 || (_id == 3 && local_now.tm_sec % 7 == 0)) {
-        snprintf(ts, sizeof ts, "%02d%02d", local_now.tm_mon+1, local_now.tm_mday);
-      }
-
-      for (uint8_t i = 0; i < nd; i++) {
-        char c = ts[i];
-        const uint8_t* glyph = clkfont->get_bitmap(clkfont, c);
-        uint8_t height = clkfont->h_px;
-        uint8_t width = clkfont->get_width(clkfont, c);
-        if (glyph != nullptr) {
-          uint8_t n = 0;
-          Point p0 = corners[i];
-          for (uint8_t j = 0; j < height; j++) {
-            for (uint8_t k = 0; k < width; k++) {
-              uint8_t kk = p0.x-k;
-              Point p;
-              p.x = kk;
-              p.y = p0.y+j;
-
-              // there are a couple of different ways you can show a glyph
-              // 1) you can use scale8 to dim the pixel's color such that the negative space becomes black.
-              //    without being combined with transparency this will result in blocky characters, and black text is not possible.
-              //    CRGB pixel = *rgb;
-              //    pixel = pixel.scale8(glyph[n]);
-              //    leds[cart2serp(p)] = pixel;
-              // 2) you can set the alpha such that negative space is completely transparent
-              //    characters are not blocky because negative space is invisible, and black text is possible
-              //    CRGB pixel = *rgb;
-              //    leds[cart2serp(p)] = pixel;
-              //    leds[cart2serp(p)].a = glyph[n];
-
-              CRGB pixel = *rgb;
-              //pixel = pixel.scale8(glyph[n]); // not all glyph pixels are completely off or on, so dim for those in between.
-              leds[cart2serp(p)] = pixel;
-              //leds[cart2serp(p)].a = (glyph[n] == 0) ? 0 : 255; // remove partial transparency
-              leds[cart2serp(p)].a = glyph[n];
-
-              //char dc = (glyph[n] == 0) ? '.' : '#';
-              //Serial.print(dc);
-              n++;
-            }
-            //Serial.println("");
-          }
-        }
-      }
-    }
-  }
-}
-
 uint8_t Layer::get_text_center(String s) {
   uint8_t min_row = MD;
   uint8_t max_row = 0;
@@ -923,12 +836,111 @@ void Layer::matrix_text_shift() {
 
 
 void Layer::set_text(String s) {
+  set_type(Text_t);
   // need to reinitialize when one string was already being written and new string is set
   mts_i = 0; // start at the beginning of a string
   mcs_column = 0; // start at the beginning of a glyph
 
   ftext.s = s;
   ftext.vmargin = MD/2 - get_text_center(ftext.s);
+}
+
+
+
+
+
+//******************
+// INFO FUNCTIONS
+//******************
+void Layer::set_nlfx(uint8_t id) {
+  _id = id;
+  set_type(Info_t);
+
+  switch(id) {
+    default:
+      // fall through to next case
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+      setup_clock();
+      break;
+    case 6:
+      // may be do scrolling count down here
+      break;
+  }
+}
+
+
+void Layer::show_date_time() {
+  const uint8_t nd = 4;
+  const Point corners[nd] = {{.x = MD-1-3, .y = 0}, {.x = MD-1-9, .y = 0}, {.x = MD-1-3, .y = 8}, {.x = MD-1-9, .y = 8}};
+
+  if ((millis()-st_pm) > 200) {
+    st_pm = millis();
+    struct tm local_now = {0};
+    if (getLocalTime(&local_now)) {
+
+      char ts[nd+1];
+      //char ts[nd+1] = {'0', '6', '1', '2', '\0'};
+      if (_id == 0 || _id == 1 || ((_id == 4 || _id == 5) && local_now.tm_sec % 7 != 0)) {
+        uint8_t hour = ((_id == 0 || _id == 4) && local_now.tm_hour > 12) ? local_now.tm_hour-12 : local_now.tm_hour;
+        snprintf(ts, sizeof ts, "%02d%02d", hour, local_now.tm_min);
+      }
+      else if (_id == 2 || _id == 3 || ((_id == 4 || _id == 5) && local_now.tm_sec % 7 == 0)) {
+        if (_id == 2 || _id == 4) {
+          snprintf(ts, sizeof ts, "%02d%02d", local_now.tm_mon+1, local_now.tm_mday);
+        }
+        else if (_id == 3 || _id == 5) {
+          snprintf(ts, sizeof ts, "%02d%02d", local_now.tm_mday, local_now.tm_mon+1);
+        }
+      }
+
+      for (uint8_t i = 0; i < nd; i++) {
+        char c = ts[i];
+        const uint8_t* glyph = clkfont->get_bitmap(clkfont, c);
+        uint8_t height = clkfont->h_px;
+        uint8_t width = clkfont->get_width(clkfont, c);
+        if (glyph != nullptr) {
+          uint8_t n = 0;
+          Point p0 = corners[i];
+          for (uint8_t j = 0; j < height; j++) {
+            for (uint8_t k = 0; k < width; k++) {
+              uint8_t kk = p0.x-k;
+              Point p;
+              p.x = kk;
+              p.y = p0.y+j;
+
+              // there are a couple of different ways you can show a glyph
+              // 1) you can use scale8 to dim the pixel's color such that the negative space becomes black.
+              //    without being combined with transparency this will result in blocky characters, and black text is not possible.
+              //    CRGB pixel = *rgb;
+              //    pixel = pixel.scale8(glyph[n]);
+              //    leds[cart2serp(p)] = pixel;
+              // 2) you can set the alpha such that negative space is completely transparent
+              //    characters are not blocky because negative space is invisible, and black text is possible
+              //    CRGB pixel = *rgb;
+              //    leds[cart2serp(p)] = pixel;
+              //    leds[cart2serp(p)].a = glyph[n];
+
+              CRGB pixel = *rgb;
+              //pixel = pixel.scale8(glyph[n]); // not all glyph pixels are completely off or on, so dim for those in between.
+              leds[cart2serp(p)] = pixel;
+              //leds[cart2serp(p)].a = (glyph[n] == 0) ? 0 : 255; // remove partial transparency
+              leds[cart2serp(p)].a = glyph[n];
+
+              //char dc = (glyph[n] == 0) ? '.' : '#';
+              //Serial.print(dc);
+              n++;
+            }
+            //Serial.println("");
+          }
+        }
+      }
+    }
+  }
 }
 
 
