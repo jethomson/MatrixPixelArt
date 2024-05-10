@@ -68,6 +68,10 @@ void Layer::set_color(CRGB* color) {
 
 
 void Layer::set_type(LayerType ltype) {
+  // since layers are reused the remnants of the old effect may still be in leds[]
+  // these leftovers may not be overwritten by the new effect, so it is best to clear leds[]
+  clear();
+
   if (ltype == Pattern_t || ltype == Accent_t) {
     if (GlowSerum != nullptr) {
       delete GlowSerum;
@@ -150,7 +154,7 @@ void Layer::run() {
   }
 
   if (_ltype == Text_t) {
-   matrix_text_shift();
+    matrix_text_shift();
   }
 
   if (_ltype == Info_t) {
@@ -802,11 +806,10 @@ bool Layer::matrix_char_shift(char c, int8_t vmargin) {
       uint16_t n = (i-vmargin)*width + mcs_column;
       if (0 <= n && n < width*font->h_px) {
         CRGB pixel = *rgb;
-        pixel.scale8(glyph[n]); // not all glyph subpixels are completely off or on, so dim for those in between.
+        //pixel = pixel.scale8(glyph[n]); // not all glyph pixels are completely off or on, so dim for those in between.
         leds[cart2serp(p)] = pixel;
-        // if subpixel of glyph is whitespace make transparent, otherwise fully opaque.
-        // this allows for black text.
-        leds[cart2serp(p)].a = (glyph[n] == 0) ? 0 : 255;
+        //leds[cart2serp(p)].a = (glyph[n] == 0) ? 0 : 255; // remove partial transparency
+        leds[cart2serp(p)].a = glyph[n];
       }
       else {
         leds[cart2serp(p)] = 0x00000000; // transparent black
@@ -926,6 +929,8 @@ void Layer::show_date_time() {
               //    leds[cart2serp(p)].a = glyph[n];
 
               CRGB pixel = *rgb;
+              // setting color to black is not necessary when transparency is used but it may be advantageous in a yet
+              // unknow way, so keeping this line but commenting it out.
               //pixel = pixel.scale8(glyph[n]); // not all glyph pixels are completely off or on, so dim for those in between.
               leds[cart2serp(p)] = pixel;
               //leds[cart2serp(p)].a = (glyph[n] == 0) ? 0 : 255; // remove partial transparency

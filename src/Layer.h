@@ -43,7 +43,7 @@ class Layer {
     LayerType _ltype;
     uint8_t _id;
     CRGBA leds[NUM_LEDS];
-    //CRGBA tleds[NUM_LEDS];
+    //CRGBA tleds[NUM_LEDS]; // for use with ntranslate()
     ReAnimator* GlowSerum = nullptr;
     //ReAnimator* MiskaTonic;
     

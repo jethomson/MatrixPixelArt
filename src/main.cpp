@@ -368,11 +368,14 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
   }
   else if (layer_json[F("t")] == "t") {
     layers[lnum]->set_text(layer_json[F("w")]);
-    //layers[lnum]->set_direction(layer_json[F("m")]);
+    // direction is disabled for text in the frontend. setting to default of 0.
+    // if it is not set back to 0 on a layer that previous had movement the text
+    // will move.
+    layers[lnum]->set_direction(m);
   }
   else if (layer_json[F("t")] == "n") {
     layers[lnum]->set_nlfx(layer_json[F("id")]);
-    layers[lnum]->set_direction(layer_json[F("m")]);
+    layers[lnum]->set_direction(m);
   }
 
   return true;
@@ -769,8 +772,9 @@ void loop() {
     grandom_hue = random8();
 
 
+    FastLED.clear(); // use clear instead of tracking bg layer.
     CRGBA pixel;
-    bool is_bg_layer = true;
+    //bool is_bg_layer = true;
     for (uint8_t i = 0; i < NUM_LAYERS; i++) {
       if (layers[i] != nullptr) {
         for (uint16_t j = 0; j < NUM_LEDS; j++) {
@@ -794,9 +798,9 @@ void loop() {
 
           // treat the first non-empty layer we touch as the background layer and give it zero transparency to completely overwrite the previous frame.
           uint8_t alpha = pixel.a;
-          if (is_bg_layer) {
-            alpha = 255;
-          }
+          //if (is_bg_layer) {
+          //  alpha = 255;
+          //}
 
           CRGB bgpixel = leds[j];
           // before implementing pixel level transparency previously used a global alpha that is not currently implemented
@@ -822,7 +826,7 @@ void loop() {
         Serial.println(pixel.a);
         Serial.println((uint32_t)pixel, HEX);
         */
-        is_bg_layer = false;
+        //is_bg_layer = false;
       }
     }
     //Serial.println("----");
