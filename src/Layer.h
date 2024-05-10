@@ -41,7 +41,7 @@ class Layer {
     //enum Direction {STILL = 0, N = 1, NE = 2, E = 3, SE = 4, S = 5, SW = 6, W = 7, NW = 8};
 
     LayerType _ltype;
-    uint8_t _id;
+    int8_t _id;
     CRGBA leds[NUM_LEDS];
     //CRGBA tleds[NUM_LEDS]; // for use with ntranslate()
     ReAnimator* GlowSerum = nullptr;
@@ -93,9 +93,9 @@ class Layer {
     Layer();
     ~Layer();
 
+    void setup(LayerType ltype, int8_t id = -1);
     void set_color(CRGB color);
     void set_color(CRGB* color);
-    void set_type(LayerType ltype);
     void set_direction(uint8_t d);
     void clear();
     CRGBA get_pixel(uint16_t i);

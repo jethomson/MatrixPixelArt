@@ -52,6 +52,36 @@ Layer::~Layer() {
 }
 
 
+void Layer::setup(LayerType ltype, int8_t id) {
+  if (id == -1 || (_ltype != ltype && _id != id)) {
+    _id = id;
+    _ltype = ltype;
+
+    // since layers are reused the remnants of the old effect may still be in leds[]
+    // these leftovers may not be overwritten by the new effect, so it is best to clear leds[]
+    clear();
+
+    if (ltype == Pattern_t || ltype == Accent_t) {
+      if (GlowSerum != nullptr) {
+        delete GlowSerum;
+        GlowSerum = nullptr;
+      }
+      // cast CRGBA array to CRGB wastes 1 byte * NUM_LEDS. might update ReAnimator to work with CRGBA one day.
+      GlowSerum = new ReAnimator((CRGB *)&leds[0], rgb, LED_STRIP_MILLIAMPS);
+      
+      GlowSerum->set_pattern(NONE);
+      GlowSerum->set_overlay(NO_OVERLAY, false);
+      //GlowSerum->set_cb(&Layer::noop_cb);
+
+      GlowSerum->set_autocycle_interval(10000);
+      GlowSerum->set_autocycle_enabled(false);
+      GlowSerum->set_flipflop_interval(6000);
+      GlowSerum->set_flipflop_enabled(false);
+    }
+  } 
+}
+
+
 void Layer::set_color(CRGB color) {
   internal_rgb = color;
   rgb = &internal_rgb;
@@ -64,33 +94,6 @@ void Layer::set_color(CRGB* color) {
   rgb = color;
   CHSV chsv = rgb2hsv_approximate(*color);
   hue = chsv.h;
-}
-
-
-void Layer::set_type(LayerType ltype) {
-  // since layers are reused the remnants of the old effect may still be in leds[]
-  // these leftovers may not be overwritten by the new effect, so it is best to clear leds[]
-  clear();
-
-  if (ltype == Pattern_t || ltype == Accent_t) {
-    if (GlowSerum != nullptr) {
-      delete GlowSerum;
-      GlowSerum = nullptr;
-    }
-    // cast CRGBA array to CRGB wastes 1 byte * NUM_LEDS. might update ReAnimator to work with CRGBA one day.
-    GlowSerum = new ReAnimator((CRGB *)&leds[0], rgb, LED_STRIP_MILLIAMPS);
-    
-    GlowSerum->set_pattern(NONE);
-    GlowSerum->set_overlay(NO_OVERLAY, false);
-    //GlowSerum->set_cb(&Layer::noop_cb);
-
-    GlowSerum->set_autocycle_interval(10000);
-    GlowSerum->set_autocycle_enabled(false);
-    GlowSerum->set_flipflop_interval(6000);
-    GlowSerum->set_flipflop_enabled(false);
-  }
-  
-  _ltype = ltype;
 }
 
 
@@ -239,7 +242,7 @@ bool Layer::deserializeSegment(JsonObject root, CRGBA leds[], uint16_t leds_len)
 
 /*
 bool Layer::load_image_from_json(String json, String* message) {
-  set_type(Image_t);
+  setup(Image_t);
 
   bool retval = false;
   //const size_t CAPACITY = JSON_OBJECT_SIZE(6) + JSON_ARRAY_SIZE(360);
@@ -266,7 +269,7 @@ bool Layer::load_image_from_json(String json, String* message) {
 */
 
 bool Layer::load_image_from_file(String fs_path, String* message) {
-  set_type(Image_t);
+  setup(Image_t);
 
   bool retval = false;
   File file = LittleFS.open(fs_path, "r");
@@ -339,8 +342,7 @@ void Layer::noop_cb(uint8_t event) {
 
 // pattern layer effects
 void Layer::set_plfx(uint8_t id) {
-  _id = id;
-  set_type(Pattern_t);
+  setup(Pattern_t, id);
   
   //gpattern_layer_enable = true;
   //gdemo_enabled = false;
@@ -411,8 +413,7 @@ void Layer::set_plfx(uint8_t id) {
 
 //accent layer effects
 void Layer::set_alfx(uint8_t id) {
-  _id = id;
-  set_type(Accent_t);
+  setup(Accent_t, id);
 
   switch(id) {
     default:
@@ -839,7 +840,7 @@ void Layer::matrix_text_shift() {
 
 
 void Layer::set_text(String s) {
-  set_type(Text_t);
+  setup(Text_t);
   // need to reinitialize when one string was already being written and new string is set
   mts_i = 0; // start at the beginning of a string
   mcs_column = 0; // start at the beginning of a glyph
@@ -856,8 +857,7 @@ void Layer::set_text(String s) {
 // INFO FUNCTIONS
 //******************
 void Layer::set_nlfx(uint8_t id) {
-  _id = id;
-  set_type(Info_t);
+  setup(Info_t, id);
 
   switch(id) {
     default:
