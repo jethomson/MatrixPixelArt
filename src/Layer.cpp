@@ -462,7 +462,7 @@ void demo() {
                                           SHOOTING_STAR, //MITOSIS, BUBBLES, MATRIX,
                                           BALLS, CYLON,
                                           //STARSHIP_RACE
-                                          //PAC_MAN, // PAC_MAN crashes ???
+                                          //PUCK_MAN, // PUCK_MAN crashes ???
                                           //SOUND_BLOCKS, SOUND_BLOCKS, SOUND_RIBBONS, SOUND_RIBBONS,
                                           //SOUND_ORBIT, SOUND_ORBIT, SOUND_RIPPLE, SOUND_RIPPLE
                                           };
