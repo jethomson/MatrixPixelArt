@@ -102,8 +102,8 @@ class Layer {
     CRGBA get_pixel(uint16_t i);
     void refresh();
 
-    bool colorFromHexString(byte* rgb, const char* in);
-    bool deserializeSegment(JsonObject root, CRGBA leds[], uint16_t leds_len);
+    //bool colorFromHexString(byte* rgb, const char* in);
+    //bool deserializeSegment(JsonObject root, CRGBA leds[], uint16_t leds_len);
     //bool load_image_from_json(String json, String* message = nullptr);
     bool load_image_from_file(String fs_path, String* message = nullptr);
 

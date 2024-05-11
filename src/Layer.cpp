@@ -21,17 +21,18 @@
 */
 
 #include "Layer.h"
-
+#include "JSON_Image_Decoder.h"
 #include <time.h>
 
 const char* timezone = "EST5EDT,M3.2.0,M11.1.0";
 
+/*
 //color mangling macros from WLED wled.h
 //modified slightly for alpha channel instead of white channel
 #ifndef RGBA32
 #define RGBA32(r,g,b,a) (uint32_t((byte(a) << 24) | (byte(r) << 16) | (byte(g) << 8) | (byte(b))))
 #endif
-
+*/
 
 Layer::Layer(){
   // ??? better to pass a reference to LittleFS from main?
@@ -180,6 +181,7 @@ void Layer::refresh() {
 //****************
 // IMAGE FUNCTIONS
 //****************
+/*
 // from WLED colors.cpp
 //this uses RRGGBB / RRGGBBWW (RRGGBBAA) order
 bool Layer::colorFromHexString(byte* rgb, const char* in) {
@@ -250,6 +252,8 @@ bool Layer::deserializeSegment(JsonObject root, CRGBA leds[], uint16_t leds_len)
   }
   return true;
 }
+*/
+
 
 /*
 bool Layer::load_image_from_json(String json, String* message) {
