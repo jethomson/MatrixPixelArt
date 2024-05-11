@@ -107,7 +107,7 @@ class Layer {
     //bool load_image_from_json(String json, String* message = nullptr);
     bool load_image_from_file(String fs_path, String* message = nullptr);
 
-    void pac_man_cb(uint8_t event);
+    void puck_man_cb(uint8_t event);
     void noop_cb(uint8_t event);
     void set_plfx(uint8_t id);
     void set_alfx(uint8_t id);
