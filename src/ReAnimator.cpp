@@ -204,8 +204,8 @@ int8_t ReAnimator::set_pattern(Pattern pattern_in, bool reverse_in, bool disable
             pattern_out = STARSHIP_RACE;
             overlay_out = NO_OVERLAY;
             break;
-        case PAC_MAN:
-            pattern_out = PAC_MAN;
+        case PUCK_MAN:
+            pattern_out = PUCK_MAN;
             overlay_out = NO_OVERLAY;
             break;
         case BALLS:
@@ -514,8 +514,8 @@ int8_t ReAnimator::run_pattern(Pattern pattern) {
         case STARSHIP_RACE:
             starship_race(88, dfp);
             break;
-        case PAC_MAN:
-            pac_man(150, dfp);
+        case PUCK_MAN:
+            puck_man(150, dfp);
             break;
         case BALLS:
             bouncing_balls(40, dfp);
@@ -986,9 +986,9 @@ void ReAnimator::starship_race(uint16_t draw_interval, uint16_t(ReAnimator::*dfp
 }
 
 
-void ReAnimator::pac_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
-    static uint16_t pac_man_pos = 0;
-    static int8_t pac_man_delta = 1;
+void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
+    static uint16_t puck_man_pos = 0;
+    static int8_t puck_man_delta = 1;
 
     static uint16_t blinky_pos = (-2 + NUM_LEDS) % NUM_LEDS;
     static uint16_t pinky_pos  = (-3 + NUM_LEDS) % NUM_LEDS;
@@ -1002,18 +1002,18 @@ void ReAnimator::pac_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint
 
     static uint16_t power_pellet_pos = 0;
     static bool power_pellet_flash_state = 1;
-    static uint8_t pac_dots[NUM_LEDS] = {};
+    static uint8_t puck_dots[NUM_LEDS] = {};
 
     static uint8_t speed_jump_cnt = 0;
 
     if (pattern != last_pattern_ran) {
-        pac_man_pos = 0;
+        puck_man_pos = 0;
     }
 
     if (is_wait_over(draw_interval)) {
         fill_solid(leds, NUM_LEDS, CRGB::Black);
 
-        if (pac_man_pos == 0) {
+        if (puck_man_pos == 0) {
             //(*cb)(0);
             blinky_pos = (-2 + NUM_LEDS) % NUM_LEDS;
             pinky_pos  = (-3 + NUM_LEDS) % NUM_LEDS;
@@ -1023,28 +1023,28 @@ void ReAnimator::pac_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint
             pinky_visible = 1;
             inky_visible = 1;
             clyde_visible = 1;
-            pac_man_delta = 1;
+            puck_man_delta = 1;
             ghost_delta = 1;
             speed_jump_cnt = 0;
 
             // the power pellet must be at least 16 leds forward of led[0]
-            // from 18 to (3/4)*NUM_LEDS, multiply makes it even so that it falls on a pac_dot led
+            // from 18 to (3/4)*NUM_LEDS, multiply makes it even so that it falls on a puck_dot led
             //power_pellet_pos = 2*random16(9, (3*NUM_LEDS)/8 + 1); 
             // try different bounds for new chase speeds
             //power_pellet_pos = 2*random16(24, (3*NUM_LEDS)/8 + 1);
             power_pellet_pos = 48;
 
             for (uint16_t i = 0; i < NUM_LEDS; i+=2) {
-                pac_dots[i] = 1;
+                puck_dots[i] = 1;
             }
-            pac_dots[power_pellet_pos] = 2;
+            puck_dots[power_pellet_pos] = 2;
         }
 
         for (uint16_t i = 0; i < NUM_LEDS; i+=2) {
-            leds[(this->*dfp)(i)] = (pac_dots[i] == 1) ? CRGB::White : CRGB::Black;
+            leds[(this->*dfp)(i)] = (puck_dots[i] == 1) ? CRGB::White : CRGB::Black;
         }
 
-        if (pac_dots[power_pellet_pos] == 2) {
+        if (puck_dots[power_pellet_pos] == 2) {
             if (power_pellet_flash_state) {
                 power_pellet_flash_state = !power_pellet_flash_state;
                 leds[(this->*dfp)(power_pellet_pos)] = CHSV(HUE_RED, 255, 255);
@@ -1055,7 +1055,7 @@ void ReAnimator::pac_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint
             }
         }
 
-        if (pac_dots[power_pellet_pos] == 2) {
+        if (puck_dots[power_pellet_pos] == 2) {
             leds[(this->*dfp)(blinky_pos)] = CHSV(HUE_RED, 255, blinky_visible*255);
             leds[(this->*dfp)(pinky_pos)]  = CHSV(HUE_PINK, 255, pinky_visible*255);
             leds[(this->*dfp)(inky_pos)]   = CHSV(HUE_AQUA, 255, inky_visible*255);
@@ -1063,31 +1063,31 @@ void ReAnimator::pac_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint
         }
         else if (blinky_visible || pinky_visible || inky_visible || clyde_visible) {
             //(*cb)(1);
-            //pac_man_delta = -3;
+            //puck_man_delta = -3;
             //ghost_delta = -2;
 
             ghost_delta = -2;
             if (speed_jump_cnt < 5)
-              pac_man_delta = -1;
+              puck_man_delta = -1;
             else if (speed_jump_cnt < 10) {
-              pac_man_delta = -2;
+              puck_man_delta = -2;
             }
             else {
-              pac_man_delta = -3;
+              puck_man_delta = -3;
             }
             speed_jump_cnt++;
 
-            if (pac_man_pos == blinky_pos) {
+            if (puck_man_pos == blinky_pos) {
                 //(*cb)(2);
                 blinky_visible = 0;
             }
-            else if (pac_man_pos == pinky_pos) {
+            else if (puck_man_pos == pinky_pos) {
                 pinky_visible = 0;
             }
-            else if (pac_man_pos == inky_pos) {
+            else if (puck_man_pos == inky_pos) {
                 inky_visible = 0;
             }
-            else if (pac_man_pos == clyde_pos) {
+            else if (puck_man_pos == clyde_pos) {
                 clyde_visible = 0;
             }
 
@@ -1098,7 +1098,7 @@ void ReAnimator::pac_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint
 
         }
         else {
-            pac_man_delta = 1;
+            puck_man_delta = 1;
         }
 
         blinky_pos = blinky_pos + ghost_delta;
@@ -1110,11 +1110,11 @@ void ReAnimator::pac_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint
         clyde_pos = clyde_pos + ghost_delta;
         clyde_pos = (NUM_LEDS+clyde_pos) % NUM_LEDS;
 
-        leds[(this->*dfp)(pac_man_pos)] = CHSV(HUE_YELLOW, 255, 255);
-        pac_dots[pac_man_pos] = 0;
+        leds[(this->*dfp)(puck_man_pos)] = CHSV(HUE_YELLOW, 255, 255);
+        puck_dots[puck_man_pos] = 0;
 
-        pac_man_pos = pac_man_pos + pac_man_delta;
-        pac_man_pos = (NUM_LEDS+pac_man_pos) % NUM_LEDS;
+        puck_man_pos = puck_man_pos + puck_man_delta;
+        puck_man_pos = (NUM_LEDS+puck_man_pos) % NUM_LEDS;
     }
 
 }

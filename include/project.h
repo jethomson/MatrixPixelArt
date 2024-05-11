@@ -68,7 +68,7 @@ enum Pattern {            ORBIT = 0, THEATER_CHASE = 1,
                  RUNNING_LIGHTS = 2, SHOOTING_STAR = 3,
                  CYLON = 4, SOLID = 5, JUGGLE = 6, MITOSIS = 7, 
                  BUBBLES = 8, SPARKLE = 9, MATRIX = 10, WEAVE = 11,
-                 STARSHIP_RACE = 12, PAC_MAN = 13, BALLS = 14, 
+                 STARSHIP_RACE = 12, PUCK_MAN = 13, BALLS = 14, 
                  HALLOWEEN_FADE = 15, HALLOWEEN_ORBIT = 16, 
                  SOUND_RIBBONS = 17, SOUND_RIPPLE = 18, SOUND_BLOCKS = 19, SOUND_ORBIT = 20,
                  DYNAMIC_RAINBOW = 21};
@@ -80,7 +80,7 @@ enum Pattern {            ORBIT = 0, THEATER_CHASE = 1,
                  RUNNING_LIGHTS = 2, SHOOTING_STAR = 3,
                  CYLON = 4, SOLID = 5, JUGGLE = 6, MITOSIS = 7, 
                  BUBBLES = 8, SPARKLE = 9, MATRIX = 10, WEAVE = 11,
-                 STARSHIP_RACE = 12, PAC_MAN = 13, BALLS = 14, 
+                 STARSHIP_RACE = 12, PUCK_MAN = 13, BALLS = 14, 
                  HALLOWEEN_FADE = 15, HALLOWEEN_ORBIT = 16, 
                  CHECKERBOARD = 17, BINARY_SYSTEM = 18, DYNAMIC_RAINBOW = 19, NONE = 20
                  //SOUND_RIBBONS = 17, SOUND_RIPPLE = 18, SOUND_BLOCKS = 19, SOUND_ORBIT = 20

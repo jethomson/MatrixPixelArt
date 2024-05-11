@@ -326,7 +326,7 @@ bool Layer::load_image_from_file(String fs_path, String* message) {
 //******************
 
 /*
-void Layer::pac_man_cb(uint8_t event) {
+void Layer::puck_man_cb(uint8_t event) {
   static bool one_shot = false;
   switch (event) {
     case 0:
@@ -409,8 +409,8 @@ void Layer::set_plfx(uint8_t id) {
       GlowSerum->set_pattern(SHOOTING_STAR);
       break;
     case 11:
-      GlowSerum->set_pattern(PAC_MAN);
-      //GlowSerum->set_cb(&pac_man_cb);
+      GlowSerum->set_pattern(PUCK_MAN);
+      //GlowSerum->set_cb(&puck_man_cb);
       break;
     case 12:
       GlowSerum->set_pattern(CYLON);

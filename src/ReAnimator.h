@@ -163,7 +163,7 @@ class ReAnimator {
     void matrix(uint16_t draw_interval);
     void weave(uint16_t draw_interval);
     void starship_race(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
-    void pac_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
+    void puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
     void bouncing_balls(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
 
     void halloween_colors_fade(uint16_t draw_interval);
