@@ -53,6 +53,10 @@ Layer::~Layer() {
 
 
 void Layer::setup(LayerType ltype, int8_t id) {
+  // scrolling text uses an id of -1 be we always want to clear() when new text is set.
+  // images use an id of -2 because real image ids (paths) are more complicated and it is unnecessary to clear since a new image will completely overwrite leds[]
+  // in practice there is probably no observable difference between -2 and -1 for images.
+  // could possible get an interesting effect with -2 if the new image does not write to all of leds[] and part of the previous image remains.
   if (id == -1 || (_ltype != ltype && _id != id)) {
     _id = id;
     _ltype = ltype;
@@ -98,10 +102,9 @@ void Layer::set_color(CRGB* color) {
 
 
 void Layer::set_direction(uint8_t d) {
-  initial = true;
+  t_initial = (direction != d);
   direction = d;
 }
-
 
 
 void Layer::clear() {
@@ -242,7 +245,7 @@ bool Layer::deserializeSegment(JsonObject root, CRGBA leds[], uint16_t leds_len)
 
 /*
 bool Layer::load_image_from_json(String json, String* message) {
-  setup(Image_t);
+  setup(Image_t, -2);
 
   bool retval = false;
   //const size_t CAPACITY = JSON_OBJECT_SIZE(6) + JSON_ARRAY_SIZE(360);
@@ -269,7 +272,7 @@ bool Layer::load_image_from_json(String json, String* message) {
 */
 
 bool Layer::load_image_from_file(String fs_path, String* message) {
-  setup(Image_t);
+  setup(Image_t, -2);
 
   bool retval = false;
   File file = LittleFS.open(fs_path, "r");
@@ -533,8 +536,8 @@ uint16_t Layer::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8_t sy
   // which lets us just use mod to wrap the output instead of having to account for wrapping around
   // when d is positive or negative.
 
-  if (initial) {
-    initial = false;
+  if (t_initial) {
+    t_initial = false;
     dx = (xi >= MD) ? -abs(xi) : xi;
     dy = (yi >= MD) ? -abs(yi) : yi;
   }
@@ -544,12 +547,12 @@ uint16_t Layer::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8_t sy
   Point p1 = serp2cart(i);
   Point p2;
 
-  if (has_entered && !wrap && !visible) {
+  if (t_has_entered && !wrap && !t_visible) {
     // wrapping is not turned on and input has passed through matrix never to return
     return ti;
   }
 
-  visible = false;
+  t_visible = false;
   gap = (gap == -1) ? MD : gap; // if gap is -1 set gap to MD so that the input only appears in one place but will still loop around
 
   uint8_t ux = (sx > 0) ? MD-1-p1.x: p1.x; // flip direction output travels
@@ -557,13 +560,13 @@ uint16_t Layer::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8_t sy
 
   int8_t vx = ux+dx; // shift input over into output by d
   int8_t vy = uy+dy;
-  if (has_entered && wrap) {
+  if (t_has_entered && wrap) {
     vx = vx % (MD+gap);
     vy = vy % (MD+gap);
   }
 
   if ( 0 <= vx && vx < MD && 0 <= vy && vy < MD ) {
-    visible = true;
+    t_visible = true;
     vx = (sx > 0) ? MD-1-vx : vx; // flip image
     vy = (sy > 0) ? MD-1-vy : vy;
     p2.x = vx;
@@ -579,10 +582,10 @@ uint16_t Layer::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8_t sy
     // this allows controlling how long it takes the input to enter the matrix
     // by setting abs(xi) or abs(yi) to higher numbers.
     if (dx >= 0 && dy >= 0) {
-      has_entered = true;
+      t_has_entered = true;
     }
 
-    if (has_entered && wrap) {
+    if (t_has_entered && wrap) {
         dx = dx % (MD+gap);
         dy = dy % (MD+gap);
     }
@@ -593,8 +596,10 @@ uint16_t Layer::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8_t sy
 
 void Layer::ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi, int8_t yi, int8_t sx, int8_t sy, bool wrap, int8_t gap) {
 // an output array is required to use this function. out[] should be what is displayed on the matrix.
-  if (initial) {
-    initial = false;
+  if (t_initial) {
+    t_initial = false;
+    t_visible = false;
+    t_has_entered = false;
     dx = (xi >= MD) ? -abs(xi) : xi;
     dy = (yi >= MD) ? -abs(yi) : yi;
   }
@@ -602,12 +607,12 @@ void Layer::ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi, int8_
   Point p1;
   Point p2;
 
-  if (has_entered && !wrap && !visible) {
+  if (t_has_entered && !wrap && !t_visible) {
     // wrapping is not turned on and input has passed through matrix never to return
     return;
   }
 
-  visible = false;
+  t_visible = false;
   gap = (gap == -1) ? MD : gap; // if gap is -1 set gap to MD so that the input only appears in one place but will still loop around
 
   for (uint8_t j = 0; j < MD; j++) {
@@ -621,13 +626,13 @@ void Layer::ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi, int8_
 
       int8_t vx = k+dx; // shift input over into output by d
       int8_t vy = j+dy;
-      if (has_entered && wrap) {
+      if (t_has_entered && wrap) {
         vx = vx % (MD+gap);
         vy = vy % (MD+gap);
       }
 
       if ( 0 <= vx && vx < MD && 0 <= vy && vy < MD ) {
-        visible = true;
+        t_visible = true;
         vx = (sx > 0) ? MD-1-vx : vx; // flip image
         vy = (sy > 0) ? MD-1-vy : vy;
         p2.x = vx;
@@ -647,10 +652,10 @@ void Layer::ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi, int8_
   // this allows controlling how long it takes the input to enter the matrix
   // by setting abs(xi) or abs(yi) to higher numbers.
   if (dx >= 0 && dy >= 0) {
-    has_entered = true;
+    t_has_entered = true;
   }
 
-  if (has_entered && wrap) {
+  if (t_has_entered && wrap) {
       dx = dx % (MD+gap);
       dy = dy % (MD+gap);
   }
@@ -840,7 +845,7 @@ void Layer::matrix_text_shift() {
 
 
 void Layer::set_text(String s) {
-  setup(Text_t);
+  setup(Text_t), -1;
   // need to reinitialize when one string was already being written and new string is set
   mts_i = 0; // start at the beginning of a string
   mcs_column = 0; // start at the beginning of a glyph

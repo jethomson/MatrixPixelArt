@@ -63,16 +63,15 @@ class Layer {
     };
 
     uint8_t direction = 0;
-    uint32_t pos_pm = 0;
-    bool initial = true;
-    bool has_entered = false;
+    bool t_initial = true;
+    bool t_visible = false;
+    bool t_has_entered = false;
     int8_t dx = 0;
     int8_t dy = 0;
-    bool visible = false;
+
 
     lv_font_t* font = &ascii_sector;
     lv_font_t* clkfont = &seven_segment;
-
 
     struct fstring {
       String s;
