@@ -53,10 +53,13 @@ Layer::~Layer() {
 
 
 void Layer::setup(LayerType ltype, int8_t id) {
-  // scrolling text uses an id of -1 be we always want to clear() when new text is set.
-  // images use an id of -2 because real image ids (paths) are more complicated and it is unnecessary to clear since a new image will completely overwrite leds[]
+  // we want patterns (and accents) to persist from one composite to another if they are on the same layer.
+  // this allows for a pattern to play continuously (i.e without restarting) when the next item in a playlist is loaded.
+  //
+  // scrolling text uses an id of -1 because we always want to clear() when new text is set.
+  // images use an id of -2 because real image ids (paths) are more complicated and it is unnecessary to clear since a new image should completely overwrite leds[]
   // in practice there is probably no observable difference between -2 and -1 for images.
-  // could possible get an interesting effect with -2 if the new image does not write to all of leds[] and part of the previous image remains.
+  // could possibly get an interesting effect with -2 if the new image does not write to all of leds[] and part of the previous image remains.
   if (id == -1 || (_ltype != ltype && _id != id)) {
     _id = id;
     _ltype = ltype;
@@ -86,22 +89,27 @@ void Layer::setup(LayerType ltype, int8_t id) {
 }
 
 
-void Layer::set_color(CRGB color) {
-  internal_rgb = color;
-  rgb = &internal_rgb;
-  CHSV chsv = rgb2hsv_approximate(color);
-  hue = chsv.h; // !!BUG!! if color is 0x000000 (black) then hue will be 0 which is red when CHSV(hue, 255, 255)
-}
-
-
 void Layer::set_color(CRGB* color) {
   rgb = color;
   CHSV chsv = rgb2hsv_approximate(*color);
-  hue = chsv.h;
+  hue = chsv.h; // !!BUG!! if color is 0x000000 (black) then hue will be 0 which is red when CHSV(hue, 255, 255)
+
+  if (GlowSerum != nullptr) {
+    GlowSerum->set_color(rgb);
+  }
+}
+
+
+void Layer::set_color(CRGB color) {
+  internal_rgb = color;
+  rgb = &internal_rgb;
+  set_color(rgb);
 }
 
 
 void Layer::set_direction(uint8_t d) {
+  // initial only needs to be set to true, which resets the translation variables, if the direction changes.
+  // this allows for one image to be swapped in for another while maintaining the same position and path.
   t_initial = (direction != d);
   direction = d;
 }
@@ -141,7 +149,7 @@ CRGBA Layer::get_pixel(uint16_t i) {
 }
 
 
-void Layer::run() {
+void Layer::refresh() {
   if (rgb == nullptr) {
     internal_rgb = CRGB::Yellow;
     rgb = &internal_rgb;

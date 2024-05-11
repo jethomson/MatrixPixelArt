@@ -712,7 +712,7 @@ void setup() {
 
   handle_file_list(); // refresh file list before starting loop() because refreshing is slow
 
-  // initialzie dynamic colors because otherwise they won't be set until after layer.run() has been called which can lead to partially black text
+  // initialzie dynamic colors because otherwise they won't be set until after layer.refresh() has been called which can lead to partially black text
   gdynamic_rgb = CHSV(gdynamic_hue, 255, 255);
   gdynamic_comp_rgb = CRGB::White - gdynamic_rgb;
 
@@ -757,7 +757,7 @@ void loop() {
   // draw layers. changes in layers are not displayed until they are copied to leds[] in the refresh block
   for (uint8_t i = 0; i < NUM_LAYERS; i++) {
     if (layers[i] != nullptr) {
-      layers[i]->run();
+      layers[i]->refresh();
     }
   }
 

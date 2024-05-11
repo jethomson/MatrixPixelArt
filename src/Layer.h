@@ -40,6 +40,8 @@ class Layer {
     enum LayerType {Pattern_t = 0, Accent_t = 1, Image_t = 2, Text_t = 3, Info_t = 4};
     //enum Direction {STILL = 0, N = 1, NE = 2, E = 3, SE = 4, S = 5, SW = 6, W = 7, NW = 8};
 
+    //LayerType _ltype = static_cast<LayerType>(-1);
+    //int8_t _id = -1;
     LayerType _ltype;
     int8_t _id;
     CRGBA leds[NUM_LEDS];
@@ -93,12 +95,12 @@ class Layer {
     ~Layer();
 
     void setup(LayerType ltype, int8_t id = -1);
-    void set_color(CRGB color);
     void set_color(CRGB* color);
+    void set_color(CRGB color);
     void set_direction(uint8_t d);
     void clear();
     CRGBA get_pixel(uint16_t i);
-    void run();
+    void refresh();
 
     bool colorFromHexString(byte* rgb, const char* in);
     bool deserializeSegment(JsonObject root, CRGBA leds[], uint16_t leds_len);
