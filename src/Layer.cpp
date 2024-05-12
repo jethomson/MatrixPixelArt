@@ -26,13 +26,6 @@
 
 const char* timezone = "EST5EDT,M3.2.0,M11.1.0";
 
-/*
-//color mangling macros from WLED wled.h
-//modified slightly for alpha channel instead of white channel
-#ifndef RGBA32
-#define RGBA32(r,g,b,a) (uint32_t((byte(a) << 24) | (byte(r) << 16) | (byte(g) << 8) | (byte(b))))
-#endif
-*/
 
 Layer::Layer(){
   // ??? better to pass a reference to LittleFS from main?
@@ -79,7 +72,7 @@ void Layer::setup(LayerType ltype, int8_t id) {
       
       GlowSerum->set_pattern(NONE);
       GlowSerum->set_overlay(NO_OVERLAY, false);
-      //GlowSerum->set_cb(&Layer::noop_cb);
+      GlowSerum->set_cb(this, &Layer::noop_cb);
 
       GlowSerum->set_autocycle_interval(10000);
       GlowSerum->set_autocycle_enabled(false);
@@ -116,12 +109,35 @@ void Layer::set_direction(uint8_t d) {
 }
 
 
+void Layer::set_cb(void(*cb)(uint8_t)) {
+    _cb = cb;
+    if (GlowSerum != nullptr) {
+      GlowSerum->set_cb(this, &Layer::call_cb);
+    }
+}
+
+
+void Layer::noop_cb(uint8_t event) {
+  __asm__ __volatile__ ("nop");
+  //volatile uint8_t i = 0;
+}
+
+
+void Layer::call_cb(uint8_t event) {
+  if (_cb != nullptr) {
+    (*_cb)(event);
+  }
+}
+
+
 void Layer::clear() {
   for (uint16_t i = 0; i < NUM_LEDS; i++) {
     //leds[i] = CRGB::Black;
     leds[i] = 0x00000000;
   }
 }
+
+
 
 CRGBA Layer::get_pixel(uint16_t i) {
 
@@ -182,83 +198,7 @@ void Layer::refresh() {
 // IMAGE FUNCTIONS
 //****************
 /*
-// from WLED colors.cpp
-//this uses RRGGBB / RRGGBBWW (RRGGBBAA) order
-bool Layer::colorFromHexString(byte* rgb, const char* in) {
-  if (in == nullptr) return false;
-  size_t inputSize = strnlen(in, 9);
-  if (inputSize != 6 && inputSize != 8) return false;
-
-  uint32_t c = strtoul(in, NULL, 16);
-
-  if (inputSize == 6) {
-    rgb[0] = (c >> 16);
-    rgb[1] = (c >>  8);
-    rgb[2] =  c       ;
-  } else {
-    rgb[0] = (c >> 24);
-    rgb[1] = (c >> 16);
-    rgb[2] = (c >>  8);
-    rgb[3] =  c       ;
-  }
-  return true;
-}
-
-
-// slightly modified version of deserializeSegment() from WLED json.cpp
-bool Layer::deserializeSegment(JsonObject root, CRGBA leds[], uint16_t leds_len)
-{
-  JsonVariant elem = root["seg"];
-  if (elem.is<JsonObject>())
-  {
-    JsonArray iarr = elem[F("i")]; //set individual LEDs
-    if (!iarr.isNull()) {
-      uint16_t start = 0, stop = 0;
-      byte set = 0; //0 nothing set, 1 start set, 2 range set
-
-      for (size_t i = 0; i < iarr.size(); i++) {
-        if(iarr[i].is<JsonInteger>()) {
-          if (!set) {
-            start = abs(iarr[i].as<int>());
-            set++;
-          } else {
-            stop = abs(iarr[i].as<int>());
-            set++;
-          }
-        } else { //color
-          uint8_t rgba[] = {0,0,0,0};
-          JsonArray icol = iarr[i];
-          if (!icol.isNull()) { //array, e.g. [255,0,0]
-            byte sz = icol.size();
-            if (sz > 0 && sz < 5) copyArray(icol, rgba);
-          } else { //hex string, e.g. "FF0000"
-            byte brgba[] = {0,0,0,0};
-            const char* hexCol = iarr[i];
-            if (colorFromHexString(brgba, hexCol)) {
-              for (size_t c = 0; c < 4; c++) rgba[c] = brgba[c];
-            }
-          }
-
-          if (set < 2 || stop <= start) stop = start + 1;
-          // can use FastLED gamma function?
-          //uint32_t c = gamma32(RGBA32(rgba[0], rgba[1], rgba[2], rgba[3]));
-          uint32_t c = RGBA32(rgba[0], rgba[1], rgba[2], rgba[3]);
-          //while (start < stop && start < leds_len) leds[start++] = c;
-          while (start < stop) leds[start++] = c;
-          set = 0;
-        }
-      }
-    }
-  }
-  return true;
-}
-*/
-
-
-/*
 bool Layer::load_image_from_json(String json, String* message) {
-  setup(Image_t, -2);
-
   bool retval = false;
   //const size_t CAPACITY = JSON_OBJECT_SIZE(6) + JSON_ARRAY_SIZE(360);
   //StaticJsonDocument<CAPACITY> doc;
@@ -284,18 +224,15 @@ bool Layer::load_image_from_json(String json, String* message) {
 */
 
 bool Layer::load_image_from_file(String fs_path, String* message) {
-  setup(Image_t, -2);
-
   bool retval = false;
   File file = LittleFS.open(fs_path, "r");
-  
+
   if(!file){
     if (message) {
       *message = F("load_image_from_file(): File not found.");
     }
     return false;
   }
-
   if (file.available()) {
     DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, file.readString());
@@ -310,7 +247,7 @@ bool Layer::load_image_from_file(String fs_path, String* message) {
 
     JsonObject object = doc.as<JsonObject>();
 
-    for (uint16_t i = 0; i < NUM_LEDS; i++) leds[i] = 0;
+    for (uint16_t i = 0; i < NUM_LEDS; i++) leds[i] = 0xFFFFFF00;
     retval = deserializeSegment(object, leds, NUM_LEDS);
   }
   file.close();
@@ -324,47 +261,14 @@ bool Layer::load_image_from_file(String fs_path, String* message) {
 //******************
 // PATTERN FUNCTIONS
 //******************
-
-/*
-void Layer::puck_man_cb(uint8_t event) {
-  static bool one_shot = false;
-  switch (event) {
-    case 0:
-      one_shot = false;
-      gnextup.type = "am";
-      gnextup.filename = "/files/am/blinky.json";
-      break;
-    case 1:
-      if (!one_shot) {
-        one_shot = true;
-        gnextup.type = "am";
-        gnextup.filename = "/files/am/blue_ghost.json";
-      }
-      break;
-    case 2:
-      gimage_layer_alpha = 0;
-      break;
-    default:
-      break;
-  }
-}
-*/
-
-void Layer::noop_cb(uint8_t event) {
-  __asm__ __volatile__ ("nop");
-}
-
-
 // pattern layer effects
 void Layer::set_plfx(uint8_t id) {
-  setup(Pattern_t, id);
-  
   //gpattern_layer_enable = true;
   //gdemo_enabled = false;
   switch(id) {
     default:
       // fall through to next case
-//      GlowSerum->set_cb(&noop_cb);
+      GlowSerum->set_cb(this, &Layer::noop_cb);
     case 0:
       // NONE does nothing. not even clear the LEDs, so set them to black once.
       // this is preferable because we don't want the NONE pattern setting the LEDs to black every time it is ran.
@@ -410,7 +314,7 @@ void Layer::set_plfx(uint8_t id) {
       break;
     case 11:
       GlowSerum->set_pattern(PUCK_MAN);
-      //GlowSerum->set_cb(&puck_man_cb);
+      GlowSerum->set_cb(this, &Layer::call_cb);
       break;
     case 12:
       GlowSerum->set_pattern(CYLON);
@@ -428,8 +332,6 @@ void Layer::set_plfx(uint8_t id) {
 
 //accent layer effects
 void Layer::set_alfx(uint8_t id) {
-  setup(Accent_t, id);
-
   switch(id) {
     default:
       // fall through to next case
@@ -747,7 +649,6 @@ void Layer::matrix_char(char c) {
   if (glyph) {
     for (uint16_t q = 0; q < NUM_LEDS; q++) {
       leds[q] = CHSV(0, 0, 0);
-      //Serial.println("hello");
     }
     uint8_t width = font->get_width(font, c);
     uint16_t n = 0;
@@ -857,7 +758,6 @@ void Layer::matrix_text_shift() {
 
 
 void Layer::set_text(String s) {
-  setup(Text_t), -1;
   // need to reinitialize when one string was already being written and new string is set
   mts_i = 0; // start at the beginning of a string
   mcs_column = 0; // start at the beginning of a glyph
@@ -874,8 +774,6 @@ void Layer::set_text(String s) {
 // INFO FUNCTIONS
 //******************
 void Layer::set_nlfx(uint8_t id) {
-  setup(Info_t, id);
-
   switch(id) {
     default:
       // fall through to next case

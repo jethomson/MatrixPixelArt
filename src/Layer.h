@@ -35,9 +35,10 @@
 extern lv_font_t ascii_sector;
 extern lv_font_t seven_segment;
 
+enum LayerType {Pattern_t = 0, Accent_t = 1, Image_t = 2, Text_t = 3, Info_t = 4};
+
 
 class Layer {
-    enum LayerType {Pattern_t = 0, Accent_t = 1, Image_t = 2, Text_t = 3, Info_t = 4};
     //enum Direction {STILL = 0, N = 1, NE = 2, E = 3, SE = 4, S = 5, SW = 6, W = 7, NW = 8};
 
     //LayerType _ltype = static_cast<LayerType>(-1);
@@ -58,6 +59,8 @@ class Layer {
     CRGB* rgb = nullptr;
     uint8_t hue;
     CRGB internal_rgb;
+
+    void(*_cb)(uint8_t) = nullptr;
 
     struct Point {
       uint8_t x;
@@ -98,6 +101,9 @@ class Layer {
     void set_color(CRGB* color);
     void set_color(CRGB color);
     void set_direction(uint8_t d);
+    void set_cb(void(*cb)(uint8_t));
+    void noop_cb(uint8_t event);
+    void call_cb(uint8_t event);
     void clear();
     CRGBA get_pixel(uint16_t i);
     void refresh();
@@ -107,8 +113,6 @@ class Layer {
     //bool load_image_from_json(String json, String* message = nullptr);
     bool load_image_from_file(String fs_path, String* message = nullptr);
 
-    void puck_man_cb(uint8_t event);
-    void noop_cb(uint8_t event);
     void set_plfx(uint8_t id);
     void set_alfx(uint8_t id);
 

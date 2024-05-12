@@ -402,8 +402,9 @@ void ReAnimator::flipflop() {
 }
 
 
-void ReAnimator::set_cb(void(*_cb)(uint8_t)) {
-    cb = _cb;
+void ReAnimator::set_cb(Layer* lyr, void (Layer::* cb)(uint8_t)) {
+    _lyr = lyr;
+    _cb = cb;
 }
 
 
@@ -1014,7 +1015,7 @@ void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uin
         fill_solid(leds, NUM_LEDS, CRGB::Black);
 
         if (puck_man_pos == 0) {
-            //(*cb)(0);
+            (_lyr->*_cb)(0);
             blinky_pos = (-2 + NUM_LEDS) % NUM_LEDS;
             pinky_pos  = (-3 + NUM_LEDS) % NUM_LEDS;
             inky_pos   = (-4 + NUM_LEDS) % NUM_LEDS;
@@ -1062,9 +1063,9 @@ void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uin
             leds[(this->*dfp)(clyde_pos)]  = CHSV(HUE_ORANGE, 255, clyde_visible*255);
         }
         else if (blinky_visible || pinky_visible || inky_visible || clyde_visible) {
-            //(*cb)(1);
-            //puck_man_delta = -3;
-            //ghost_delta = -2;
+            (_lyr->*_cb)(1);
+            puck_man_delta = -3;
+            ghost_delta = -2;
 
             ghost_delta = -2;
             if (speed_jump_cnt < 5)
@@ -1078,7 +1079,7 @@ void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uin
             speed_jump_cnt++;
 
             if (puck_man_pos == blinky_pos) {
-                //(*cb)(2);
+                (_lyr->*_cb)(2);
                 blinky_visible = 0;
             }
             else if (puck_man_pos == pinky_pos) {

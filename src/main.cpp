@@ -24,7 +24,7 @@
 #define DATA_PIN 16
 #define COLOR_ORDER GRB
 
-#define NUM_LAYERS 4
+#define NUM_LAYERS 5
 
 //#define TRANSPARENT (uint32_t)0x424242
 #define COLORSUB (uint32_t)0x004200
@@ -35,6 +35,7 @@ AsyncWebServer web_server(80);
 CRGB leds[NUM_LEDS] = {0}; // output
 
 Layer* layers[NUM_LAYERS];
+uint8_t ghost_layers[NUM_LAYERS] = {0};
 
 
 uint8_t gmax_brightness = 255;
@@ -70,13 +71,14 @@ void handle_delete_list(void);
 String get_root(String type);
 String form_path(String root, String id);
 bool save_data(String fs_path, String json, String* message = nullptr);
+void puck_man_cb(uint8_t event);
 bool load_layer(uint8_t lnum, JsonVariant layer_json);
-bool load_image(String fs_path);
+bool load_image_to_layer(uint8_t lnum, String fs_path);
+bool load_image_solo(String fs_path);
 bool load_composite(String fs_path);
 bool load_file(String fs_path);
 bool load_from_playlist(String id = "");
 void web_server_initiate(void);
-
 
 
 void create_dirs(String path) {
@@ -309,9 +311,53 @@ bool save_data(String fs_path, String json, String* message) {
 }
 
 
+void puck_man_cb(uint8_t event) {
+  static bool one_shot = false;
+  switch (event) {
+    case 0:
+      one_shot = false;
+      for (uint8_t i = 0; i < NUM_LAYERS; i++) {
+        if (ghost_layers[i] == 1) {
+          if (layers[i])
+          load_image_to_layer(i, "/files/im/blinky.json");
+        }
+        if (ghost_layers[i] == 2) {
+          load_image_to_layer(i, "/files/im/pinky.json");
+        }
+        if (ghost_layers[i] == 3) {
+          load_image_to_layer(i, "/files/im/inky.json");
+        }
+        if (ghost_layers[i] == 4) {
+          load_image_to_layer(i, "/files/im/clyde.json");
+        }
+      }
+      break;
+    case 1:
+      if (!one_shot) {
+        one_shot = true;
+        for (uint8_t i = 0; i < NUM_LAYERS; i++) {
+          if (ghost_layers[i]) {
+            load_image_to_layer(i, "/files/im/blue_ghost.json");
+          }
+        }
+      }
+      break;
+    case 2:
+      for (uint8_t i = 0; i < NUM_LAYERS; i++) {
+        if (ghost_layers[i]) {
+          if (layers[i] != nullptr) {
+            layers[i]->clear();
+          }
+        }
+      }
+      break;
+    default:
+      break;
+  }
+}
+
 
 bool load_layer(uint8_t lnum, JsonVariant layer_json) {
-
   //if (layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull() || (layer_json[F("t")] == "t" && layer_json[F("w")].isNull()) ) {
   if (layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull()) {
     if (layers[lnum] != nullptr) {
@@ -355,18 +401,39 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
   }
 
   if (layer_json[F("t")] == "i") {
-    layers[lnum]->load_image_from_file(layer_json[F("id")]);
+    String id = layer_json[F("id")];
+    ghost_layers[lnum] = 0;
+    if (id.endsWith("/blinky.json")) {
+      ghost_layers[lnum] = 1;
+    }
+    if (id.endsWith("/pinky.json")) {
+      ghost_layers[lnum] = 2;
+    }
+    if (id.endsWith("/inky.json")) {
+      ghost_layers[lnum] = 3;
+    }
+    if (id.endsWith("/clyde.json")) {
+      ghost_layers[lnum] = 4;
+    }
+    layers[lnum]->setup(Image_t, -2);
+    layers[lnum]->load_image_from_file(id);
     layers[lnum]->set_direction(m);
   }
   else if (layer_json[F("t")] == "p") {
-    layers[lnum]->set_plfx(layer_json[F("id")]);
+    uint8_t id = layer_json[F("id")];
+    layers[lnum]->setup(Pattern_t, id);
+    layers[lnum]->set_cb(&puck_man_cb);
+    layers[lnum]->set_plfx(id);
     layers[lnum]->set_direction(m);
   }
   else if (layer_json[F("t")] == "a") {
-    layers[lnum]->set_alfx(layer_json[F("id")]);
+    uint8_t id = layer_json[F("id")];
+    layers[lnum]->setup(Accent_t, id);
+    layers[lnum]->set_alfx(id);
     layers[lnum]->set_direction(m);
   }
   else if (layer_json[F("t")] == "t") {
+    layers[lnum]->setup(Text_t, -1);
     layers[lnum]->set_text(layer_json[F("w")]);
     // direction is disabled for text in the frontend. setting to default of 0.
     // if it is not set back to 0 on a layer that previous had movement the text
@@ -374,14 +441,30 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     layers[lnum]->set_direction(m);
   }
   else if (layer_json[F("t")] == "n") {
-    layers[lnum]->set_nlfx(layer_json[F("id")]);
+    uint8_t id = layer_json[F("id")];
+    layers[lnum]->setup(Info_t, id);
+    layers[lnum]->set_nlfx(id);
     layers[lnum]->set_direction(m);
   }
-
   return true;
 }
 
-bool load_image(String fs_path) {
+// this checks the layer exists before loading an image to it.
+// the idea is that the layer exists and we want to preserve all
+// its other attributes but replace its image.
+// this helps streamline code from having the same repeative layer
+// existence check.
+bool load_image_to_layer(uint8_t lnum, String fs_path) {
+  bool retval = false;
+  if (layers[lnum] != nullptr) {
+    retval = layers[lnum]->load_image_from_file(fs_path);
+  }
+  return retval;
+}
+
+
+// this loads an image by itself (no other layers) to layer 0.
+bool load_image_solo(String fs_path) {
   bool retval = false;
   for (uint8_t i = 0; i < NUM_LAYERS; i++) {
     if (layers[i] != nullptr) {
@@ -392,7 +475,10 @@ bool load_image(String fs_path) {
 
   if (layers[0] == nullptr) {
     layers[0] = new Layer();
+    layers[0]->set_color(CRGB::White);
+    layers[0]->setup(Image_t, -2);
     retval = layers[0]->load_image_from_file(fs_path);
+    layers[0]->set_direction(0);
   }
 
   // can also load image to layer like this to be more consistent with load_composite()
@@ -446,8 +532,8 @@ bool load_file(String fs_path) {
   if (fs_path.startsWith(CM_ROOT)) {
     retval = load_composite(fs_path);
   }
-  else if (fs_path.startsWith(IM_ROOT)) {      
-    retval = load_image(fs_path);
+  else if (fs_path.startsWith(IM_ROOT)) {
+    retval = load_image_solo(fs_path);
   }
   return true;
 }
@@ -701,7 +787,7 @@ void setup() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(wifi_ssid, wifi_password);
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-      Serial.printf("WiFi Failed!\n");
+      Serial.println("WiFi Failed!");
       return;
   }
 
@@ -754,14 +840,14 @@ void loop() {
     refresh_now = load_from_playlist();
   }
 
-  // draw layers. changes in layers are not displayed until they are copied to leds[] in the refresh block
+  // draw layers. changes in layers are not displayed until they are copied to leds[] in the blend block
   for (uint8_t i = 0; i < NUM_LAYERS; i++) {
     if (layers[i] != nullptr) {
       layers[i]->refresh();
     }
   }
 
-  // refresh block
+  // blend block
   if((millis()-pm) > 100 || refresh_now) {
     pm = millis();
     refresh_now = false;
@@ -810,9 +896,10 @@ void loop() {
             //bgpixel.fadeLightBy(64); // fading the background areas make the pixel art stand out
           }
           leds[j] = nblend(bgpixel, (CRGB)pixel, alpha);
+
           //leds[j] = (CRGB)pixel;
         }
-        /*
+/*
         Serial.print("layer ");
         Serial.print(i);
         Serial.print(" :: ");
@@ -825,11 +912,10 @@ void loop() {
         Serial.print("| alpha: ");
         Serial.println(pixel.a);
         Serial.println((uint32_t)pixel, HEX);
-        */
+*/
         //is_bg_layer = false;
       }
     }
-    //Serial.println("----");
   }
 
   FastLED.show(); // what is the best place to call show() ??? call this less frequently ???

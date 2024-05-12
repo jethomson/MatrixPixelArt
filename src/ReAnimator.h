@@ -41,6 +41,10 @@
 
 #define HOMOGENIZE_BRIGHTNESS true
 
+//#include "Layer.h"
+
+class Layer;
+
 class ReAnimator {
 
     CRGB *leds;
@@ -61,7 +65,8 @@ class ReAnimator {
 
     bool reverse;
 
-    void(*cb)(uint8_t);
+    Layer* _lyr;
+    void(Layer::* _cb)(uint8_t);
 
     Pattern last_pattern_ran;
 
@@ -134,8 +139,7 @@ class ReAnimator {
     void set_flipflop_interval(uint32_t inteval);
     bool get_flipflop_enabled();
     void set_flipflop_enabled(bool enabled);
-
-    void set_cb(void(*_cb)(uint8_t));
+    void set_cb(Layer* lyr, void (Layer::* cb)(uint8_t));
 
     void reanimate();
 
