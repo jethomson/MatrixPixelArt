@@ -799,7 +799,11 @@ void Layer::show_date_time() {
   if ((millis()-st_pm) > 200) {
     st_pm = millis();
     struct tm local_now = {0};
-    if (getLocalTime(&local_now)) {
+    // the second argument of getLocalTime indicates how long it should loop waiting for the time to be received from ntp
+    // since getLocalTime() is already being called around every 200 ms (by the if above) there is no need for getLocalTime()
+    // to loop, so set the second argument to 0. using 0 also keeps the other animations from being getLocalTime() looping.
+    // calling it like this does not spam the ntp server.
+    if (getLocalTime(&local_now, 0)) {
 
       char ts[nd+1];
       //char ts[nd+1] = {'0', '6', '1', '2', '\0'};
@@ -866,6 +870,4 @@ void Layer::show_date_time() {
 
 void Layer::setup_clock() {
   configTzTime(timezone, "pool.ntp.org");
-  struct tm local_now = {0};
-  getLocalTime(&local_now);
 }
