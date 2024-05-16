@@ -44,9 +44,9 @@
 
   body {
     margin: 0;
-		font-family: Arial, sans-serif;
-		color: #faffff;
-		background: #111;
+    font-family: Arial, sans-serif;
+    color: #faffff;
+    background: #111;
     font-size: 17px;
     color: var(--c-f);
     text-align: center;
@@ -67,39 +67,73 @@
     width: 100%;
   }
 
-
-  .plm {
-    display: flex;
+  .grid-container {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(20px, 1fr)); /*fixes select element overflow grid width problem in chrome*/
+    grid-column-gap: 5px;
+    max-width: 100vw;
     justify-content: center;
+    margin: 5px auto;
+    padding: 5px;
   }
 
-  .plm div {
-    flex: 500px 0 0;
+  .grid-container div {
     border:1px solid #fff;
   }
-
-  ul,
-  #ul_playlist {
-    padding: 0;
+  
+  ul {
     margin: 0;
-    max-width: 500px;
+    padding: 0;
+  }
+
+
+   #save,
+   li {
+    border: 0;
+    border-radius: 0.3rem;
+    color: #faffff;
+    line-height: 2.4rem;
+    font-size: 1.2rem;
+    -webkit-transition-duration: 0.4s;
+    transition-duration: 0.4s;
+    cursor: pointer;
+    margin: 5px auto;
+  }
+  
+  li {
+    list-style: none;
+    padding: 8px 0px;
+    width: 100%;
+  }
+
+  #save {
+    background: #1fa3ec;
   }
 
   #ul_playlist {
     background-color: var(--c-3);
   }
 
-  li {
-    list-style: none;
-    padding: 12px 16px;
-		background-color: #0e81ec;
-    margin: 4px;
+  #ul_playlist > li {
+    display: flex;
+    justify-content: flex-end;
     cursor: move;
-		border-radius: 0.3rem;
   }
 
-  li.selected {
+  #ul_playlist > li.selected {
     background: rgba(255,0,0,.5);
+  }
+
+  .image {
+    background: #8888BB;
+  }
+
+  .composite {
+    background: #88BB88;
+  }
+
+  .playlist {
+    background: #BB8888;
   }
 
   input[type=number],
@@ -107,7 +141,7 @@
     background: var(--c-3);
     color: var(--c-f);
     border: 0 solid #fff;
-		border-radius: 0.3rem;
+    border-radius: 0.3rem;
     margin: 0px 6px;
     font-size: 19px;
     transition: background-color .2s;
@@ -148,83 +182,64 @@
 
   .rmbutton {
     color: var(--c-f);
-		border-radius: 0.3rem;
+    border-radius: 0.3rem;
     background-color: red;
+    margin-right: 35%;
   }
-  
-  .btn {
-		border: 0;
-		border-radius: 0.3rem;
-		background: #1fa3ec;
-		color: #faffff;
-		line-height: 2.4rem;
-		font-size: 1.2rem;
-    padding: 8px;
-    margin: 10px;
-    width: 230px;
-		-webkit-transition-duration: 0.4s;
-		transition-duration: 0.4s;
-		cursor: pointer;
-	}
 
 </style>
 </head>
 
 <body>
-  <h3>Drag and drop from Animations to Playlist, rearrange, adjust play time, and save to make a playlist.</h3>
-  <div class="plm">
+  <h3>Drag and drop from Saved Effects to Edit Playlist, rearrange items, adjust play time, and save to make a playlist. Or click a Saved Playlist to load it into Edit Playlist.</h3>
+  <label>Playlist ID: <input id="plid" type="text" value="" placeholder="name your playlist" autocomplete="off"></input><label>
+  <button id="save">Save</button>
+  <div class="grid-container">
     <div>
-      <h4>Saved Animations</h4>
-      <ul id="ul_source">
+      <h4>Saved Effects</h4>
+      <ul id="fx_btns">
       </ul>
     </div>
     <div class="dropzone">
-      <h4>New Playlist</h4>
+      <h4>Edit Playlist</h4>
       <ul id="ul_playlist">
       </ul>
     </div>
+    <div>
+      <h4>Saved Playlists</h4>
+      <ul id="pl_btns">
+      </ul>
+    </div>
   </div>
-
-  <label>Playlist ID: <input id="plid" type="text" value="" placeholder="name your playlist"></input><label>
-  <button id="mysbutton" class="btn btn-s btn-i">Save</button>
-
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.10.1/Sortable.min.js"></script>
 <script>
 
 let base_url = "";
 if (window.location.protocol == "file:") {
-	// makes for easier debugging.
-	// if html is loaded locally, can see the results of editing more easily.
-	// otherwise every change to html would require uploading new version to microcontroller.
-	base_url = "http://192.168.1.243";
+  // makes for easier debugging.
+  // if html is loaded locally, can see the results of editing more easily.
+  // otherwise every change to html would require uploading new version to microcontroller.
+  base_url = "http://192.168.1.243";
 }
 
-let ul_source = document.getElementById("ul_source");
+//let fx_btns = document.getElementById("fx_btns");
 let ul_playlist = document.getElementById("ul_playlist");
 
-new Sortable(ul_source, {
-  group: {
-    name: "plm_lists",
-    pull: "clone",
-    put: false
-  },
-  animation: 150,
-  sort: false
-});
+
+function add(item, value) {
+    item.insertAdjacentHTML("beforeend", `<input title="seconds" type="number" step="0.1" value="${value}"/>`)
+    item.insertAdjacentHTML("beforeend", '<input type="button" value="x" class="rmbutton"/>')
+}
 
 let playlist = new Sortable(ul_playlist, {
   group: {
     name: "plm_lists",
-    pull: "clone"
+    //pull: "clone"
   },
   animation: 150,
   filter: ".rmbutton",
-  onAdd: function (evt) {
-    let item = evt.item;
-    item.insertAdjacentHTML("beforeend", '<input title="seconds" type="number" step="0.1" value="20"/>')
-    item.insertAdjacentHTML("beforeend", '<input type="button" value="x" class="rmbutton"/>')
-  },
+  //onAdd: function (evt) {add(evt.item, 20)},
   onFilter: function (evt) {
     let item = evt.item;
     let ctrl = evt.target;
@@ -233,21 +248,73 @@ let playlist = new Sortable(ul_playlist, {
       item.parentNode.removeChild(item);
     }
   },
-  // prevents input field from being an area that be grabbed so cursor works normally
+  // prevents input field from being an area that can be grabbed so cursor works normally
   filter: 'input',
   preventOnFilter: false
 });
 
 
+async function load_effect_into_dropzone(id, stem) {
+  if (id.startsWith("/files/im/")) {
+    ul_playlist.insertAdjacentHTML("beforeend", `<li class="image" data-amid="${id}"><label>${stem}</label></li>`);
+    add(ul_playlist.lastElementChild, 20);
+  }
+  else if (id.startsWith("/files/cm/")) {
+    ul_playlist.insertAdjacentHTML("beforeend", `<li class="composite" data-amid="${id}"><label>${stem}</label></li>`);
+    add(ul_playlist.lastElementChild, 20);
+  }
+}
+
+
+async function load_playlist_into_dropzone(id) {
+  const t = await fetch(base_url+id);
+  let list = await t.json();
+  if (list) {
+    //ul_playlist.innerHTML = "";
+    let items = list["am"];
+    console.log(list);
+    for (let i = 0; i < items.length; i++) {
+      let id = items[i]["id"];
+      let name = id.substring(id.lastIndexOf('/') + 1);
+      let stem = name.replace(/\.[^/.]+$/, "");
+      let d = items[i]["d"];
+      if (id.startsWith("/files/im/")) { 
+        ul_playlist.insertAdjacentHTML("beforeend", `<li class="image" data-amid="${id}"><label>${stem}</label></li>`);
+        // not sure why this doesn't work
+        //let event = new Event('add', { bubbles: true });
+        //ul_playlist.lastElementChild.dispatchEvent(event);
+        add(ul_playlist.lastElementChild, d/1000);
+      }
+      else if (id.startsWith("/files/cm/")) { 
+        ul_playlist.insertAdjacentHTML("beforeend", `<li class="composite" data-amid="${id}"><label>${stem}</label></li>`);
+        add(ul_playlist.lastElementChild, d/1000);
+      }
+    }
+    document.getElementById("plid").value = list["id"];
+  }
+}
+
+
 function populate_effects(list) {
+  let fx_btns_div = document.getElementById("fx_btns");
+  let pl_btns_div = document.getElementById("pl_btns");
   for (let i = 0; i < list.length; i++) {
     let type = list[i]["type"]; 
     let id = list[i]["path"];
     let name = list[i]["name"];
-    if(type && id && name && type === "file" && (id.startsWith("/files/im/") || id.startsWith("/files/cm/"))) { 
-      ul_source.insertAdjacentHTML("beforeend", `<li data-amid="${id}">${name}</li>`)
+    let stem = name.replace(/\.[^/.]+$/, "");
+    if (type && id && stem && type === "file") { 
+      if (id.startsWith("/files/im/")) {
+        fx_btns_div.insertAdjacentHTML("beforeend", `<li class="image" onclick="load_effect_into_dropzone('${id}', '${stem}')">${stem}</li>`)
+      }
+      else if (id.startsWith("/files/cm/")) {
+        fx_btns_div.insertAdjacentHTML("beforeend", `<li class="composite" onclick="load_effect_into_dropzone('${id}', '${stem}')">${stem}</li>`)
+      }
+      else if (id.startsWith("/files/pl/")) {
+        pl_btns_div.insertAdjacentHTML("beforeend", `<li class="playlist" onclick="load_playlist_into_dropzone('${id}')">${stem}</li>`)
+      }
     }
-    ul_playlist.style.minHeight = ul_source.offsetHeight;
+    ul_playlist.style.minHeight = fx_btns.offsetHeight;
   }
 }
 
@@ -299,7 +366,7 @@ async function save() {
 }
 
 
-let sbutton = document.getElementById("mysbutton");
+let sbutton = document.getElementById("save");
 sbutton.onclick = function(){save()};
 
 window.addEventListener("load", fetch_source);
