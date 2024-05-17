@@ -1,7 +1,14 @@
-Bottle pixel art pieces were taken from Kyrise's Free 16x16 RPG Icon Pack 
-
+Bottle pixel art pieces were taken from Kyrise's Free 16x16 RPG Icon Pack. 
 Copyright/Attribution Notice: 
 Kyrise's Free 16x16 RPG Icon Pack | Graphics made by Kyrise: https://kyrise.itch.io/ 
-
-License:  Creative Commons Attribution 4.0 International (CC BY 4.0) 
+License: Creative Commons Attribution 4.0 International (CC BY 4.0) 
 https://creativecommons.org/licenses/by/4.0/
+
+
+	
+svg home-icon was taken from Timothy Miller's icon set.
+Source: https://www.iconfinder.com/iconsets/pictype-free-vector-icons
+Author: Timothy Miller
+License: Creative Commons Attribution-Share Alike 3.0 Unported license
+https://creativecommons.org/licenses/by-sa/3.0/deed.en
+
