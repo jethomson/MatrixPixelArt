@@ -8,35 +8,13 @@
 <title>Playlist Maker</title>
 <style>
 
-  :root {
-    --c-1: #111;
-    --c-f: #fff;
-    --c-2: #222;
-    --c-3: #333;
-    --c-4: #444;
-    --c-5: #555;
-    --c-6: #666;
-    --c-8: #888;
-    --c-b: #bbb;
-    --c-c: #ccc;
-    --c-e: #eee;
-    --c-f: #fff;
-    --c-d: #ddd;
-    --c-r: #831;
-    --t-b: 0.5;
-    --c-o: rgba(34, 34, 34, 0.9);
-    --c-tb: rgba(34, 34, 34, var(--t-b));
-    --c-tba: rgba(102, 102, 102, var(--t-b));
-    --c-tbh: rgba(51, 51, 51, var(--t-b));
-    --th: 70px;
-    --tp: 70px;
-    --bh: 63px;
-    --tbp: 14px 14px 10px 14px;
-    --bbp: 9px 0 7px 0;
-    --bhd: none;
-    --bmt: 0px
-  }
 
+  html,
+  body {
+    height: 100%;
+    width: 100%;
+  }
+  
   html {
     touch-action: manipulation
     overflow: auto;
@@ -48,33 +26,20 @@
     color: #faffff;
     background: #111;
     font-size: 17px;
-    color: var(--c-f);
     text-align: center;
-
     -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
     -webkit-tap-highlight-color: transparent;
-    scrollbar-width: 6px;
-    scrollbar-color: var(--c-sb) transparent
-  }
-  
-  body,
-  html {
-    height: 100%;
-    width: 100%;
   }
   
   #main_menu {
-    text-align: left;
+    float: left;
   }
 
   .grid-container {
     display: grid;
-    grid-template-columns: repeat(3, minmax(20px, 1fr)); /*fixes select element overflow grid width problem in chrome*/
+    grid-template-columns: repeat(3, minmax(20px, 1fr));
     grid-column-gap: 5px;
+    width: 1000px;
     max-width: 100vw;
     justify-content: center;
     margin: 5px auto;
@@ -82,7 +47,7 @@
   }
 
   .grid-container div {
-    border:1px solid #fff;
+    border: 1px solid #fff;
   }
   
   ul {
@@ -90,12 +55,10 @@
     padding: 0;
   }
 
-
    #savebtn,
    li {
     border: 0;
     border-radius: 0.3rem;
-    color: #faffff;
     line-height: 1.6rem;
     font-size: 0.8rem;
     -webkit-transition-duration: 0.4s;
@@ -116,7 +79,7 @@
   }
 
   #ul_playlist {
-    background-color: var(--c-3);
+    background-color: #333;
   }
 
   #ul_playlist > li {
@@ -135,21 +98,21 @@
   }
 
   .image {
-    background: #8888BB;
+    background: #8888bb;
   }
 
   .composite {
-    background: #88BB88;
+    background: #88bb88;
   }
 
   .playlist {
-    background: #BB8888;
+    background: #bb8888;
   }
 
   input[type=number],
   input[type=text] {
-    background: var(--c-3);
-    color: var(--c-f);
+    color: #faffff;
+    background: #333;
     border: 0 solid #fff;
     border-radius: 0.3rem;
     margin: 0px 6px;
@@ -162,7 +125,7 @@
   }
   
   ::selection {
-    background: var(--c-b)
+    background: #bbb;
   }
 
   input[type=number] {
@@ -173,22 +136,19 @@
   }
 
   input[type=text] {
+    text-align: center;
     max-width: 200px;
-    text-align: center
-    -webkit-appearance: textfield;
-    -moz-appearance: textfield;
-    appearance: textfield
   }
 
   input[type=number]:focus,
   input[type=text]:focus {
-    background: var(--c-6)
+    background: #666
   }
 
   .rmbutton {
-    color: var(--c-f);
+    color: #faffff;
+    background-color: #f00;
     border-radius: 0.3rem;
-    background-color: red;
     max-width: 20px;
     max-height: 20px;
   }
@@ -197,15 +157,15 @@
 </head>
 
 <body>
-  <a id="main_menu" href="./"><svg height="32px" id="Layer_1" version="1.1" viewBox="0 0 32 32" width="32px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path fill="white" d="M15.45,7L14,5.551V2c0-0.55-0.45-1-1-1h-1c-0.55,0-1,0.45-1,1v0.553L9,0.555C8.727,0.297,8.477,0,8,0S7.273,0.297,7,0.555  L0.55,7C0.238,7.325,0,7.562,0,8c0,0.563,0.432,1,1,1h1v6c0,0.55,0.45,1,1,1h3v-5c0-0.55,0.45-1,1-1h2c0.55,0,1,0.45,1,1v5h3  c0.55,0,1-0.45,1-1V9h1c0.568,0,1-0.437,1-1C16,7.562,15.762,7.325,15.45,7z"/></svg></a>
+  <a id="main_menu" href="./index.html"><svg height="24px" width="24px" viewBox="0 0 16 16" id="Layer_1" version="1.1" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path fill="white" d="M15.45,7L14,5.551V2c0-0.55-0.45-1-1-1h-1c-0.55,0-1,0.45-1,1v0.553L9,0.555C8.727,0.297,8.477,0,8,0S7.273,0.297,7,0.555  L0.55,7C0.238,7.325,0,7.562,0,8c0,0.563,0.432,1,1,1h1v6c0,0.55,0.45,1,1,1h3v-5c0-0.55,0.45-1,1-1h2c0.55,0,1,0.45,1,1v5h3  c0.55,0,1-0.45,1-1V9h1c0.568,0,1-0.437,1-1C16,7.562,15.762,7.325,15.45,7z"/></svg></a>
 
-  <h3>Drag and drop from Saved Effects to Edit Playlist, rearrange items, adjust play time, and save to make a playlist. Or click a Saved Playlist to load it into Edit Playlist.</h3>
+  <h3>Click an item in Saved Art or Saved Playlists to load it into the Edit Playlist area. Drag and drop to rearrange items, adjust play time, and save to make a playlist.</h3>
   <label>Playlist ID: <input id="plid" type="text" value="" placeholder="name your playlist" autocomplete="off"></input></label>
   <button id="savebtn">Save</button>
   <div class="grid-container">
     <div>
-      <h4>Saved Effects</h4>
-      <ul id="fx_btns">
+      <h4>Saved Art</h4>
+      <ul id="art_btns">
       </ul>
     </div>
     <div class="dropzone">
@@ -231,7 +191,7 @@ if (window.location.protocol == "file:") {
   base_url = "http://192.168.1.243";
 }
 
-//let fx_btns = document.getElementById("fx_btns");
+
 let ul_playlist = document.getElementById("ul_playlist");
 
 
@@ -278,7 +238,6 @@ async function load_playlist_into_dropzone(id) {
   const t = await fetch(base_url+id);
   let list = await t.json();
   if (list) {
-    //ul_playlist.innerHTML = "";
     let items = list["am"];
     console.log(list);
     for (let i = 0; i < items.length; i++) {
@@ -304,7 +263,7 @@ async function load_playlist_into_dropzone(id) {
 
 
 function populate_effects(list) {
-  let fx_btns_div = document.getElementById("fx_btns");
+  let art_btns_div = document.getElementById("art_btns");
   let pl_btns_div = document.getElementById("pl_btns");
   for (let i = 0; i < list.length; i++) {
     let type = list[i]["type"]; 
@@ -313,16 +272,16 @@ function populate_effects(list) {
     let stem = name.replace(/\.[^/.]+$/, "");
     if (type && id && stem && type === "file") { 
       if (id.startsWith("/files/im/")) {
-        fx_btns_div.insertAdjacentHTML("beforeend", `<li class="image" onclick="load_effect_into_dropzone('${id}', '${stem}')">${stem}</li>`)
+        art_btns_div.insertAdjacentHTML("beforeend", `<li class="image" onclick="load_effect_into_dropzone('${id}', '${stem}')">${stem}</li>`)
       }
       else if (id.startsWith("/files/cm/")) {
-        fx_btns_div.insertAdjacentHTML("beforeend", `<li class="composite" onclick="load_effect_into_dropzone('${id}', '${stem}')">${stem}</li>`)
+        art_btns_div.insertAdjacentHTML("beforeend", `<li class="composite" onclick="load_effect_into_dropzone('${id}', '${stem}')">${stem}</li>`)
       }
       else if (id.startsWith("/files/pl/")) {
         pl_btns_div.insertAdjacentHTML("beforeend", `<li class="playlist" onclick="load_playlist_into_dropzone('${id}')">${stem}</li>`)
       }
     }
-    ul_playlist.style.minHeight = fx_btns.offsetHeight;
+    ul_playlist.style.minHeight = art_btns.offsetHeight;
   }
 }
 
@@ -370,8 +329,6 @@ async function save() {
     }),
     reply = await t.json();
     console.log(reply)
-
-
   }
   else {
     console.log("Missing Playlist ID or playlist is empty.");
