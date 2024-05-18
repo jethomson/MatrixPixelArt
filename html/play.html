@@ -140,7 +140,7 @@ async function fetch_source() {
 
 
 async function load(type, id) {
-  const t = await fetch("base_url/load", {
+  const t = await fetch(base_url+"/load", {
     method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded"
