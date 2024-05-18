@@ -2,82 +2,87 @@
 <html lang="en" class="">
 
 <head>
-	<meta charset='utf-8'>
-	<meta http-equiv="Cache-Control" content="private, no-store" />
-	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
-	<title>LED Matrix Art Creator</title>
-	<style>
-	body {
-		text-align: center;
-		font-family: Arial, sans-serif;
-		color: #faffff;
-		background: #111
-	}
+  <meta charset='utf-8'>
+  <meta http-equiv="Cache-Control" content="private, no-store" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+  <title>LED Matrix Art Creator</title>
+  <style>
+  body {
+    text-align: center;
+    font-family: Arial, sans-serif;
+    color: #faffff;
+    background: #111
+  }
 
-	div {
-		padding: 5px;
-		font-size: 1em;
-	}
-	
-	p {
-		margin: 0.5em 0;
-	}
+  div {
+    padding: 5px;
+    font-size: 1em;
+  }
+  
+  p {
+    margin: 0.5em 0;
+  }
 
-	button {
-		border: 0;
-		border-radius: 0.3rem;
-		background: #1fa3ec;
-		color: #faffff;
-		line-height: 2.4rem;
-		font-size: 1.2rem;
-		width: 100%;
-		-webkit-transition-duration: 0.4s;
-		transition-duration: 0.4s;
-		cursor: pointer;
-	}
-	
-	button:hover {
-		background: #0e70a4;
-	}
+  button {
+    border: 0;
+    border-radius: 0.3rem;
+    background: #1fa3ec;
+    color: #faffff;
+    line-height: 2.4rem;
+    font-size: 1.2rem;
+    width: 100%;
+    -webkit-transition-duration: 0.4s;
+    transition-duration: 0.4s;
+    cursor: pointer;
+  }
 
-	.bred {
-		background: #d43535;
-	}
-	
-	.bred:hover {
-		background: #931f1f;
-	}
-	
-	</style>
+  button:hover {
+    background: #0e70a4;
+  }
+
+  .bred {
+    background: #d43535;
+  }
+
+  .bred:hover {
+    background: #931f1f;
+  }
+
+  </style>
 </head>
 
 <body>
-	<div style='text-align:left;display:inline-block;color:#eaeaea;min-width:340px;'>
-		<div style='text-align:center;color:#eaeaea;'>
-		<div style='text-align:center;'>
-		<details>
-		<summary>Instructions</summary>
-    Use the Art Creator page to upload pixel art and pick light patterns.
-		</details>
-		</div>
-		<br>
-		<p>
-		<div id="art_button" class="grid-item-button">
-			<a href="./art.html"><button name="">Art Creator</button></a>
-		</div>
-		<div id="compose_button" class="grid-item-button">
-			<a href="./compose.html"><button name="">Combine Effects</button></a>
-		</div>
-		<div id="play_button" class="grid-item-button">
-			<a href="./play.html"><button name="">Play</button></a>
-		</div>
-		<div id="plm_button" class="grid-item-button">
-			<a href="./playlist_maker.html"><button name="">Playlist Maker</button></a>
-		</div>
-		<div id="manage_button" class="grid-item-button">
-			<a href="./remove.html"><button name="">Manage Files</button></a>
-		</div>
-		</p>
-	</div>
+  <div style='text-align:left;display:inline-block;color:#eaeaea;min-width:340px;'>
+    <div style='text-align:center;'>
+    <details>
+    <summary>Instructions</summary>
+    <b>Use the Image Converter page to convert images to a string of colors for an LED matrix display.</b>
+    <br>
+    <b>Use the Combine Effects page to layer images and other other effects into composite art.</b>
+    <br>
+    <b>Use the Play page to load saved images and composites.</b>
+    <br>
+    <b>Use the Playlist Maker page to combine images and composites into a playlist where each piece is shown for a specified duration.</b>
+    </details>
+    </div>
+    <br>
+    <p>
+    <div id="converter_button" class="grid-item-button">
+      <a href="./converter.html"><button name="">Image Converter</button></a>
+    </div>
+    <div id="compositor_button" class="grid-item-button">
+      <a href="./compositor.html"><button name="">Combine Effects</button></a>
+    </div>
+    <div id="play_button" class="grid-item-button">
+      <a href="./play.html"><button name="">Play</button></a>
+    </div>
+    <div id="plm_button" class="grid-item-button">
+      <a href="./playlist_maker.html"><button name="">Playlist Maker</button></a>
+    </div>
+    <div id="manage_button" class="grid-item-button">
+      <a href="./file_manager.html"><button name="">Manage Files</button></a>
+    </div>
+    </p>
+  </div>
 </body>
 </html>

@@ -611,12 +611,12 @@ void web_server_initiate() {
     request->send(LittleFS, "/html/index.html");
   });
 
-  web_server.on("/art.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/html/art.html");
+  web_server.on("/converter.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(LittleFS, "/html/converter.html");
   });
 
-  web_server.on("/compose.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/html/compose.html");
+  web_server.on("/compositor.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(LittleFS, "/html/compositor.html");
   });
 
   web_server.on("/playlist_maker.html", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -627,8 +627,8 @@ void web_server_initiate() {
     request->send(LittleFS, "/html/play.html");
   });
 
-  web_server.on("/remove.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/html/remove.html");
+  web_server.on("/file_manager.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(LittleFS, "/html/file_manager.html");
   });
 
 
