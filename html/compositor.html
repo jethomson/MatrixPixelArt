@@ -526,7 +526,7 @@ async function save() {
   
     let success = false;
     try {
-      const t = await fetch("http://192.168.1.243/save", {
+      const t = await fetch("base_url/save", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"
@@ -566,7 +566,7 @@ async function save() {
 /*
 // maybe add functionality to load a previously saved composite file so it can be edited
 async function load(type, id) {
-  const t = await fetch("http://192.168.1.243/load", {
+  const t = await fetch("base_url/load", {
     method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded"
