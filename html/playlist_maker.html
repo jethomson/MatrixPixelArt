@@ -234,7 +234,8 @@
     <div class="grid-container">
       <div>
         <h4>Saved Art</h4>
-        <ul id="art_btns">
+        <!--ul was used here instead a div of buttons to get better alignment with the elements in ul_playlist-->
+        <ul id="art_ul">
         </ul>
       </div>
       <div class="dropzone">
@@ -244,7 +245,7 @@
       </div>
       <div>
         <h4>Saved Playlists</h4>
-        <ul id="pl_btns">
+        <ul id="pl_ul">
         </ul>
       </div>
     </div>
@@ -260,7 +261,6 @@ if (window.location.protocol == "file:") {
   // otherwise every change to html would require uploading new version to microcontroller.
   base_url = "http://192.168.1.243";
 }
-
 
 let ul_playlist = document.getElementById("ul_playlist");
 
@@ -333,8 +333,10 @@ async function load_playlist_into_dropzone(id) {
 
 
 function populate_effects(list) {
-  let art_btns_div = document.getElementById("art_btns");
-  let pl_btns_div = document.getElementById("pl_btns");
+  let art_ul = document.getElementById("art_ul");
+  let pl_ul = document.getElementById("pl_ul");
+  art_ul.innerHTML = "";
+  pl_ul.innerHTML = "";
   for (let i = 0; i < list.length; i++) {
     let type = list[i]["type"]; 
     let id = list[i]["path"];
@@ -342,16 +344,16 @@ function populate_effects(list) {
     let stem = name.replace(/\.[^/.]+$/, "");
     if (type && id && stem && type === "file") { 
       if (id.startsWith("/files/im/")) {
-        art_btns_div.insertAdjacentHTML("beforeend", `<li class="image" onclick="load_effect_into_dropzone('${id}', '${stem}')">${stem}</li>`)
+        art_ul.insertAdjacentHTML("beforeend", `<li class="image" onclick="load_effect_into_dropzone('${id}', '${stem}')">${stem}</li>`)
       }
       else if (id.startsWith("/files/cm/")) {
-        art_btns_div.insertAdjacentHTML("beforeend", `<li class="composite" onclick="load_effect_into_dropzone('${id}', '${stem}')">${stem}</li>`)
+        art_ul.insertAdjacentHTML("beforeend", `<li class="composite" onclick="load_effect_into_dropzone('${id}', '${stem}')">${stem}</li>`)
       }
       else if (id.startsWith("/files/pl/")) {
-        pl_btns_div.insertAdjacentHTML("beforeend", `<li class="playlist" onclick="load_playlist_into_dropzone('${id}')">${stem}</li>`)
+        pl_ul.insertAdjacentHTML("beforeend", `<li class="playlist" onclick="load_playlist_into_dropzone('${id}')">${stem}</li>`)
       }
     }
-    ul_playlist.style.minHeight = art_btns.offsetHeight;
+    ul_playlist.style.minHeight = art_ul.offsetHeight;
   }
 }
 
@@ -392,7 +394,7 @@ async function save() {
    
     let success = false;
     try {
-      const t = await fetch("base_url/save", {
+      const t = await fetch(base_url+"/save", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"
@@ -411,7 +413,7 @@ async function save() {
     let sb = document.getElementById("sendSvgP");
     if (success) {
       sb.setAttribute("fill", "#056b0a");
-      setTimeout(function(){sb.setAttribute("fill", "#eee")}, 1000);
+      setTimeout(function(){sb.setAttribute("fill", "#eee"); fetch_source();}, 1000);
     }
     else {
       sb.setAttribute("fill", "#6b050c");
