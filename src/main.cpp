@@ -848,7 +848,7 @@ void loop() {
   }
 
   // blend block
-  if((millis()-pm) > 100 || refresh_now) {
+  if ((millis()-pm) > 100 || refresh_now) {
     pm = millis();
     refresh_now = false;
     image_has_transparency = false;

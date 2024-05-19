@@ -175,10 +175,10 @@ CRGBA Layer::get_pixel(uint16_t i) {
   }
 
   if (_ltype == Pattern_t || _ltype == Accent_t) {
-    pixel_out.a = 255; // work around to make sure every pixel is opaque. need to work on ReAnimator so it uses transparency better.
-    if (pixel_out == 0xFF000000) {
-      pixel_out.a = 0;
-    }
+    //pixel_out.a = 255; // work around to make sure every pixel is opaque. need to work on ReAnimator so it uses transparency better.
+    //if (pixel_out == 0xFF000000) {
+    //  pixel_out.a = 0;
+    //}
   }
 
   return pixel_out;

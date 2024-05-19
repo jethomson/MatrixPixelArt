@@ -530,7 +530,7 @@ int8_t ReAnimator::run_pattern(Pattern pattern) {
             halloween_colors_orbit(20, orbit_delta);
             break;
         case NONE:
-            //fill_solid(leds, NUM_LEDS, CRGB::Black);
+            //fill_solid(leds, NUM_LEDS, CRGBA::Transparent);
             break;
         /*case SOUND_RIBBONS:
             sound_ribbons(30);
@@ -822,7 +822,7 @@ void ReAnimator::bubbles(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint
     }
 
     if (is_wait_over(draw_interval)) {
-        fill_solid(leds, NUM_LEDS, CRGB::Black);
+        clear();
 
         for (uint8_t i = 0; i < num_bubbles; i++) {
             if (bubble_time[i] == 0 && random8(33) == 0) {
@@ -879,11 +879,11 @@ void ReAnimator::matrix(uint16_t draw_interval) {
 
         if (random8() > 205) {
             leds[0] = CHSV(HUE_GREEN, 255, 255);
-            //leds[0] = CRGB::Green; // is this noticeably different from HUE_GREEN ?
+            //leds[0] = CRGBA::Green; // is this noticeably different from HUE_GREEN ?
             leds[0] = 0x00FF40; // result of using a HSV to RGB calculator to convert 96 (HUE_GREEN) to RGB. (96/256)*360 = 135. 135, 100%, 100% --> 0x00FF40
         }
         else {
-            leds[0] = CRGB::Black;
+            leds[0] = CRGBA::Transparent;
         }
     }
 }
@@ -902,7 +902,7 @@ void ReAnimator::weave(uint16_t draw_interval) {
         //leds[pos] += CHSV(*hue, 255, 128);
         //leds[NUM_LEDS-1-pos] += CHSV(*hue+(HUE_PURPLE-HUE_ALIEN_GREEN), 255, 128);
         leds[pos] += *rgb;
-        leds[NUM_LEDS-1-pos] += (CRGB::White - *rgb);
+        leds[NUM_LEDS-1-pos] += (CRGBA::White - *rgb);
         pos = (pos + 2) % NUM_LEDS;
     }
 }
@@ -934,7 +934,7 @@ void ReAnimator::starship_race(uint16_t draw_interval, uint16_t(ReAnimator::*dfp
 
     if (is_wait_over(draw_interval)) {
         if (go) {
-            fill_solid(leds, NUM_LEDS, CRGB::Black);
+            clear();
 
             for (uint8_t i = 0; i < total_starships; i++) {
                 // current_total_distance = previous_total_distance + speed*delta_time, delta_time is always 1
@@ -950,7 +950,7 @@ void ReAnimator::starship_race(uint16_t draw_interval, uint16_t(ReAnimator::*dfp
                 // we don't want multiple starships' position to be on the same LED
                 // if an LED is already lit then a starship is already there so
                 // move backwards until we find an unlit LED
-                while (leds[(this->*dfp)(pos)] != CRGB(CRGB::Black) && pos > 0) {
+                while (leds[(this->*dfp)(pos)] != CRGBA::Transparent && pos > 0) {
                     pos--;
                 }
                 leds[(this->*dfp)(pos)] = CHSV(starships[i].color, 255, 255);
@@ -1014,7 +1014,7 @@ void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uin
     }
 
     if (is_wait_over(draw_interval)) {
-        fill_solid(leds, NUM_LEDS, CRGB::Black);
+        clear();
 
         if (puck_man_pos == 0) {
             (_lyr->*_cb)(0);
@@ -1044,7 +1044,7 @@ void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uin
         }
 
         for (uint16_t i = 0; i < NUM_LEDS; i+=2) {
-            leds[(this->*dfp)(i)] = (puck_dots[i] == 1) ? CRGB::White : CRGB::Black;
+            leds[(this->*dfp)(i)] = (puck_dots[i] == 1) ? CRGBA::White : CRGBA::Transparent;
         }
 
         if (puck_dots[power_pellet_pos] == 2) {
@@ -1054,7 +1054,7 @@ void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uin
             }
             else {
                 power_pellet_flash_state = !power_pellet_flash_state;
-                leds[(this->*dfp)(power_pellet_pos)] = CRGB::Black;
+                leds[(this->*dfp)(power_pellet_pos)] = CRGBA::Transparent;
             }
         }
 
@@ -1147,7 +1147,7 @@ void ReAnimator::bouncing_balls(uint16_t draw_interval, uint16_t(ReAnimator::*df
     }
 
     if (is_wait_over(draw_interval)) {
-        fill_solid(leds, NUM_LEDS, CRGB::Black);
+        clear();
 
         for (uint8_t i = 0; i < num_balls; i++) {
             uint16_t t = ball_time[i];
@@ -1367,7 +1367,7 @@ void ReAnimator::flicker(uint16_t interval) {
 
 void ReAnimator::glitter(uint16_t chance_of_glitter) {
     if (chance_of_glitter > random16()) {
-        leds[random16(NUM_LEDS)] += CRGB::White;
+        leds[random16(NUM_LEDS)] += CRGBA::White;
     }
 }
 
@@ -1387,7 +1387,7 @@ void ReAnimator::fade_randomly(uint8_t chance_of_fade, uint8_t decay) {
 
 void ReAnimator::clear() {
   for (uint16_t i = 0; i < NUM_LEDS; i++) {
-    leds[i] = 0x00000000;
+    leds[i] = CRGBA::Transparent;
   }
 }
 
@@ -1564,7 +1564,7 @@ bool ReAnimator::Freezer::is_frozen() {
     else if (!all_black) {
         for (uint16_t i = 0; i < NUM_LEDS; i++) {
             all_black = true;
-            if (parent.leds[i] != CRGB(CRGB::Black)) {
+            if (parent.leds[i] != CRGBA::Transparent) {
                 all_black = false;
                 break;
             }
