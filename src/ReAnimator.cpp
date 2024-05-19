@@ -676,7 +676,6 @@ void ReAnimator::general_chase(uint16_t draw_interval, uint16_t genparam, uint16
 
 
 void ReAnimator::running_lights(uint16_t draw_interval, uint16_t genparam, uint16_t(ReAnimator::*dfp)(uint16_t)) {
-    //const uint8_t num_waves = 3; // results in three full sine waves across LED strip
     //genparam represents the number of waves
     static uint16_t delta = 0;
 
@@ -686,7 +685,9 @@ void ReAnimator::running_lights(uint16_t draw_interval, uint16_t genparam, uint1
             // this pattern normally runs from right-to-left, so flip it by using negative indexing
             uint16_t ni = (NUM_LEDS-1) - i;
             //leds[(this->*dfp)(ni)] = CHSV(*hue, 255, sin8(a));
-            leds[(this->*dfp)(ni)] = *rgb;
+            CRGBA light = *rgb;
+            nscale8x3(light.r, light.g, light.b, 255-sin8(a));
+            leds[(this->*dfp)(ni)] = light;
         }
 
         delta = (delta + 1) % (NUM_LEDS/genparam);
