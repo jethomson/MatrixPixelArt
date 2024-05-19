@@ -47,7 +47,7 @@ class Layer;
 
 class ReAnimator {
 
-    CRGB *leds;
+    CRGBA *leds;
     // the frontend color picker is focused on RGB so try to honor the RGB color picked.
     // sometimes it makes more sense to work with a hue, so we have a hue variable that is derived from rgb.
     CRGB *rgb;
@@ -110,7 +110,7 @@ class ReAnimator {
 
   public:
     //ReAnimator(CRGB leds[NUM_LEDS], uint8_t *hue_type, uint16_t led_strip_milliamps);
-    ReAnimator(CRGB leds[NUM_LEDS], CRGB *color, uint16_t led_strip_milliamps);
+    ReAnimator(CRGBA leds[NUM_LEDS], CRGB *color, uint16_t led_strip_milliamps);
 
     void set_color(CRGB *color);
     void set_selected_led_strip_milliamps(uint16_t led_strip_milliamps);
@@ -191,6 +191,11 @@ class ReAnimator {
 // ++++++++++++++++++++++++++++++
 // ++++++++++ HELPERS +++++++++++
 // ++++++++++++++++++++++++++++++
+    void clear();
+    void fadeToBlackBy(CRGBA* leds, uint16_t num_leds, uint8_t fadeBy);
+    void fill_solid(struct CRGBA * targetArray, int numToFill, const struct CRGB& color);
+
+
     uint16_t forwards(uint16_t index);
     uint16_t backwards(uint16_t index);
 

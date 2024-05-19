@@ -68,7 +68,8 @@ void Layer::setup(LayerType ltype, int8_t id) {
         GlowSerum = nullptr;
       }
       // cast CRGBA array to CRGB wastes 1 byte * NUM_LEDS. might update ReAnimator to work with CRGBA one day.
-      GlowSerum = new ReAnimator((CRGB *)&leds[0], rgb, LED_STRIP_MILLIAMPS);
+      //GlowSerum = new ReAnimator((CRGB *)&leds[0], rgb, LED_STRIP_MILLIAMPS);
+      GlowSerum = new ReAnimator(leds, rgb, LED_STRIP_MILLIAMPS);
       
       GlowSerum->set_pattern(NONE);
       GlowSerum->set_overlay(NO_OVERLAY, false);
@@ -137,8 +138,7 @@ void Layer::clear() {
   }
 }
 
-
-
+/*
 CRGBA Layer::get_pixel(uint16_t i) {
 
   //CRGBA pixel_out = 0xFF000000; // if black with no transparency is used it creates a sort of spotlight effect
@@ -164,6 +164,25 @@ CRGBA Layer::get_pixel(uint16_t i) {
 
   return pixel_out;
 }
+*/
+
+CRGBA Layer::get_pixel(uint16_t i) {
+  //CRGBA pixel_out = 0xFF000000; // if black with no transparency is used it creates a sort of spotlight effect
+  CRGBA pixel_out = 0x00000000;
+  uint16_t ti = director(i);
+  if (0 <= ti && ti < NUM_LEDS) {
+    pixel_out = leds[ti];
+  }
+
+  if (_ltype == Pattern_t || _ltype == Accent_t) {
+    pixel_out.a = 255; // work around to make sure every pixel is opaque. need to work on ReAnimator so it uses transparency better.
+    if (pixel_out == 0xFF000000) {
+      pixel_out.a = 0;
+    }
+  }
+
+  return pixel_out;
+}
 
 
 void Layer::refresh() {
@@ -174,6 +193,15 @@ void Layer::refresh() {
   CHSV chsv = rgb2hsv_approximate(*rgb);
   hue = chsv.h; // !!BUG!! if color is 0x000000 (black) then hue will be 0 which is red when CHSV(hue, 255, 255)
 
+  if (_ltype == Text_t) {
+    matrix_text_shift();
+  }
+
+  if (_ltype == Info_t) {
+    show_date_time();
+  }
+
+
   if (GlowSerum != nullptr) {
     // accents only light up a few pixels leaving the rest black
     if (_ltype == Accent_t) {
@@ -182,14 +210,8 @@ void Layer::refresh() {
     if (_ltype == Pattern_t || _ltype == Accent_t) {
       GlowSerum->reanimate();
     }
-  }
 
-  if (_ltype == Text_t) {
-    matrix_text_shift();
-  }
 
-  if (_ltype == Info_t) {
-    show_date_time();
   }
 }
 
@@ -785,9 +807,12 @@ void Layer::set_nlfx(uint8_t id) {
     case 5:
       setup_clock();
       break;
-    case 6:
-      // may be do scrolling count down here
-      break;
+    //case 6:
+      // maybe do scrolling count down here
+      //break;
+    //case 7:
+      // maybe do weather info
+      //break;
   }
 }
 

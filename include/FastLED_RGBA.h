@@ -89,14 +89,26 @@ struct CRGBA  {
             uint32_t{b};
   }
 
-  inline CRGBA& operator+= (const CRGBA& rhs) {
-    r = qadd8(r, rhs.r);
-    g = qadd8(g, rhs.g);
-    b = qadd8(b, rhs.b);
+  inline CRGBA(const CHSV& rhs) __attribute__((always_inline)) {
+    CRGB c;
+    hsv2rgb_rainbow(rhs, c);
+    this->r = c.r;
+    this->g = c.g;
+    this->b = c.b;
+    this->a = 255;
+  }
+
+  inline CRGBA& operator= (const CHSV& rhs) __attribute__((always_inline)) {
+    CRGB c;
+    hsv2rgb_rainbow(rhs, c);
+    this->r = c.r;
+    this->g = c.g;
+    this->b = c.b;
+    this->a = 255;
     return *this;
   }
 
-  inline CRGBA& operator+= (const CRGB& rhs) {
+  inline CRGBA& operator+= (const CRGBA& rhs) {
     r = qadd8(r, rhs.r);
     g = qadd8(g, rhs.g);
     b = qadd8(b, rhs.b);
@@ -105,6 +117,21 @@ struct CRGBA  {
 
   inline CRGBA& fadeToBlackBy (uint8_t fadefactor) {
     nscale8x3( r, g, b, 255 - fadefactor);
+    return *this;
+  }
+
+
+  inline CRGBA& operator|= (const CRGB& rhs) {
+    if( rhs.r > r) r = rhs.r;
+    if( rhs.g > g) g = rhs.g;
+    if( rhs.b > b) b = rhs.b;
+    return *this;
+  }
+ 
+  inline CRGBA& operator|= (uint8_t d) {
+    if( d > r) r = d;
+    if( d > g) g = d;
+    if( d > b) b = d;
     return *this;
   }
 

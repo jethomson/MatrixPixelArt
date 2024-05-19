@@ -23,7 +23,7 @@
 #include "ReAnimator.h"
 
 
-ReAnimator::ReAnimator(CRGB leds_in[NUM_LEDS], CRGB *color, uint16_t led_strip_milliamps) : freezer(*this) {
+ReAnimator::ReAnimator(CRGBA leds_in[NUM_LEDS], CRGB *color, uint16_t led_strip_milliamps) : freezer(*this) {
 
     leds = leds_in;
 
@@ -86,8 +86,8 @@ ReAnimator::Freezer::Freezer(ReAnimator &r) : parent(r) {
 // brightness level. This will lead to dimmer animations and power usage almost always a good bit lower than what the FastLED power
 // management function was set to aim for. Set the #define for HOMOGENIZE_BRIGHTNESS to false to disable this feature.
 void ReAnimator::homogenize_brightness() {
-    uint8_t max_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, selected_led_strip_milliamps);
-    max_brightness = 128; // for testing
+    //uint8_t max_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, selected_led_strip_milliamps);
+    uint8_t max_brightness = 128; // for testing
     if (max_brightness < homogenized_brightness) {
         homogenized_brightness = max_brightness;
     }
@@ -103,12 +103,14 @@ void ReAnimator::set_color(CRGB *color) {
 
 void ReAnimator::set_selected_led_strip_milliamps(uint16_t led_strip_milliamps) {
     if (led_strip_milliamps > selected_led_strip_milliamps) {
-        // normally homogenized_brightness only goes down but since the power is increased we need to reset homogenized_brightness so it
+        // normally homogenized_brightness only goes down but since the power is increased we need to reset homogenized_brightness so it can
         // learn the new brightness level that makes all the animations have a consistent brightness
-        homogenized_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, 255, LED_STRIP_VOLTAGE, led_strip_milliamps);
+        //homogenized_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, 255, LED_STRIP_VOLTAGE, led_strip_milliamps);
+        homogenized_brightness = 128;
     }
     else {
-        homogenized_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, led_strip_milliamps);
+        //homogenized_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, led_strip_milliamps);
+        homogenized_brightness = 128;
     }
     selected_led_strip_milliamps = led_strip_milliamps;
 }
@@ -192,7 +194,7 @@ int8_t ReAnimator::set_pattern(Pattern pattern_in, bool reverse_in, bool disable
             overlay_out = NO_OVERLAY;
             break;
         case MATRIX:
-            fill_solid(leds, NUM_LEDS, CRGB::Black); // clear once before starting
+            clear();
             pattern_out = MATRIX;
             overlay_out = NO_OVERLAY;
             break;
@@ -1337,7 +1339,8 @@ void ReAnimator::breathing(uint16_t interval) {
     if (finished_waiting(interval)) {
         // since FastLED is managing the maximum power delivered use the following function to find the _actual_ maximum brightness allowed for
         // these power consumption settings. setting brightness to a value higher that max_brightness will not actually increase the brightness.
-        uint8_t max_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, selected_led_strip_milliamps);
+        //uint8_t max_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, selected_led_strip_milliamps);
+        uint8_t max_brightness = 128;
         uint8_t b = scale8(triwave8(delta), max_brightness-min_brightness)+min_brightness;
 
         DEBUG_PRINTLN(b);
@@ -1353,7 +1356,11 @@ void ReAnimator::flicker(uint16_t interval) {
 
     // an on or off period less than 16 ms probably can't be perceived
     if (finished_waiting(interval)) {
-        FastLED.setBrightness((random8(1,11) > 4)*homogenized_brightness);
+        //FastLED.setBrightness((random8(1,11) > 4)*homogenized_brightness);
+        uint8_t r = (random8(1,11) > 4);
+        for (uint16_t i = 0; i < NUM_LEDS; i++) {
+            leds[i].fadeToBlackBy(r*homogenized_brightness);
+        }
     }
 }
 
@@ -1377,6 +1384,30 @@ void ReAnimator::fade_randomly(uint8_t chance_of_fade, uint8_t decay) {
 // ++++++++++++++++++++++++++++++
 // ++++++++++ HELPERS +++++++++++
 // ++++++++++++++++++++++++++++++
+
+void ReAnimator::clear() {
+  for (uint16_t i = 0; i < NUM_LEDS; i++) {
+    leds[i] = 0x00000000;
+  }
+}
+
+//void ReAnimator::fadeToBlackBy(CRGBA pixel, uint8_t fadeBy) {
+//    CRGB pixel_rgb = (CRGB)pixel;
+//    pixel_rgb = pixel_rgb.scale8(255-fadeBy);
+//}
+
+void ReAnimator::fadeToBlackBy(CRGBA* leds, uint16_t num_leds, uint8_t fadeBy) {
+  for (uint16_t i = 0; i < num_leds; i++) {
+    leds[i].fadeToBlackBy(fadeBy);
+  }
+}
+
+void ReAnimator::fill_solid( struct CRGBA * targetArray, int numToFill, const struct CRGB& color) {
+    for( int i = 0; i < numToFill; ++i) {
+        targetArray[i] = color;
+    }
+}
+
 
 uint16_t ReAnimator::forwards(uint16_t index) {
     return index;
