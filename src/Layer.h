@@ -30,7 +30,6 @@
 
 #include "lv_font.h"
 
-#define MD 16 // width or height of matrix in number of LEDs
 
 extern lv_font_t ascii_sector;
 extern lv_font_t seven_segment;

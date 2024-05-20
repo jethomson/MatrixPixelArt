@@ -57,32 +57,19 @@
 
 
 #define NUM_LEDS 256
+#define MD 16 // width or height of matrix in number of LEDs
 #define LED_STRIP_VOLTAGE 5
 #define SOUND_VALUE_GAIN_INITIAL 2
 #define HUE_ALIEN_GREEN 112
 
 
-
-/*
 enum Pattern {            ORBIT = 0, THEATER_CHASE = 1,
                  RUNNING_LIGHTS = 2, SHOOTING_STAR = 3,
-                 CYLON = 4, SOLID = 5, JUGGLE = 6, MITOSIS = 7, 
-                 BUBBLES = 8, SPARKLE = 9, MATRIX = 10, WEAVE = 11,
-                 STARSHIP_RACE = 12, PUCK_MAN = 13, BALLS = 14, 
-                 HALLOWEEN_FADE = 15, HALLOWEEN_ORBIT = 16, 
-                 SOUND_RIBBONS = 17, SOUND_RIPPLE = 18, SOUND_BLOCKS = 19, SOUND_ORBIT = 20,
-                 DYNAMIC_RAINBOW = 21};
-enum Overlay {NO_OVERLAY = 0, GLITTER = 1, BREATHING = 2, CONFETTI = 3, FLICKER = 4, FROZEN_DECAY = 5};
-*/
-
-
-enum Pattern {            ORBIT = 0, THEATER_CHASE = 1,
-                 RUNNING_LIGHTS = 2, SHOOTING_STAR = 3,
-                 CYLON = 4, SOLID = 5, JUGGLE = 6, MITOSIS = 7, 
-                 BUBBLES = 8, SPARKLE = 9, MATRIX = 10, WEAVE = 11,
-                 STARSHIP_RACE = 12, PUCK_MAN = 13, BALLS = 14, 
-                 HALLOWEEN_FADE = 15, HALLOWEEN_ORBIT = 16, 
-                 CHECKERBOARD = 17, BINARY_SYSTEM = 18, DYNAMIC_RAINBOW = 19, NONE = 20
+                 CYLON = 4, SOLID = 5, JUGGLE = 6, RIFFLE = 7,
+                 MITOSIS = 8, BUBBLES = 9, SPARKLE = 10, MATRIX = 11,
+                 WEAVE = 12, STARSHIP_RACE = 13, PUCK_MAN = 14, BALLS = 15, 
+                 HALLOWEEN_FADE = 16, HALLOWEEN_ORBIT = 17, 
+                 CHECKERBOARD = 18, BINARY_SYSTEM = 19, DYNAMIC_RAINBOW = 20, NONE = 21
                  //SOUND_RIBBONS = 17, SOUND_RIPPLE = 18, SOUND_BLOCKS = 19, SOUND_ORBIT = 20
                  };
 enum Overlay {NO_OVERLAY = 0, GLITTER = 1, BREATHING = 2, CONFETTI = 3, FLICKER = 4, FROZEN_DECAY = 5};

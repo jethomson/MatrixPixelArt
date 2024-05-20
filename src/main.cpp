@@ -59,7 +59,7 @@ struct {
 //const char* accents[] = {"None", "Glitter", "Confetti", "Flicker", "Frozen Decay"};
 //const String patterns_json = "{\"patterns\":[\"None\", \"Rainbow\", \"Solid\", \"Orbit\", \"Running Lights\", \"Juggle\", \"Sparkle\", \"Weave\", \"Checkerboard\", \"Binary System\", \"Shooting Star\", \"Puck-Man\", \"Cylon\", \"Demo\"]}";
 //const String accents_json = "{\"accents\":[\"None\", \"Glitter\", \"Confetti\", \"Flicker\", \"Frozen Decay\"]}";
-const String patterns_json = "[\"Rainbow\", \"Solid\", \"Orbit\", \"Running Lights\", \"Juggle\", \"Sparkle\", \"Weave\", \"Checkerboard\", \"Binary System\", \"Shooting Star\", \"Puck-Man\", \"Cylon\", \"Demo\"]";
+const String patterns_json = "[\"Rainbow\", \"Solid\", \"Orbit\", \"Running Lights\", \"Riffle\", \"Sparkle\", \"Weave\", \"Checkerboard\", \"Binary System\", \"Shooting Star\", \"Puck-Man\", \"Cylon\", \"Demo\"]";
 const String accents_json = "[\"Glitter\", \"Confetti\", \"Flicker\", \"Frozen Decay\"]";
 
 

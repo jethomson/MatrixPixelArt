@@ -181,6 +181,10 @@ int8_t ReAnimator::set_pattern(Pattern pattern_in, bool reverse_in, bool disable
             pattern_out = JUGGLE;
             overlay_out = NO_OVERLAY;
             break;
+        case RIFFLE:
+            pattern_out = RIFFLE;
+            overlay_out = NO_OVERLAY;
+            break;
         case MITOSIS:
             pattern_out = MITOSIS;
             overlay_out = NO_OVERLAY;
@@ -499,6 +503,9 @@ int8_t ReAnimator::run_pattern(Pattern pattern) {
         case JUGGLE:
             juggle();
             break;
+        case RIFFLE:
+            riffle();
+            break;
         case MITOSIS:
             mitosis(50, 1);
             break;
@@ -773,13 +780,36 @@ void ReAnimator::solid(uint16_t draw_interval) {
 }
 
 
+
 // borrowed from FastLED/examples/DemoReel00.ino -Mark Kriegsman, December 2014
 void ReAnimator::juggle() {
     // eight colored dots, weaving in and out of sync with each other
     fadeToBlackBy(leds, NUM_LEDS, 20);
     byte dothue = 0;
-    for(uint8_t i = 0; i < 8; i++) {
+    for(uint8_t i = 0; i < 1; i++) {
         leds[beatsin16( i+7, 0, NUM_LEDS-1 )] |= CHSV(dothue, 200, 255);
+        dothue += 32;
+    }
+}
+
+
+
+void ReAnimator::riffle() {
+    fadeToBlackBy(leds, NUM_LEDS, 5);
+    uint8_t dothue = hue;
+    uint8_t i = 0;
+    while (true) {
+        uint16_t high = ((i+1)*16)-1;
+        if (high >= NUM_LEDS/2) {
+            break;
+        }
+        uint16_t p = beatsin16(3, 0, high);
+        leds[NUM_LEDS-1-p] |= CHSV(dothue, 200, 255);
+
+        uint16_t q = (MD*(p/MD)+MD)-1 - p%MD;
+        leds[q] |= CHSV(dothue, 200, 255);
+
+        i++;
         dothue += 32;
     }
 }

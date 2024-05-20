@@ -138,6 +138,7 @@ struct CRGBA  {
     if (rhs.r > r) r = rhs.r;
     if (rhs.g > g) g = rhs.g;
     if (rhs.b > b) b = rhs.b;
+    a = 255;
     return *this;
   }
  
@@ -145,6 +146,7 @@ struct CRGBA  {
     if (d > r) r = d;
     if (d > g) g = d;
     if (d > b) b = d;
+    a = 255;
     return *this;
   }
 

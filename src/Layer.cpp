@@ -316,7 +316,7 @@ void Layer::set_plfx(uint8_t id) {
       GlowSerum->set_pattern(RUNNING_LIGHTS);
       break;
     case 5:
-      GlowSerum->set_pattern(JUGGLE);
+      GlowSerum->set_pattern(RIFFLE);
       break;
     case 6:
       GlowSerum->set_pattern(SPARKLE);

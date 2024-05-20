@@ -161,6 +161,7 @@ class ReAnimator {
 
     void solid(uint16_t draw_interval);
     void juggle();
+    void riffle();
     void mitosis(uint16_t draw_interval, uint8_t cell_size);
     void bubbles(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
     void sparkle(uint16_t draw_interval, bool random_color, uint8_t fade);
