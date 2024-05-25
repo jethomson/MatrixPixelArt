@@ -1,4 +1,4 @@
-//#include <Arduino.h>
+#include <Arduino.h>
 #include <FS.h>
 //#include <ESPmDNS.h>
 #include <WiFi.h>
@@ -14,9 +14,7 @@
 #include "ArduinoJson-v6.h"
 
 #include "project.h"
-//#include "ReAnimator.h"
-
-#include "Layer.h"
+#include "ReAnimator.h"
 
 //#include "credentials.h" // set const char *wifi_ssid and const char *wifi_password in include/credentials.h
 #include "credentials_private.h"
@@ -34,7 +32,7 @@ AsyncWebServer web_server(80);
 
 CRGB leds[NUM_LEDS] = {0}; // output
 
-Layer* layers[NUM_LAYERS];
+ReAnimator* layers[NUM_LAYERS];
 uint8_t ghost_layers[NUM_LAYERS] = {0};
 
 
@@ -368,7 +366,7 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
   }
 
   if (layers[lnum] == nullptr) {
-    layers[lnum] = new Layer();
+    layers[lnum] = new ReAnimator();
   }
 
   // sane default in case data is missing.
@@ -416,21 +414,21 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
       ghost_layers[lnum] = 4;
     }
     layers[lnum]->setup(Image_t, -2);
-    layers[lnum]->load_image_from_file(id);
-    layers[lnum]->set_direction(m);
+    layers[lnum]->set_image(id);
+    layers[lnum]->set_heading(m);
   }
   else if (layer_json[F("t")] == "p") {
     uint8_t id = layer_json[F("id")];
     layers[lnum]->setup(Pattern_t, id);
     layers[lnum]->set_cb(&puck_man_cb);
-    layers[lnum]->set_plfx(id);
-    layers[lnum]->set_direction(m);
+    layers[lnum]->set_pattern(static_cast<Pattern>(id));
+    layers[lnum]->set_heading(m);
   }
   else if (layer_json[F("t")] == "a") {
     uint8_t id = layer_json[F("id")];
     layers[lnum]->setup(Accent_t, id);
-    layers[lnum]->set_alfx(id);
-    layers[lnum]->set_direction(m);
+    layers[lnum]->set_overlay(static_cast<Overlay>(id), true);
+    layers[lnum]->set_heading(m);
   }
   else if (layer_json[F("t")] == "t") {
     layers[lnum]->setup(Text_t, -1);
@@ -438,13 +436,13 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     // direction is disabled for text in the frontend. setting to default of 0.
     // if it is not set back to 0 on a layer that previous had movement the text
     // will move.
-    layers[lnum]->set_direction(m);
+    layers[lnum]->set_heading(m);
   }
   else if (layer_json[F("t")] == "n") {
     uint8_t id = layer_json[F("id")];
     layers[lnum]->setup(Info_t, id);
-    layers[lnum]->set_nlfx(id);
-    layers[lnum]->set_direction(m);
+    layers[lnum]->set_info(static_cast<Info>(id));
+    layers[lnum]->set_heading(m);
   }
   return true;
 }
@@ -457,7 +455,7 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
 bool load_image_to_layer(uint8_t lnum, String fs_path) {
   bool retval = false;
   if (layers[lnum] != nullptr) {
-    retval = layers[lnum]->load_image_from_file(fs_path);
+    retval = layers[lnum]->set_image(fs_path);
   }
   return retval;
 }
@@ -474,11 +472,11 @@ bool load_image_solo(String fs_path) {
   }
 
   if (layers[0] == nullptr) {
-    layers[0] = new Layer();
+    layers[0] = new ReAnimator();
     layers[0]->set_color(CRGB::White);
-    layers[0]->setup(Image_t, -2);
-    retval = layers[0]->load_image_from_file(fs_path);
-    layers[0]->set_direction(0);
+    //layers[0]->setup(Image_t, -2);
+    retval = layers[0]->set_image(fs_path);
+    layers[0]->set_heading(0);
   }
 
   // can also load image to layer like this to be more consistent with load_composite()
@@ -843,7 +841,7 @@ void loop() {
   // draw layers. changes in layers are not displayed until they are copied to leds[] in the blend block
   for (uint8_t i = 0; i < NUM_LAYERS; i++) {
     if (layers[i] != nullptr) {
-      layers[i]->refresh();
+      layers[i]->reanimate();
     }
   }
 

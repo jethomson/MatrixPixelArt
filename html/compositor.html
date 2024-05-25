@@ -355,7 +355,8 @@ function populate_effects(list) {
   
     for (let i = 0; i < patterns.length; i++) {
       // Start at 1 instead of 0 because there is a NONE Pattern at id = 0 that is not presented as a choice for the user.
-      let id = i+1;
+      //let id = i+1;
+      let id = i;
       let name = patterns[i];
       let el_optgroups = document.querySelectorAll('optgroup[id="p"]');
       for (el_optgroup of el_optgroups) {
@@ -374,7 +375,8 @@ function populate_effects(list) {
 
     for (let i = 0; i < accents.length; i++) {
       // Start at 1 instead of 0 because there is a NO_OVERLAY Accent at id = 0 that is not presented as a choice for the user.
-      let id = i+1;
+      //let id = i+1;
+      let id = i;
       let name = accents[i];
       let el_optgroups = document.querySelectorAll('optgroup[id="a"]');
       for (el_optgroup of el_optgroups) {

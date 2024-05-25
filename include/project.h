@@ -23,10 +23,10 @@
 #ifndef PROJECT_H
 #define PROJECT_H
 
-#include <FastLED.h>
-#include "FastLED_RGBA.h"
-#include <stdint.h>
-#include "Arduino.h"
+//#include <FastLED.h>
+//#include "FastLED_RGBA.h"
+//#include <stdint.h>
+//#include "Arduino.h"
 
 #define LED_STRIP_VOLTAGE 5
 #define LED_STRIP_MILLIAMPS 500
@@ -62,17 +62,6 @@
 #define SOUND_VALUE_GAIN_INITIAL 2
 #define HUE_ALIEN_GREEN 112
 
-
-enum Pattern {            ORBIT = 0, THEATER_CHASE = 1,
-                 RUNNING_LIGHTS = 2, SHOOTING_STAR = 3,
-                 CYLON = 4, SOLID = 5, JUGGLE = 6, RIFFLE = 7,
-                 MITOSIS = 8, BUBBLES = 9, SPARKLE = 10, MATRIX = 11,
-                 WEAVE = 12, STARSHIP_RACE = 13, PUCK_MAN = 14, BALLS = 15, 
-                 HALLOWEEN_FADE = 16, HALLOWEEN_ORBIT = 17, 
-                 CHECKERBOARD = 18, BINARY_SYSTEM = 19, DYNAMIC_RAINBOW = 20, NONE = 21
-                 //SOUND_RIBBONS = 17, SOUND_RIPPLE = 18, SOUND_BLOCKS = 19, SOUND_ORBIT = 20
-                 };
-enum Overlay {NO_OVERLAY = 0, GLITTER = 1, BREATHING = 2, CONFETTI = 3, FLICKER = 4, FROZEN_DECAY = 5};
 
 
 #endif

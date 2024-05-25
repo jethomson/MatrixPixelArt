@@ -1,5 +1,5 @@
 /*
-  This code is copyright 2019 Jonathan Thomson, jethomson.wordpress.com
+  This code is copyright 2024 Jonathan Thomson, jethomson.wordpress.com
 
   Permission to use, copy, modify, and distribute this software
   and its documentation for any purpose and without fee is hereby
@@ -41,34 +41,57 @@
 
 #define HOMOGENIZE_BRIGHTNESS true
 
-//#include "Layer.h"
 
-class Layer;
+#include "project.h"
+#include "lv_font.h"
+
+extern lv_font_t ascii_sector;
+extern lv_font_t seven_segment;
+
+
+enum LayerType {Pattern_t = 0, Accent_t = 1, Image_t = 2, Text_t = 3, Info_t = 4};
+
+enum Pattern {
+              DYNAMIC_RAINBOW = 0, SOLID = 1,
+              ORBIT = 2, RUNNING_LIGHTS = 3,
+              RIFFLE = 4, SPARKLE = 5, 
+              WEAVE = 6, CHECKERBOARD = 7, BINARY_SYSTEM = 8, 
+              SHOOTING_STAR = 9, PUCK_MAN = 10, CYLON = 11,
+              THEATER_CHASE = 80, JUGGLE = 81, MITOSIS = 82,
+              BUBBLES = 83, MATRIX = 84, STARSHIP_RACE = 85,
+              BALLS = 86, HALLOWEEN_FADE = 87, HALLOWEEN_ORBIT = 88,
+              DEMO = 99,
+              NONE = 100
+             };
+
+/*
+enum Pattern {            ORBIT = 0, THEATER_CHASE = 1,
+                 RUNNING_LIGHTS = 2, SHOOTING_STAR = 3,
+                 CYLON = 4, SOLID = 5, JUGGLE = 6, RIFFLE = 7,
+                 MITOSIS = 8, BUBBLES = 9, SPARKLE = 10, MATRIX = 11,
+                 WEAVE = 12, STARSHIP_RACE = 13, PUCK_MAN = 14, BALLS = 15, 
+                 HALLOWEEN_FADE = 16, HALLOWEEN_ORBIT = 17, 
+                 CHECKERBOARD = 18, BINARY_SYSTEM = 19, DYNAMIC_RAINBOW = 20, NONE = 21
+                 //SOUND_RIBBONS = 17, SOUND_RIPPLE = 18, SOUND_BLOCKS = 19, SOUND_ORBIT = 20
+                 };
+*/
+enum Overlay {GLITTER = 0, CONFETTI = 1, FLICKER = 2, FROZEN_DECAY = 3, BREATHING = 99, NO_OVERLAY = 100};
+
+enum Info {TIME_12HR = 0, TIME_24HR = 1, DATE_MMDD = 2, DATE_DDMM = 3, TIME_12HR_DATE_MMDD = 4, TIME_24HR_DATE_DDMM = 5};
+
 
 class ReAnimator {
+    //enum Direction {STILL = 0, N = 1, NE = 2, E = 3, SE = 4, S = 5, SW = 6, W = 7, NW = 8};
 
-    CRGBA *leds;
-    // the frontend color picker is focused on RGB so try to honor the RGB color picked.
-    // sometimes it makes more sense to work with a hue, so we have a hue variable that is derived from rgb.
-    CRGB *rgb;
-    uint8_t hue;
+    //LayerType _ltype = static_cast<LayerType>(-1);
+    LayerType _ltype;
+    int8_t _id;
+
+    CRGBA leds[NUM_LEDS];
+    //CRGBA tleds[NUM_LEDS]; // for use with ntranslate()
+
     uint16_t selected_led_strip_milliamps;
-
     uint8_t homogenized_brightness;
-
-    Pattern pattern;
-    Overlay transient_overlay;
-    Overlay persistent_overlay;
-
-    uint16_t(ReAnimator::*direction_fp)(uint16_t);
-    uint16_t(ReAnimator::*antidirection_fp)(uint16_t);
-
-    bool reverse;
-
-    Layer* _lyr;
-    void(Layer::* _cb)(uint8_t);
-
-    Pattern last_pattern_ran;
 
     bool autocycle_enabled;
     uint32_t autocycle_previous_millis;
@@ -77,6 +100,26 @@ class ReAnimator {
     bool flipflop_enabled;
     uint32_t flipflop_previous_millis;
     uint32_t flipflop_interval;
+
+    Pattern pattern;
+    Pattern last_pattern_ran;
+    Overlay transient_overlay;
+    Overlay persistent_overlay;
+
+    // direction indicates why point the leading pixel of a pattern advances toward: end of strip or beginning of strip.
+    uint16_t(ReAnimator::*direction_fp)(uint16_t);
+    uint16_t(ReAnimator::*antidirection_fp)(uint16_t);
+    bool reverse;
+
+    // the frontend color picker is focused on RGB so try to honor the RGB color picked.
+    // sometimes it makes more sense to work with a hue, so we have a hue variable that is derived from rgb.
+    // color can be determined externally (*rgb) or internally (internal_rgb) to the layer.
+    // if internal_rgb is user rgb points to that.
+    CRGB* rgb = nullptr;
+    uint8_t hue;
+    CRGB internal_rgb;
+
+    void(*_cb)(uint8_t) = nullptr;
 
     class Freezer {
         ReAnimator &parent;
@@ -95,27 +138,67 @@ class ReAnimator {
 
     struct Starship {
         uint16_t distance;
-        uint8_t  color;
+        uint8_t color;
     };
 
-    uint16_t previous_sample;
-    bool sample_peak;
-    uint16_t sample_average;
-    uint8_t sample_threshold;
-    uint16_t sound_value;
-    uint8_t sound_value_gain;
+    //uint16_t previous_sample;
+    //bool sample_peak;
+    //uint16_t sample_average;
+    //uint8_t sample_threshold;
+    //uint16_t sound_value;
+    //uint8_t sound_value_gain;
+
+
+    struct Point {
+      uint8_t x;
+      uint8_t y;
+    };
+
+    lv_font_t* font = &ascii_sector;
+    lv_font_t* clkfont = &seven_segment;
+
+    struct fstring {
+      String s;
+      int8_t vmargin = 0; // for centering text vertically
+      uint8_t tracking = 1; // spacing between letters
+    } ftext;
+
+
+    uint16_t refresh_text_index = 0;
+    uint8_t shift_char_column = 0;
+    uint8_t shift_char_tracking = 0; // spacing between letters
+
+    // heading indicates which direction an object (image, patter, text, etc.) displayed on the matrix moves
+    uint8_t heading = 0;
+    bool t_initial = true;
+    bool t_visible = false;
+    bool t_has_entered = false;
+    int8_t dx = 0;
+    int8_t dy = 0;
+
 
     uint32_t iwopm = 0; // previous millis for is_wait_over()
     uint32_t fwpm = 0; // previous millis for finished_waiting()
 
   public:
     //ReAnimator(CRGB leds[NUM_LEDS], uint8_t *hue_type, uint16_t led_strip_milliamps);
-    ReAnimator(CRGBA leds[NUM_LEDS], CRGB *color, uint16_t led_strip_milliamps);
+    //ReAnimator(CRGB *color, uint16_t led_strip_milliamps);
+    ReAnimator();
 
-    void set_color(CRGB *color);
+    void setup(LayerType ltype, int8_t id);
+
     void set_selected_led_strip_milliamps(uint16_t led_strip_milliamps);
-
     void homogenize_brightness();
+
+    uint32_t get_autocycle_interval();
+    void set_autocycle_interval(uint32_t inteval);
+    bool get_autocycle_enabled();
+    void set_autocycle_enabled(bool enabled);
+
+    uint32_t get_flipflop_interval();
+    void set_flipflop_interval(uint32_t inteval);
+    bool get_flipflop_enabled();
+    void set_flipflop_enabled(bool enabled);
 
     Pattern get_pattern();
     int8_t set_pattern(Pattern pattern);
@@ -128,24 +211,28 @@ class ReAnimator {
     int8_t set_overlay(Overlay overlay, bool is_persistent);
     void increment_overlay(bool is_persistent);
 
-    void set_sound_value_gain(uint8_t gain);
+    bool set_image(String fs_path, String* message = nullptr);
+    void set_text(String s);
+    void set_info(Info id);
 
-    uint32_t get_autocycle_interval();
-    void set_autocycle_interval(uint32_t inteval);
-    bool get_autocycle_enabled();
-    void set_autocycle_enabled(bool enabled);
+    void set_color(CRGB *color);
+    void set_color(CRGB color);
 
-    uint32_t get_flipflop_interval();
-    void set_flipflop_interval(uint32_t inteval);
-    bool get_flipflop_enabled();
-    void set_flipflop_enabled(bool enabled);
-    void set_cb(Layer* lyr, void (Layer::* cb)(uint8_t));
+    void set_cb(void(*cb)(uint8_t));
+    void set_heading(uint8_t h);
 
+    //void set_sound_value_gain(uint8_t gain);
+
+    void clear();
     void reanimate();
+    CRGBA get_pixel(uint16_t i);
 
   private:
     int8_t run_pattern(Pattern pattern);
     int8_t apply_overlay(Overlay overlay);
+    void refresh_text(uint16_t draw_interval);
+    void refresh_info(uint16_t draw_interval);
+
 
 // ++++++++++++++++++++++++++++++
 // ++++++++++ PATTERNS ++++++++++
@@ -174,12 +261,13 @@ class ReAnimator {
     void halloween_colors_fade(uint16_t draw_interval);
     void halloween_colors_orbit(uint16_t draw_interval, int8_t delta);
 
-    void sound_ribbons(uint16_t draw_interval);
-    void sound_ripple(uint16_t draw_interval, bool trigger);
-    void sound_orbit(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
-    void sound_blocks(uint16_t draw_interval, bool trigger);
+    //void sound_ribbons(uint16_t draw_interval);
+    //void sound_ripple(uint16_t draw_interval, bool trigger);
+    //void sound_orbit(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
+    //void sound_blocks(uint16_t draw_interval, bool trigger);
 
     void dynamic_rainbow(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
+
 
 // ++++++++++++++++++++++++++++++
 // ++++++++++ OVERLAYS ++++++++++
@@ -189,13 +277,28 @@ class ReAnimator {
     void glitter(uint16_t chance_of_glitter);
     void fade_randomly(uint8_t chance_of_fade, uint8_t decay);
 
+
+// ++++++++++++++++++++++++++++++
+// ++++++++++++ TEXT ++++++++++++
+// ++++++++++++++++++++++++++++++
+    uint8_t get_text_center(String s);
+    bool shift_char(char c, int8_t vmargin = 0);
+    //void matrix_char(char c);
+    //void matrix_text(String s);
+
+
+// ++++++++++++++++++++++++++++++
+// ++++++++++++ INFO ++++++++++++
+// ++++++++++++++++++++++++++++++
+    void setup_clock();
+    void refresh_date_time(uint16_t draw_interval);
+
+
 // ++++++++++++++++++++++++++++++
 // ++++++++++ HELPERS +++++++++++
 // ++++++++++++++++++++++++++++++
-    void clear();
     void fadeToBlackBy(CRGBA* leds, uint16_t num_leds, uint8_t fadeBy);
     void fill_solid(struct CRGBA * targetArray, int numToFill, const struct CRGB& color);
-
 
     uint16_t forwards(uint16_t index);
     uint16_t backwards(uint16_t index);
@@ -207,15 +310,26 @@ class ReAnimator {
     bool finished_waiting(uint16_t interval);
 
     void accelerate_decelerate_pattern(uint16_t draw_interval_initial, uint16_t delta_initial, uint16_t update_period, uint16_t genparam, void(ReAnimator::*pfp)(uint16_t, uint16_t, uint16_t(ReAnimator::*dfp)(uint16_t)), uint16_t(ReAnimator::*dfp)(uint16_t));
-    void process_sound();
+    //void process_sound();
     void motion_blur(int8_t blur_num, uint16_t pos, uint16_t(ReAnimator::*dfp)(uint16_t));
     void fission();
 
     static int compare(const void * a, const void * b);
 
+    Point serp2cart(uint8_t i);
+    int16_t cart2serp(Point p);
+    void flip(CRGB sm[NUM_LEDS], bool dim);
+    uint16_t translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8_t sy, bool wrap, int8_t gap);
+    void ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi = 0, int8_t yi = 0, int8_t sx = 1, int8_t sy = 1, bool wrap = true, int8_t gap = 0);
+    uint16_t mover(uint16_t i);
+
     //void print_dt();
 
 };
 
+
+inline void noop_cb(uint8_t event) {
+  __asm__ __volatile__ ("nop");
+}
 
 #endif

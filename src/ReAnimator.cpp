@@ -1,5 +1,5 @@
 /*
-  This code is copyright 2019 Jonathan Thomson, jethomson.wordpress.com
+  This code is copyright 2024 Jonathan Thomson, jethomson.wordpress.com
 
   Permission to use, copy, modify, and distribute this software
   and its documentation for any purpose and without fee is hereby
@@ -20,21 +20,30 @@
   this software.
 */
 
+#include <Arduino.h>
+#include <FastLED.h>
+#include <LittleFS.h>
+#include <time.h>
+
+#include "FastLED_RGBA.h"
 #include "ReAnimator.h"
+#include "ArduinoJson-v6.h"
+#include "JSON_Image_Decoder.h"
+
+const char* timezone = "EST5EDT,M3.2.0,M11.1.0";
 
 
-ReAnimator::ReAnimator(CRGBA leds_in[NUM_LEDS], CRGB *color, uint16_t led_strip_milliamps) : freezer(*this) {
+ReAnimator::ReAnimator() : freezer(*this) {
+//ReAnimator::ReAnimator(CRGB *color, uint16_t led_strip_milliamps) : freezer(*this) {
 
-    leds = leds_in;
-
-    rgb = color;
-    CHSV chsv = rgb2hsv_approximate(*color);
-    hue = chsv.h;
-    selected_led_strip_milliamps = led_strip_milliamps;
+    //rgb = color;
+    //CHSV chsv = rgb2hsv_approximate(*color);
+    //hue = chsv.h;
+    //selected_led_strip_milliamps = led_strip_milliamps;
 
     homogenized_brightness = 255;
 
-    pattern = ORBIT;
+    pattern = NONE;
     transient_overlay = NO_OVERLAY;
     persistent_overlay = NO_OVERLAY;
 
@@ -47,8 +56,6 @@ ReAnimator::ReAnimator(CRGBA leds_in[NUM_LEDS], CRGB *color, uint16_t led_strip_
 #endif
 
     reverse = false;
-
-    
 
     //error: invalid conversion from 'int' to 'Pattern' [-fpermissive]
     // setting to NULL throws an error.
@@ -65,17 +72,62 @@ ReAnimator::ReAnimator(CRGBA leds_in[NUM_LEDS], CRGB *color, uint16_t led_strip_
     flipflop_previous_millis = 0;
     flipflop_interval = 6000;
 
-    previous_sample = 0;
-    sample_peak = 0;
-    sample_average = 0;
-    sample_threshold = 20;
-    sound_value_gain = SOUND_VALUE_GAIN_INITIAL;
+    //previous_sample = 0;
+    //sample_peak = 0;
+    //sample_average = 0;
+    //sample_threshold = 20;
+    //sound_value_gain = SOUND_VALUE_GAIN_INITIAL;
+
+    clear();
 }
 
 
 ReAnimator::Freezer::Freezer(ReAnimator &r) : parent(r) {
     m_frozen = false;
     m_frozen_previous_millis = 0;
+}
+
+
+void ReAnimator::setup(LayerType ltype, int8_t id) {
+  // we want patterns (and accents) to persist from one composite to another if they are on the same layer.
+  // this allows for a pattern to play continuously (i.e without restarting) when the next item in a playlist is loaded.
+  //
+  // scrolling text uses an id of -1 because we always want to clear() when new text is set.
+  // images use an id of -2 because real image ids (paths) are more complicated and it is unnecessary to clear since a new image should completely overwrite leds[]
+  // in practice there is probably no observable difference between -2 and -1 for images.
+  // could possibly get an interesting effect with -2 if the new image does not write to all of leds[] and part of the previous image remains.
+  if (id == -1 || (_ltype != ltype && _id != id)) {
+    _id = id;
+    _ltype = ltype;
+
+    // since layers are reused the remnants of the old effect may still be in leds[]
+    // these leftovers may not be overwritten by the new effect, so it is best to clear leds[]
+    clear();
+
+    set_autocycle_interval(10000);
+    set_autocycle_enabled(false);
+    set_flipflop_interval(6000);
+    set_flipflop_enabled(false);
+
+    set_pattern(NONE);
+    set_overlay(NO_OVERLAY, false);
+    set_cb(noop_cb);
+  }
+}
+
+
+void ReAnimator::set_selected_led_strip_milliamps(uint16_t led_strip_milliamps) {
+    if (led_strip_milliamps > selected_led_strip_milliamps) {
+        // normally homogenized_brightness only goes down but since the power is increased we need to reset homogenized_brightness so it can
+        // learn the new brightness level that makes all the animations have a consistent brightness
+        //homogenized_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, 255, LED_STRIP_VOLTAGE, led_strip_milliamps);
+        homogenized_brightness = 128;
+    }
+    else {
+        //homogenized_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, led_strip_milliamps);
+        homogenized_brightness = 128;
+    }
+    selected_led_strip_milliamps = led_strip_milliamps;
 }
 
 
@@ -94,26 +146,50 @@ void ReAnimator::homogenize_brightness() {
 }
 
 
-void ReAnimator::set_color(CRGB *color) {
-    rgb = color;
-    CHSV chsv = rgb2hsv_approximate(*color);
-    hue = chsv.h;
+uint32_t ReAnimator::get_autocycle_interval() {
+    return autocycle_interval;
 }
 
 
-void ReAnimator::set_selected_led_strip_milliamps(uint16_t led_strip_milliamps) {
-    if (led_strip_milliamps > selected_led_strip_milliamps) {
-        // normally homogenized_brightness only goes down but since the power is increased we need to reset homogenized_brightness so it can
-        // learn the new brightness level that makes all the animations have a consistent brightness
-        //homogenized_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, 255, LED_STRIP_VOLTAGE, led_strip_milliamps);
-        homogenized_brightness = 128;
-    }
-    else {
-        //homogenized_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, led_strip_milliamps);
-        homogenized_brightness = 128;
-    }
-    selected_led_strip_milliamps = led_strip_milliamps;
+void ReAnimator::set_autocycle_interval(uint32_t inteval) {
+    autocycle_interval = inteval;
+    autocycle_previous_millis = 0; // set to zero so autocycling will start without waiting
 }
+
+
+bool ReAnimator::get_autocycle_enabled() {
+    return autocycle_enabled;
+}
+
+
+void ReAnimator::set_autocycle_enabled(bool enabled) {
+    autocycle_enabled = enabled;
+    autocycle_previous_millis = 0; // set to zero so autocycling will start without waiting
+}
+
+
+
+uint32_t ReAnimator::get_flipflop_interval() {
+    return flipflop_interval;
+}
+
+
+void ReAnimator::set_flipflop_interval(uint32_t inteval) {
+    flipflop_interval = inteval;
+    flipflop_previous_millis = 0; // set to zero so flipfloping will start without waiting
+}
+
+
+bool ReAnimator::get_flipflop_enabled() {
+    return flipflop_enabled;
+}
+
+
+void ReAnimator::set_flipflop_enabled(bool enabled) {
+    flipflop_enabled = enabled;
+    flipflop_previous_millis = 0; // set to zero so flipfloping will start without waiting
+}
+
 
 
 Pattern ReAnimator::get_pattern() {
@@ -230,23 +306,22 @@ int8_t ReAnimator::set_pattern(Pattern pattern_in, bool reverse_in, bool disable
             pattern_out = NONE;
             overlay_out = NO_OVERLAY;
             break;
-        /*case SOUND_RIBBONS:
-            pattern_out = SOUND_RIBBONS;
-            overlay_out = NO_OVERLAY;
-            break;
-        case SOUND_RIPPLE:
-            pattern_out = SOUND_RIPPLE;
-            overlay_out = NO_OVERLAY;
-            break;
-        case SOUND_ORBIT:
-            pattern_out = SOUND_ORBIT;
-            overlay_out = NO_OVERLAY;
-            break;
-        case SOUND_BLOCKS:
-            pattern_out = SOUND_BLOCKS;
-            overlay_out = NO_OVERLAY;
-            break;
-        */
+        //case SOUND_RIBBONS:
+        //    pattern_out = SOUND_RIBBONS;
+        //    overlay_out = NO_OVERLAY;
+        //    break;
+        //case SOUND_RIPPLE:
+        //    pattern_out = SOUND_RIPPLE;
+        //    overlay_out = NO_OVERLAY;
+        //    break;
+        //case SOUND_ORBIT:
+        //    pattern_out = SOUND_ORBIT;
+        //    overlay_out = NO_OVERLAY;
+        //    break;
+        //case SOUND_BLOCKS:
+        //    pattern_out = SOUND_BLOCKS;
+        //    overlay_out = NO_OVERLAY;
+        //    break;
         case DYNAMIC_RAINBOW:
             pattern_out = DYNAMIC_RAINBOW;
             overlay_out = NO_OVERLAY;
@@ -275,6 +350,7 @@ int8_t ReAnimator::increment_pattern() {
 int8_t ReAnimator::increment_pattern(bool disable_autocycle_flipflop) {
     return set_pattern(static_cast<Pattern>(pattern+1), reverse, disable_autocycle_flipflop);
 }
+
 
 
 Overlay ReAnimator::get_overlay(bool is_persistent) {
@@ -336,87 +412,122 @@ void ReAnimator::increment_overlay(bool is_persistent) {
 }
 
 
-void ReAnimator::set_sound_value_gain(uint8_t gain) {
-    sound_value_gain = gain;
+bool ReAnimator::set_image(String fs_path, String* message) {
+  bool retval = false;
+  File file = LittleFS.open(fs_path, "r");
+
+  if(!file){
+    if (message) {
+      *message = F("set_image(): File not found.");
+    }
+    return false;
+  }
+  if (file.available()) {
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, file.readString());
+    if (error) {
+      //Serial.print("deserializeJson() failed: ");
+      //Serial.println(error.c_str());
+      if (message) {
+        *message = F("set_image: deserializeJson() failed.");
+      }
+      return false;
+    }
+
+    JsonObject object = doc.as<JsonObject>();
+
+    for (uint16_t i = 0; i < NUM_LEDS; i++) leds[i] = 0xFFFFFF00;
+    retval = deserializeSegment(object, leds, NUM_LEDS);
+  }
+  file.close();
+
+  if (message) {
+    *message = F("set_image(): Matrix loaded.");
+  }
+  return retval;
 }
 
 
-uint32_t ReAnimator::get_autocycle_interval() {
-    return autocycle_interval;
+void ReAnimator::set_text(String s) {
+  // need to reinitialize when one string was already being written and new string is set
+  refresh_text_index = 0; // start at the beginning of a string
+  shift_char_column = 0; // start at the beginning of a glyph
+
+  ftext.s = s;
+  ftext.vmargin = MD/2 - get_text_center(ftext.s);
 }
 
 
-void ReAnimator::set_autocycle_interval(uint32_t inteval) {
-    autocycle_interval = inteval;
-    autocycle_previous_millis = 0; // set to zero so autocycling will start without waiting
-}
-
-
-bool ReAnimator::get_autocycle_enabled() {
-    return autocycle_enabled;
-}
-
-
-void ReAnimator::set_autocycle_enabled(bool enabled) {
-    autocycle_enabled = enabled;
-    autocycle_previous_millis = 0; // set to zero so autocycling will start without waiting
-}
-
-
-// loop through all of the patterns
-void ReAnimator::autocycle() {
-    if((millis() - autocycle_previous_millis) > autocycle_interval) {
-        autocycle_previous_millis = millis();
-        DEBUG_PRINTLN("autocycle started");
-        if (increment_pattern(false) == INT8_MIN) {
-            // autocycle has looped back around to the first pattern so reverse them
-            reverse = !reverse;
-        }
+void ReAnimator::set_info(Info type) {
+    _id = type;
+    switch(type) {
+      default:
+          // fall through to next case
+      case TIME_12HR:
+      case TIME_24HR:
+      case DATE_MMDD:
+      case DATE_DDMM:
+      case TIME_12HR_DATE_MMDD:
+      case TIME_24HR_DATE_DDMM:
+          setup_clock();
+          break;
+      //case 6:
+        // maybe do scrolling count down here
+        //break;
+      //case 7:
+        // maybe do weather info
+        //break;
     }
 }
 
 
-uint32_t ReAnimator::get_flipflop_interval() {
-    return flipflop_interval;
+void ReAnimator::set_color(CRGB *color) {
+    rgb = color;
+    CHSV chsv = rgb2hsv_approximate(*color);
+    hue = chsv.h;
 }
 
 
-void ReAnimator::set_flipflop_interval(uint32_t inteval) {
-    flipflop_interval = inteval;
-    flipflop_previous_millis = 0; // set to zero so flipfloping will start without waiting
+void ReAnimator::set_color(CRGB color) {
+  internal_rgb = color;
+  rgb = &internal_rgb;
+  set_color(rgb);
 }
 
 
-bool ReAnimator::get_flipflop_enabled() {
-    return flipflop_enabled;
-}
-
-
-void ReAnimator::set_flipflop_enabled(bool enabled) {
-    flipflop_enabled = enabled;
-    flipflop_previous_millis = 0; // set to zero so flipfloping will start without waiting
-}
-
-
-// alternate between running a pattern forwards or backwards
-void ReAnimator::flipflop() {
-    if((millis() - flipflop_previous_millis) > flipflop_interval) {
-        flipflop_previous_millis = millis();
-        DEBUG_PRINTLN("flip flop loop started");
-        reverse = !reverse;
-    }
-}
-
-
-void ReAnimator::set_cb(Layer* lyr, void (Layer::* cb)(uint8_t)) {
-    _lyr = lyr;
+void ReAnimator::set_cb(void(*cb)(uint8_t)) {
     _cb = cb;
 }
 
 
+void ReAnimator::set_heading(uint8_t h) {
+  // initial only needs to be set to true, which resets the translation variables, if the heading changes.
+  // this allows for one image to be swapped in for another while maintaining the same position and path.
+  t_initial = (heading != h);
+  heading = h;
+}
+
+
+//void ReAnimator::set_sound_value_gain(uint8_t gain) {
+//    sound_value_gain = gain;
+//}
+
+
+
+void ReAnimator::clear() {
+  for (uint16_t i = 0; i < NUM_LEDS; i++) {
+    leds[i] = CRGBA::Transparent;
+  }
+}
+
+
 void ReAnimator::reanimate() {
+    //if (rgb == nullptr) {
+    //  internal_rgb = CRGB::Yellow;
+    //  rgb = &internal_rgb;
+    //}
     CHSV chsv = rgb2hsv_approximate(*rgb);
-    hue = chsv.h;
+    hue = chsv.h; // !!BUG!! if color is 0x000000 (black) then hue will be 0 which is red when CHSV(hue, 255, 255)
 
     if (autocycle_enabled) {
         autocycle();
@@ -429,8 +540,18 @@ void ReAnimator::reanimate() {
     //process_sound();
 
     if (!freezer.is_frozen()) {
-        run_pattern(pattern);
-        last_pattern_ran = pattern;
+        if (_ltype == Pattern_t) {
+          run_pattern(pattern);
+          last_pattern_ran = pattern;
+        }
+        
+        if (_ltype == Text_t) {
+            refresh_text(200);
+        }
+
+        if (_ltype == Info_t) {
+            refresh_info(200);
+        }
     }
 
     apply_overlay(transient_overlay);
@@ -448,6 +569,28 @@ void ReAnimator::reanimate() {
 }
 
 
+CRGBA ReAnimator::get_pixel(uint16_t i) {
+  //CRGBA pixel_out = 0xFF000000; // if black with no transparency is used it creates a sort of spotlight effect
+  CRGBA pixel_out = 0x00000000;
+  uint16_t ti = mover(i);
+  if (0 <= ti && ti < NUM_LEDS) {
+    pixel_out = leds[ti];
+  }
+
+  //if (_ltype == Pattern_t || _ltype == Accent_t) {
+    //pixel_out.a = 255; // work around to make sure every pixel is opaque. need to work on ReAnimator so it uses transparency better.
+    //if (pixel_out == 0xFF000000) {
+    //  pixel_out.a = 0;
+    //}
+  //}
+
+  return pixel_out;
+}
+
+
+//***********
+//* PRIVATE *
+//***********
 int8_t ReAnimator::run_pattern(Pattern pattern) {
     int8_t retval = 0;
     uint8_t orbit_delta = !reverse ? 1 : -1;
@@ -539,19 +682,18 @@ int8_t ReAnimator::run_pattern(Pattern pattern) {
         case NONE:
             //fill_solid(leds, NUM_LEDS, CRGBA::Transparent);
             break;
-        /*case SOUND_RIBBONS:
-            sound_ribbons(30);
-            break;
-        case SOUND_RIPPLE:
-            sound_ripple(100, (sample_peak==1));
-            break;
-        case SOUND_BLOCKS:
-            sound_blocks(50, (sound_value > 32));
-            break;
-        case SOUND_ORBIT:
-            sound_orbit(30, dfp);
-            break;
-        */
+        //case SOUND_RIBBONS:
+        //    sound_ribbons(30);
+        //    break;
+        //case SOUND_RIPPLE:
+        //    sound_ripple(100, (sample_peak==1));
+        //    break;
+        //case SOUND_BLOCKS:
+        //    sound_blocks(50, (sound_value > 32));
+        //    break;
+        //case SOUND_ORBIT:
+        //    sound_orbit(30, dfp);
+        //    break;
         case DYNAMIC_RAINBOW:
             //accelerate_decelerate_pattern(30, 2, 1000, &ReAnimator::dynamic_rainbow, dfp);
             dynamic_rainbow(50, dfp);
@@ -593,6 +735,39 @@ int8_t ReAnimator::apply_overlay(Overlay overlay) {
 
     return retval;
 }
+
+
+//void ReAnimator::shift_text(struct fstring ftext) {
+void ReAnimator::refresh_text(uint16_t draw_interval) {
+    if (is_wait_over(draw_interval)) {
+        if(shift_char(ftext.s[refresh_text_index], ftext.vmargin)) {
+            refresh_text_index = (refresh_text_index+1) % ftext.s.length();
+        }
+    }
+}
+
+
+void ReAnimator::refresh_info(uint16_t draw_interval) {
+    switch(_id) {
+      default:
+          // fall through to next case
+      case TIME_12HR:
+      case TIME_24HR:
+      case DATE_MMDD:
+      case DATE_DDMM:
+      case TIME_12HR_DATE_MMDD:
+      case TIME_24HR_DATE_DDMM:
+          refresh_date_time(draw_interval);
+          break;
+      //case 6:
+        // maybe do scrolling count down here
+        //break;
+      //case 7:
+        // maybe do weather info
+        //break;
+    }
+}
+
 
 
 // ++++++++++++++++++++++++++++++
@@ -1015,7 +1190,6 @@ void ReAnimator::starship_race(uint16_t draw_interval, uint16_t(ReAnimator::*dfp
             speed_boost = 0;
             count_down = 10;
         }
-
     }
 }
 
@@ -1048,7 +1222,7 @@ void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uin
         clear();
 
         if (puck_man_pos == 0) {
-            (_lyr->*_cb)(0);
+            (*_cb)(0);
             blinky_pos = (-2 + NUM_LEDS) % NUM_LEDS;
             pinky_pos  = (-3 + NUM_LEDS) % NUM_LEDS;
             inky_pos   = (-4 + NUM_LEDS) % NUM_LEDS;
@@ -1096,7 +1270,7 @@ void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uin
             leds[(this->*dfp)(clyde_pos)]  = CHSV(HUE_ORANGE, 255, clyde_visible*255);
         }
         else if (blinky_visible || pinky_visible || inky_visible || clyde_visible) {
-            (_lyr->*_cb)(1);
+            (*_cb)(1);
             puck_man_delta = -3;
             ghost_delta = -2;
 
@@ -1112,7 +1286,7 @@ void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uin
             speed_jump_cnt++;
 
             if (puck_man_pos == blinky_pos) {
-                (_lyr->*_cb)(2);
+                (*_cb)(2);
                 blinky_visible = 0;
             }
             else if (puck_man_pos == pinky_pos) {
@@ -1254,94 +1428,94 @@ void ReAnimator::halloween_colors_orbit(uint16_t draw_interval, int8_t delta) {
 }
 
 
-void ReAnimator::sound_ribbons(uint16_t draw_interval) {
-    if (is_wait_over(draw_interval)) {
-        fadeToBlackBy(leds, NUM_LEDS, 20);
-
-        leds[NUM_LEDS/2] = CHSV(hue, 255, sound_value);
-        leds[(NUM_LEDS/2)-1] = CHSV(hue, 255, sound_value);
-
-        fission();
-    }                                                                                
-}
+//void ReAnimator::sound_ribbons(uint16_t draw_interval) {
+//    if (is_wait_over(draw_interval)) {
+//        fadeToBlackBy(leds, NUM_LEDS, 20);
+//
+//        leds[NUM_LEDS/2] = CHSV(hue, 255, sound_value);
+//        leds[(NUM_LEDS/2)-1] = CHSV(hue, 255, sound_value);
+//
+//        fission();
+//    }                                                                                
+//}
 
 
 // derived from this code https://gist.github.com/suhajdab/9716635
-void ReAnimator::sound_ripple(uint16_t draw_interval, bool trigger) {
-    static bool enabled = true;
-    const uint16_t max_delta = 16;
-    static uint16_t delta = 0;
-    static uint16_t center = NUM_LEDS/2;
-
-    if (pattern != last_pattern_ran) {
-        enabled = true;
-        delta = 0;
-        center = NUM_LEDS/2;
-    }
-
-    if (trigger) {
-        enabled = true;
-    }
-
-    if (is_wait_over(draw_interval)) {
-        fadeToBlackBy(leds, NUM_LEDS, 170);
-
-        if (enabled) {
-            // waves created by primary droplet
-            leds[(NUM_LEDS+center+delta) % NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta)*255);
-            leds[(NUM_LEDS+center-delta) % NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta)*255);
-
-            if (delta > 3) {
-                // waves created by rebounded droplet
-                leds[(NUM_LEDS+center+(delta-3)) % NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta - 2)*255);
-                leds[(NUM_LEDS+center-(delta-3)) % NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta - 2)*255);
-            }
-
-            delta++;
-            if (delta == max_delta) {
-                delta = 0;
-                center = random16(NUM_LEDS);
-                enabled = false;
-            }
-        }
-    }
-}
-
-
-void ReAnimator::sound_orbit(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
-    if (is_wait_over(draw_interval)) {
-        for(uint16_t i = NUM_LEDS-1; i > 0; i--) {
-            leds[(this->*dfp)(i)] = leds[(this->*dfp)(i-1)];
-        }
-
-        leds[(this->*dfp)(0)] = CHSV(hue, 255, sound_value);
-    }
-}
+//void ReAnimator::sound_ripple(uint16_t draw_interval, bool trigger) {
+//    static bool enabled = true;
+//    const uint16_t max_delta = 16;
+//    static uint16_t delta = 0;
+//    static uint16_t center = NUM_LEDS/2;
+//
+//    if (pattern != last_pattern_ran) {
+//        enabled = true;
+//        delta = 0;
+//        center = NUM_LEDS/2;
+//    }
+//
+//    if (trigger) {
+//        enabled = true;
+//    }
+//
+//    if (is_wait_over(draw_interval)) {
+//        fadeToBlackBy(leds, NUM_LEDS, 170);
+//
+//        if (enabled) {
+//            // waves created by primary droplet
+//            leds[(NUM_LEDS+center+delta) % NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta)*255);
+//            leds[(NUM_LEDS+center-delta) % NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta)*255);
+//
+//            if (delta > 3) {
+//                // waves created by rebounded droplet
+//                leds[(NUM_LEDS+center+(delta-3)) % NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta - 2)*255);
+//                leds[(NUM_LEDS+center-(delta-3)) % NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta - 2)*255);
+//            }
+//
+//            delta++;
+//            if (delta == max_delta) {
+//                delta = 0;
+//                center = random16(NUM_LEDS);
+//                enabled = false;
+//            }
+//        }
+//    }
+//}
 
 
-void ReAnimator::sound_blocks(uint16_t draw_interval, bool trigger) {
-    uint8_t hue = random8();
+//void ReAnimator::sound_orbit(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
+//    if (is_wait_over(draw_interval)) {
+//        for(uint16_t i = NUM_LEDS-1; i > 0; i--) {
+//            leds[(this->*dfp)(i)] = leds[(this->*dfp)(i-1)];
+//        }
+//
+//        leds[(this->*dfp)(0)] = CHSV(hue, 255, sound_value);
+//    }
+//}
 
-    static bool enabled = true;
 
-    if (trigger) {
-        enabled = true;
-    }
-
-    if (is_wait_over(draw_interval)) {
-        fadeToBlackBy(leds, NUM_LEDS, 5);
-
-        if (enabled) {
-            uint16_t block_start = random16(NUM_LEDS);
-            uint8_t block_size = random8(3,8);
-            for (uint8_t i = 0; i < block_size; i++) {
-                uint16_t pos = (NUM_LEDS+block_start+i) % NUM_LEDS;
-                leds[pos] = CHSV(hue, 255, 255);
-            }
-            enabled = false;
-        }
-    }
-}
+//void ReAnimator::sound_blocks(uint16_t draw_interval, bool trigger) {
+//    uint8_t hue = random8();
+//
+//    static bool enabled = true;
+//
+//    if (trigger) {
+//        enabled = true;
+//    }
+//
+//    if (is_wait_over(draw_interval)) {
+//        fadeToBlackBy(leds, NUM_LEDS, 5);
+//
+//        if (enabled) {
+//            uint16_t block_start = random16(NUM_LEDS);
+//            uint8_t block_size = random8(3,8);
+//            for (uint8_t i = 0; i < block_size; i++) {
+//                uint16_t pos = (NUM_LEDS+block_start+i) % NUM_LEDS;
+//                leds[pos] = CHSV(hue, 255, 255);
+//            }
+//            enabled = false;
+//        }
+//    }
+//}
 
 
 void ReAnimator::dynamic_rainbow(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
@@ -1413,15 +1587,495 @@ void ReAnimator::fade_randomly(uint8_t chance_of_fade, uint8_t decay) {
 
 
 // ++++++++++++++++++++++++++++++
-// ++++++++++ HELPERS +++++++++++
+// +++++++++++ IMAGE ++++++++++++
 // ++++++++++++++++++++++++++++++
+/*
+bool ReAnimator::load_image_from_json(String json, String* message) {
+  bool retval = false;
+  //const size_t CAPACITY = JSON_OBJECT_SIZE(6) + JSON_ARRAY_SIZE(360);
+  //StaticJsonDocument<CAPACITY> doc;
+  DynamicJsonDocument doc(8192);
 
-void ReAnimator::clear() {
-  for (uint16_t i = 0; i < NUM_LEDS; i++) {
-    leds[i] = CRGBA::Transparent;
+  DeserializationError error = deserializeJson(doc, json);
+  if (error) {
+    //Serial.print("deserializeJson() failed: ");
+    //Serial.println(error.c_str());
+    if (message) {
+      *message = F("load_image_from_json: deserializeJson() failed.");
+    }
+    return false;
+  }
+
+  JsonObject object = doc.as<JsonObject>();
+
+  for (uint16_t i = 0; i < NUM_LEDS; i++) leds[i] = 0;
+  retval = deserializeSegment(object, leds, NUM_LEDS);
+
+  return retval;
+}
+*/
+
+
+
+// ++++++++++++++++++++++++++++++
+// ++++++++++++ TEXT ++++++++++++
+// ++++++++++++++++++++++++++++++
+uint8_t ReAnimator::get_text_center(String s) {
+  uint8_t min_row = MD;
+  uint8_t max_row = 0;
+  for (uint8_t i = 0; i < s.length(); i++) {
+    char c = s[i];
+    const uint8_t* glyph = font->get_bitmap(font, c);
+    if (glyph) {
+      uint8_t width = font->get_width(font, c);
+      for (uint8_t j = 0; j < MD; j++) {
+        for (uint8_t k = 0; k < width; k++) {
+          uint16_t n = j*width + k;
+          if(glyph[n]) {
+            min_row = min(j, min_row);
+            max_row = max(j, max_row);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  if ((max_row-min_row+1)/2 + min_row > 0) {
+    return (max_row-min_row+1)/2 + min_row;
+  }
+  return 0;
+}
+
+
+/*
+// do not delete these yet. they might be better for use with position functions.
+void ReAnimator::matrix_char(char c) {
+  const uint8_t* glyph = font->get_bitmap(font, c);
+  if (glyph) {
+    for (uint16_t q = 0; q < NUM_LEDS; q++) {
+      leds[q] = CHSV(0, 0, 0);
+    }
+    uint8_t width = font->get_width(font, c);
+    uint16_t n = 0;
+    uint8_t pad = (MD-width)/2;
+    for (uint8_t i = 0; i < MD; i++) {
+      for (uint8_t j = 0; j < width; j++) {
+        uint8_t k = (MD-1)-pad-j;
+        Point p;
+        p.x = k;
+        p.y = i;
+        leds[cart2serp(p)] = CHSV(hue, 255, glyph[n]);
+        n++;
+      }
+    }
   }
 }
 
+void ReAnimator::matrix_text(String s) {
+  static uint32_t pm = 0;
+  static uint16_t i = 0;
+  if ((millis()-pm) > 1000) {
+    pm = millis();
+    matrix_char(s[i]);
+    i = (i+1) % s.length();
+  }
+}
+*/
+
+
+bool ReAnimator::shift_char(char c, int8_t vmargin) {
+  if (shift_char_tracking) {
+    for (uint8_t i = 0; i < MD; i++) {
+      for (uint8_t j = 0; j < MD-1; j++) {
+        uint8_t k = (MD-1)-j;
+        Point p1;
+        Point p2;
+        p1.x = k;
+        p1.y = i;
+        p2.x = k-1;
+        p2.y = i;
+        leds[cart2serp(p1)] = leds[cart2serp(p2)];
+      }
+      Point p;
+      p.x = 0;
+      p.y = i;
+      leds[cart2serp(p)] = 0x00000000; // transparent black
+
+    }
+    shift_char_tracking--;
+    return false;
+  }
+
+  bool finished_shifting = false;
+  uint8_t width = 0;
+
+  const uint8_t* glyph = font->get_bitmap(font, c);
+  if (glyph != nullptr) {
+    width = font->get_width(font, c);
+    for (uint8_t i = 0; i < MD; i++) {
+      for (uint8_t j = 0; j < MD-1; j++) {
+        uint8_t k = (MD-1)-j;
+        Point p1;
+        Point p2;
+        p1.x = k;
+        p1.y = i;
+        p2.x = k-1;
+        p2.y = i;
+        leds[cart2serp(p1)] = leds[cart2serp(p2)];
+      }
+      Point p;
+      p.x = 0;
+      p.y = i;
+
+      uint16_t n = (i-vmargin)*width + shift_char_column;
+      if (0 <= n && n < width*font->h_px) {
+        CRGB pixel = *rgb;
+        //pixel = pixel.scale8(glyph[n]); // not all glyph pixels are completely off or on, so dim for those in between.
+        leds[cart2serp(p)] = pixel;
+        //leds[cart2serp(p)].a = (glyph[n] == 0) ? 0 : 255; // remove partial transparency
+        leds[cart2serp(p)].a = glyph[n];
+      }
+      else {
+        leds[cart2serp(p)] = 0x00000000; // transparent black
+      }
+    }
+
+    shift_char_column = (shift_char_column+1)%width;
+    if (shift_char_column == 0) {
+      finished_shifting = true;  // character fully shifted onto matrix.
+      shift_char_tracking = 1; // add tracking (spacing between letters) on next call
+    }
+  }
+
+  return finished_shifting;
+}
+
+
+
+// ++++++++++++++++++++++++++++++
+// ++++++++++++ INFO ++++++++++++
+// ++++++++++++++++++++++++++++++
+void ReAnimator::setup_clock() {
+  configTzTime(timezone, "pool.ntp.org");
+}
+
+
+void ReAnimator::refresh_date_time(uint16_t draw_interval) {
+    const uint8_t nd = 4;
+    const Point corners[nd] = {{.x = MD-1-3, .y = 0}, {.x = MD-1-9, .y = 0}, {.x = MD-1-3, .y = 8}, {.x = MD-1-9, .y = 8}};
+
+    if (is_wait_over(draw_interval)) {
+        struct tm local_now = {0};
+        // the second argument of getLocalTime indicates how long it should loop waiting for the time to be received from ntp
+        // since getLocalTime() is already being called around every 200 ms (by the if above) there is no need for getLocalTime()
+        // to loop, so set the second argument to 0. using 0 also keeps the other animations from being getLocalTime() looping.
+        // calling it like this does not spam the ntp server.
+        if (getLocalTime(&local_now, 0)) {
+
+            char ts[nd+1];
+            //char ts[nd+1] = {'0', '6', '1', '2', '\0'};
+            if (_id == 0 || _id == 1 || ((_id == 4 || _id == 5) && local_now.tm_sec % 7 != 0)) {
+                uint8_t hour = ((_id == 0 || _id == 4) && local_now.tm_hour > 12) ? local_now.tm_hour-12 : local_now.tm_hour;
+                snprintf(ts, sizeof ts, "%02d%02d", hour, local_now.tm_min);
+            }
+            else if (_id == 2 || _id == 3 || ((_id == 4 || _id == 5) && local_now.tm_sec % 7 == 0)) {
+                if (_id == 2 || _id == 4) {
+                    snprintf(ts, sizeof ts, "%02d%02d", local_now.tm_mon+1, local_now.tm_mday);
+                }
+                else if (_id == 3 || _id == 5) {
+                    snprintf(ts, sizeof ts, "%02d%02d", local_now.tm_mday, local_now.tm_mon+1);
+                }
+            }
+
+            for (uint8_t i = 0; i < nd; i++) {
+                char c = ts[i];
+                const uint8_t* glyph = clkfont->get_bitmap(clkfont, c);
+                uint8_t height = clkfont->h_px;
+                uint8_t width = clkfont->get_width(clkfont, c);
+                if (glyph != nullptr) {
+                    uint8_t n = 0;
+                    Point p0 = corners[i];
+                    for (uint8_t j = 0; j < height; j++) {
+                        for (uint8_t k = 0; k < width; k++) {
+                            uint8_t kk = p0.x-k;
+                            Point p;
+                            p.x = kk;
+                            p.y = p0.y+j;
+
+                            // there are a couple of different ways you can show a glyph
+                            // 1) you can use scale8 to dim the pixel's color such that the negative space becomes black.
+                            //    without being combined with transparency this will result in blocky characters, and black text is not possible.
+                            //    CRGB pixel = *rgb;
+                            //    pixel = pixel.scale8(glyph[n]);
+                            //    leds[cart2serp(p)] = pixel;
+                            // 2) you can set the alpha such that negative space is completely transparent
+                            //    characters are not blocky because negative space is invisible, and black text is possible
+                            //    CRGB pixel = *rgb;
+                            //    leds[cart2serp(p)] = pixel;
+                            //    leds[cart2serp(p)].a = glyph[n];
+
+                            CRGB pixel = *rgb;
+                            // setting color to black is not necessary when transparency is used but it may be advantageous in a yet
+                            // unknow way, so keeping this line but commenting it out.
+                            //pixel = pixel.scale8(glyph[n]); // not all glyph pixels are completely off or on, so dim for those in between.
+                            leds[cart2serp(p)] = pixel;
+                            //leds[cart2serp(p)].a = (glyph[n] == 0) ? 0 : 255; // remove partial transparency
+                            leds[cart2serp(p)].a = glyph[n];
+
+                            //char dc = (glyph[n] == 0) ? '.' : '#';
+                            //Serial.print(dc);
+                            n++;
+                        }
+                        //Serial.println("");
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+// ++++++++++++++++++++++++++++++
+// ++++++++++ CONTROL +++++++++++
+// ++++++++++++++++++++++++++++++
+// loop through all of the patterns
+void ReAnimator::autocycle() {
+    if((millis() - autocycle_previous_millis) > autocycle_interval) {
+        autocycle_previous_millis = millis();
+        DEBUG_PRINTLN("autocycle started");
+        if (increment_pattern(false) == INT8_MIN) {
+            // autocycle has looped back around to the first pattern so reverse them
+            reverse = !reverse;
+        }
+    }
+}
+
+// alternate between running a pattern forwards or backwards
+void ReAnimator::flipflop() {
+    if((millis() - flipflop_previous_millis) > flipflop_interval) {
+        flipflop_previous_millis = millis();
+        DEBUG_PRINTLN("flip flop loop started");
+        reverse = !reverse;
+    }
+}
+
+
+
+
+// ++++++++++++++++++++++++++++++
+// ++++++++ POSITIONING +++++++++
+// ++++++++++++++++++++++++++++++
+ReAnimator::Point ReAnimator::serp2cart(uint8_t i) {
+  const uint8_t rl = 16;
+  Point p;
+  p.y = i/rl;
+  p.x = (p.y % 2) ? (rl-1) - (i % rl) : i % rl;
+  return p;
+}
+
+
+int16_t ReAnimator::cart2serp(Point p) {
+  const uint8_t rl = 16;
+  int16_t i = (p.y % 2) ? (rl*p.y + rl-1) - p.x : rl*p.y + p.x;
+  return i;
+}
+
+
+void ReAnimator::flip(CRGB sm[NUM_LEDS], bool dim) {
+  Point p1;
+  Point p2;
+  const uint8_t rl = 16;
+  for (uint8_t j = 0; j < rl; j++) {
+    for (uint8_t k = 0; k < rl/2; k++) {
+      p1.x = dim ? j : k;
+      p1.y = dim ? k : j;
+      p2.x = dim ? j : rl-1-k;
+      p2.y = dim ? rl-1-k : j;
+      CRGB tmp = sm[cart2serp(p1)];
+      sm[cart2serp(p1)] = sm[cart2serp(p2)];
+      sm[cart2serp(p2)] = tmp;
+    }
+  }
+}
+
+
+//sx: + is WEST, - is EAST
+//sy: + is SOUTH, - is NORTH
+// where WEST means right to left, EAST means left to right, SOUTH means down, and NORTH means up
+uint16_t ReAnimator::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8_t sy, bool wrap, int8_t gap) {
+  // the origin of the matrix is in the NORTHEAST corner, so positive moves head WEST and SOUTH
+  // this function's logic treats entering the matrix from the EAST border (WESTWARD movement) or NORTH border (SOUTHWARD movement)
+  // as the basic case and flips those to get EAST and NORTH.
+  // this approach simplifies the code because d and v will be positive (after transient period) 
+  // which lets us just use mod to wrap the output instead of having to account for wrapping around
+  // when d is positive or negative.
+
+  if (t_initial) {
+    t_initial = false;
+    dx = (xi >= MD) ? -abs(xi) : xi;
+    dy = (yi >= MD) ? -abs(yi) : yi;
+  }
+
+  uint16_t ti = NUM_LEDS; // used to indicate pixel is not in bounds and should not be drawn.
+
+  Point p1 = serp2cart(i);
+  Point p2;
+
+  if (t_has_entered && !wrap && !t_visible) {
+    // wrapping is not turned on and input has passed through matrix never to return
+    return ti;
+  }
+
+  t_visible = false;
+  gap = (gap == -1) ? MD : gap; // if gap is -1 set gap to MD so that the input only appears in one place but will still loop around
+
+  uint8_t ux = (sx > 0) ? MD-1-p1.x: p1.x; // flip heading output travels
+  uint8_t uy = (sy > 0) ? MD-1-p1.y: p1.y;
+
+  int8_t vx = ux+dx; // shift input over into output by d
+  int8_t vy = uy+dy;
+  if (t_has_entered && wrap) {
+    vx = vx % (MD+gap);
+    vy = vy % (MD+gap);
+  }
+
+  if ( 0 <= vx && vx < MD && 0 <= vy && vy < MD ) {
+    t_visible = true;
+    vx = (sx > 0) ? MD-1-vx : vx; // flip image
+    vy = (sy > 0) ? MD-1-vy : vy;
+    p2.x = vx;
+    p2.y = vy;
+    ti = cart2serp(p2);
+  }
+
+  if (i == NUM_LEDS-1) {
+    dx += abs(sx%MD);
+    dy += abs(sy%MD);
+    // need to track when input has entered into view for the first time
+    // to prevent wrapping until the transient period has ended
+    // this allows controlling how long it takes the input to enter the matrix
+    // by setting abs(xi) or abs(yi) to higher numbers.
+    if (dx >= 0 && dy >= 0) {
+      t_has_entered = true;
+    }
+
+    if (t_has_entered && wrap) {
+        dx = dx % (MD+gap);
+        dy = dy % (MD+gap);
+    }
+  }
+  return ti;
+}
+
+
+void ReAnimator::ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi, int8_t yi, int8_t sx, int8_t sy, bool wrap, int8_t gap) {
+// an output array is required to use this function. out[] should be what is displayed on the matrix.
+  if (t_initial) {
+    t_initial = false;
+    t_visible = false;
+    t_has_entered = false;
+    dx = (xi >= MD) ? -abs(xi) : xi;
+    dy = (yi >= MD) ? -abs(yi) : yi;
+  }
+
+  Point p1;
+  Point p2;
+
+  if (t_has_entered && !wrap && !t_visible) {
+    // wrapping is not turned on and input has passed through matrix never to return
+    return;
+  }
+
+  t_visible = false;
+  gap = (gap == -1) ? MD : gap; // if gap is -1 set gap to MD so that the input only appears in one place but will still loop around
+
+  for (uint8_t j = 0; j < MD; j++) {
+    for (uint8_t k = 0; k < MD; k++) {
+      uint8_t ux = (sx > 0) ? MD-1-k: k; // flip heading output travels
+      uint8_t uy = (sy > 0) ? MD-1-j: j;
+
+      p1.x = ux;
+      p1.y = uy;
+      out[cart2serp(p1)] = CRGB::Black; // ??? TRANSPARENT 0x424242
+
+      int8_t vx = k+dx; // shift input over into output by d
+      int8_t vy = j+dy;
+      if (t_has_entered && wrap) {
+        vx = vx % (MD+gap);
+        vy = vy % (MD+gap);
+      }
+
+      if ( 0 <= vx && vx < MD && 0 <= vy && vy < MD ) {
+        t_visible = true;
+        vx = (sx > 0) ? MD-1-vx : vx; // flip image
+        vy = (sy > 0) ? MD-1-vy : vy;
+        p2.x = vx;
+        p2.y = vy;
+        out[cart2serp(p1)] = in[cart2serp(p2)];
+      }
+      //else {
+      //  out[cart2serp(p1)] = CRGB::Black; // ??? TRANSPARENT 0x424242
+      //}
+    }
+  }
+
+  dx += abs(sx%MD);
+  dy += abs(sy%MD);
+  // need to track when input has entered into view for the first time
+  // to prevent wrapping until the transient period has ended
+  // this allows controlling how long it takes the input to enter the matrix
+  // by setting abs(xi) or abs(yi) to higher numbers.
+  if (dx >= 0 && dy >= 0) {
+    t_has_entered = true;
+  }
+
+  if (t_has_entered && wrap) {
+      dx = dx % (MD+gap);
+      dy = dy % (MD+gap);
+  }
+}
+
+uint16_t ReAnimator::mover(uint16_t i) {
+  uint16_t ti;
+  switch (heading) {
+    default:
+    case 0:
+      ti = i;
+      break;
+    case 1:
+      ti = translate(i, 0, MD, 0, -1, true, -1);
+      break;
+    case 2:
+      ti = translate(i, MD, MD, -1, -1, true, -1);
+      break;
+    case 3:
+      ti = translate(i, MD, 0, -1, 0, true, -1);
+      break;
+    case 4:
+      ti = translate(i, MD, -MD, -1, 1, true, -1);
+      break;
+    case 5:
+      ti = translate(i, 0, -MD, 0, 1, true, -1);
+      break;
+    case 6:
+      ti = translate(i, -MD, -MD, 1, 1, true, -1);
+      break;
+    case 7:
+      ti = translate(i, -MD, 0, 1, 0, true, -1);
+      break;
+    case 8:
+      ti = translate(i, -MD, MD, 1, -1, true, -1);
+      break;
+  }
+  return ti;
+}
+
+
+
+// ++++++++++++++++++++++++++++++
+// ++++++++++ HELPERS +++++++++++
+// ++++++++++++++++++++++++++++++
 //void ReAnimator::fadeToBlackBy(CRGBA pixel, uint8_t fadeBy) {
 //    CRGB pixel_rgb = (CRGB)pixel;
 //    pixel_rgb = pixel_rgb.scale8(255-fadeBy);
@@ -1502,42 +2156,39 @@ void ReAnimator::accelerate_decelerate_pattern(uint16_t draw_interval_initial, u
 
 
 // derived from this code https://github.com/atuline/FastLED-Demos/blob/master/soundmems_demo/soundmems.h
-void ReAnimator::process_sound() {
-    // do nothing. sound reactive is not implemented yet
-    /*
-    const uint16_t DC_OFFSET = 513;  // measured
-    const uint8_t NUM_SAMPLES = 64;
-
-    static int16_t sample_buffer[NUM_SAMPLES];
-    static uint16_t sample_sum = 0;
-    static uint8_t i = 0;
-
-    int16_t sample = 0;
-
-    sample_peak = 0;
-
-    sample = analogRead(MIC_PIN) - DC_OFFSET;
-    sample = abs(sample);
-
-    if (sample < sample_threshold) {
-        sample = 0;
-    }
-
-    sample_sum += sample - sample_buffer[i]; // add newest sample and subtract oldest sample from the sum
-    sample_average = sample_sum / NUM_SAMPLES;
-    sample_buffer[i] = sample;  // overwrite oldest sample with newest sample
-    i = (i + 1) % NUM_SAMPLES;
-
-    sound_value = sound_value_gain*sample_average;
-    sound_value = min(sound_value, 255);
-
-    if (sample > (sample_average + sample_threshold) && (sample < previous_sample)) {
-        sample_peak = 1;
-    }
-  
-    previous_sample = sample;
-    */
-}
+//void ReAnimator::process_sound() {
+//    const uint16_t DC_OFFSET = 513;  // measured
+//    const uint8_t NUM_SAMPLES = 64;
+//
+//    static int16_t sample_buffer[NUM_SAMPLES];
+//    static uint16_t sample_sum = 0;
+//    static uint8_t i = 0;
+//
+//    int16_t sample = 0;
+//
+//    sample_peak = 0;
+//
+//    sample = analogRead(MIC_PIN) - DC_OFFSET;
+//    sample = abs(sample);
+//
+//    if (sample < sample_threshold) {
+//        sample = 0;
+//    }
+//
+//    sample_sum += sample - sample_buffer[i]; // add newest sample and subtract oldest sample from the sum
+//    sample_average = sample_sum / NUM_SAMPLES;
+//    sample_buffer[i] = sample;  // overwrite oldest sample with newest sample
+//    i = (i + 1) % NUM_SAMPLES;
+//
+//    sound_value = sound_value_gain*sample_average;
+//    sound_value = min(sound_value, 255);
+//
+//    if (sample > (sample_average + sample_threshold) && (sample < previous_sample)) {
+//        sample_peak = 1;
+//    }
+//  
+//    previous_sample = sample;
+//}
 
 
 void ReAnimator::motion_blur(int8_t blur_num, uint16_t pos, uint16_t(ReAnimator::*dfp)(uint16_t)) {
@@ -1628,3 +2279,57 @@ void ReAnimator::print_dt() {
     pm = millis();
 }
 */
+
+
+
+
+
+
+
+
+
+/*
+void demo() {
+  const uint8_t PATTERNS_NUM = 21;
+
+  const Pattern patterns[PATTERNS_NUM] = {DYNAMIC_RAINBOW, SOLID, ORBIT, RUNNING_LIGHTS,
+                                          JUGGLE, SPARKLE, WEAVE, CHECKERBOARD, BINARY_SYSTEM,
+                                          SOLID, SOLID, SOLID, SOLID, DYNAMIC_RAINBOW,
+                                          SHOOTING_STAR, //MITOSIS, BUBBLES, MATRIX,
+                                          BALLS, CYLON,
+                                          //STARSHIP_RACE
+                                          //PUCK_MAN, // PUCK_MAN crashes ???
+                                          //SOUND_BLOCKS, SOUND_BLOCKS, SOUND_RIBBONS, SOUND_RIBBONS,
+                                          //SOUND_ORBIT, SOUND_ORBIT, SOUND_RIPPLE, SOUND_RIPPLE
+                                          };
+
+
+
+  const Overlay overlays[PATTERNS_NUM] = {NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY,
+                                          NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY,
+                                          GLITTER, BREATHING, CONFETTI, FLICKER, FROZEN_DECAY,
+                                          NO_OVERLAY, //NO_OVERLAY, NO_OVERLAY, NO_OVERLAY,
+                                          NO_OVERLAY, NO_OVERLAY
+                                          //NO_OVERLAY
+                                          //NO_OVERLAY
+                                          //NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY,
+                                          //NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY
+                                          };
+
+  static uint8_t poi = 0;
+
+  EVERY_N_MILLISECONDS(19200) {
+    poi = (poi+1) % PATTERNS_NUM;
+    GlowSerum.set_pattern(patterns[poi]);
+    GlowSerum.set_overlay(overlays[poi], false);
+
+    //if (poi >= 22 && poi <= 25) {
+    //    GlowSerum.set_flipflop_enabled(true);
+    //}
+    //else {
+    //    GlowSerum.set_flipflop_enabled(false);
+    //}
+  }
+}
+*/
+
