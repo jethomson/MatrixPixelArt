@@ -34,14 +34,7 @@ const char* timezone = "EST5EDT,M3.2.0,M11.1.0";
 
 
 ReAnimator::ReAnimator() : freezer(*this) {
-//ReAnimator::ReAnimator(CRGB *color, uint16_t led_strip_milliamps) : freezer(*this) {
-
-    //rgb = color;
-    //CHSV chsv = rgb2hsv_approximate(*color);
-    //hue = chsv.h;
-    //selected_led_strip_milliamps = led_strip_milliamps;
-
-    homogenized_brightness = 255;
+    brightness = 255;
 
     pattern = NONE;
     transient_overlay = NO_OVERLAY;
@@ -64,19 +57,21 @@ ReAnimator::ReAnimator() : freezer(*this) {
     //last_pattern_ran = NULL;
     //last_pattern_ran = 0;
 
-    autocycle_enabled = false;
     autocycle_previous_millis = 0;
-    autocycle_interval = 30000;
+    autocycle_interval = 10000;
+    autocycle_enabled = false;
 
-    flipflop_enabled = false;
     flipflop_previous_millis = 0;
     flipflop_interval = 6000;
+    flipflop_enabled = false;
 
     //previous_sample = 0;
     //sample_peak = 0;
     //sample_average = 0;
     //sample_threshold = 20;
     //sound_value_gain = SOUND_VALUE_GAIN_INITIAL;
+
+    fresh_image = false;
 
     clear();
 }
@@ -104,6 +99,8 @@ void ReAnimator::setup(LayerType ltype, int8_t id) {
     // these leftovers may not be overwritten by the new effect, so it is best to clear leds[]
     clear();
 
+    brightness = 255;
+
     set_autocycle_interval(10000);
     set_autocycle_enabled(false);
     set_flipflop_interval(6000);
@@ -112,37 +109,9 @@ void ReAnimator::setup(LayerType ltype, int8_t id) {
     set_pattern(NONE);
     set_overlay(NO_OVERLAY, false);
     set_cb(noop_cb);
+
+    fresh_image = false;
   }
-}
-
-
-void ReAnimator::set_selected_led_strip_milliamps(uint16_t led_strip_milliamps) {
-    if (led_strip_milliamps > selected_led_strip_milliamps) {
-        // normally homogenized_brightness only goes down but since the power is increased we need to reset homogenized_brightness so it can
-        // learn the new brightness level that makes all the animations have a consistent brightness
-        //homogenized_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, 255, LED_STRIP_VOLTAGE, led_strip_milliamps);
-        homogenized_brightness = 128;
-    }
-    else {
-        //homogenized_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, led_strip_milliamps);
-        homogenized_brightness = 128;
-    }
-    selected_led_strip_milliamps = led_strip_milliamps;
-}
-
-
-// When FastLED's power management functions are used FastLED dynamically adjusts the brightness level to be as high as possible while
-// keeping the power draw near the specified level. This can lead to the brightness level of an animation noticeably increasing when
-// fewer LEDs are lit and the brightness noticeably dipping when more LEDs are lit or their colors change.
-// homogenize_brightness() learns the lowest brightness level of all the animations and uses it across every animation to keep a consistent
-// brightness level. This will lead to dimmer animations and power usage almost always a good bit lower than what the FastLED power
-// management function was set to aim for. Set the #define for HOMOGENIZE_BRIGHTNESS to false to disable this feature.
-void ReAnimator::homogenize_brightness() {
-    //uint8_t max_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, selected_led_strip_milliamps);
-    uint8_t max_brightness = 128; // for testing
-    if (max_brightness < homogenized_brightness) {
-        homogenized_brightness = max_brightness;
-    }
 }
 
 
@@ -374,14 +343,14 @@ int8_t ReAnimator::set_overlay(Overlay overlay_in, bool is_persistent) {
         case NO_OVERLAY:
             overlay_out = NO_OVERLAY;
             break;
-        case GLITTER:
-            overlay_out = GLITTER;
-            break;
+        //case GLITTER:
+        //    overlay_out = GLITTER;
+        //    break;
+        //case CONFETTI:
+        //    overlay_out = CONFETTI;
+        //    break;
         case BREATHING:
             overlay_out = BREATHING;
-            break;
-        case CONFETTI:
-            overlay_out = CONFETTI;
             break;
         case FLICKER:
             overlay_out = FLICKER;
@@ -413,38 +382,9 @@ void ReAnimator::increment_overlay(bool is_persistent) {
 
 
 bool ReAnimator::set_image(String fs_path, String* message) {
-  bool retval = false;
-  File file = LittleFS.open(fs_path, "r");
-
-  if(!file){
-    if (message) {
-      *message = F("set_image(): File not found.");
-    }
-    return false;
-  }
-  if (file.available()) {
-    DynamicJsonDocument doc(8192);
-    DeserializationError error = deserializeJson(doc, file.readString());
-    if (error) {
-      //Serial.print("deserializeJson() failed: ");
-      //Serial.println(error.c_str());
-      if (message) {
-        *message = F("set_image: deserializeJson() failed.");
-      }
-      return false;
-    }
-
-    JsonObject object = doc.as<JsonObject>();
-
-    for (uint16_t i = 0; i < NUM_LEDS; i++) leds[i] = 0xFFFFFF00;
-    retval = deserializeSegment(object, leds, NUM_LEDS);
-  }
-  file.close();
-
-  if (message) {
-    *message = F("set_image(): Matrix loaded.");
-  }
-  return retval;
+    image_path = fs_path;
+    fresh_image = load_image_from_file(fs_path, message);
+    return fresh_image;
 }
 
 
@@ -540,16 +480,17 @@ void ReAnimator::reanimate() {
     //process_sound();
 
     if (!freezer.is_frozen()) {
-        if (_ltype == Pattern_t) {
-          run_pattern(pattern);
-          last_pattern_ran = pattern;
+        if (_ltype == Image_t && !fresh_image) {
+            fresh_image = load_image_from_file(image_path);
         }
-        
-        if (_ltype == Text_t) {
+        else if (_ltype == Pattern_t) {
+            run_pattern(pattern);
+            last_pattern_ran = pattern;
+        }
+        else if (_ltype == Text_t) {
             refresh_text(200);
         }
-
-        if (_ltype == Info_t) {
+        else if (_ltype == Info_t) {
             refresh_info(200);
         }
     }
@@ -558,33 +499,48 @@ void ReAnimator::reanimate() {
     apply_overlay(persistent_overlay);
 
     //print_dt();
-
-#if HOMOGENIZE_BRIGHTNESS
-    homogenize_brightness();
-#endif
-
-    if (transient_overlay != BREATHING && transient_overlay != FLICKER && persistent_overlay != BREATHING && persistent_overlay != FLICKER) {
-        FastLED.setBrightness(homogenized_brightness);
-    }
 }
 
-
+#define DIM_METHOD 3
 CRGBA ReAnimator::get_pixel(uint16_t i) {
-  //CRGBA pixel_out = 0xFF000000; // if black with no transparency is used it creates a sort of spotlight effect
-  CRGBA pixel_out = 0x00000000;
-  uint16_t ti = mover(i);
-  if (0 <= ti && ti < NUM_LEDS) {
-    pixel_out = leds[ti];
-  }
+    static uint8_t b1 = 0;
+    static uint8_t b2 = 0;
+    //CRGBA pixel_out = 0xFF000000; // if black with no transparency is used it creates a sort of spotlight effect
+    CRGBA pixel_out = 0x00000000;
+    uint16_t ti = mover(i);
+    if (0 <= ti && ti < NUM_LEDS) {
+        pixel_out = leds[ti];
+#if DIM_METHOD == 1
+        pixel_out.fadeToBlackBy(255-brightness);
+#elif DIM_METHOD == 2
+        nscale8x3(pixel_out.r, pixel_out.g, pixel_out.b, brightness);
+        pixel_out.a = scale8(pixel_out.a, (brightness > 10) ? 255 : brightness);
+#elif DIM_METHOD == 3
+        nscale8x3(pixel_out.r, pixel_out.g, pixel_out.b, brightness);
+        uint8_t asf = 255;
+        if (brightness < 64) {
+            asf = 4*brightness;
+        }
+        //if (brightness < 32) {
+        //    asf = 8*brightness;
+        //}
+        //if (brightness < 16) {
+        //    asf = 16*brightness;
+        //}
+        pixel_out.a = scale8(pixel_out.a, asf);
 
-  //if (_ltype == Pattern_t || _ltype == Accent_t) {
-    //pixel_out.a = 255; // work around to make sure every pixel is opaque. need to work on ReAnimator so it uses transparency better.
-    //if (pixel_out == 0xFF000000) {
-    //  pixel_out.a = 0;
-    //}
-  //}
+        //if (pattern == DYNAMIC_RAINBOW && (b1 != brightness || b2 != asf)) {
+        //    b1 = brightness;
+        //    b2 = asf;
+        //    Serial.print("brightness: ");
+        //    Serial.println(brightness);
+        //    Serial.print("asf: ");
+        //    Serial.println(asf);
+        //}
+#endif
+    }
 
-  return pixel_out;
+    return pixel_out;
 }
 
 
@@ -713,14 +669,14 @@ int8_t ReAnimator::apply_overlay(Overlay overlay) {
             // fall through to next case
         case NO_OVERLAY:
             break;
-        case GLITTER:
-            glitter(700);
-            break;
+        //case GLITTER:
+        //    glitter(700);
+        //    break;
+        //case CONFETTI:
+        //    sparkle(20, true, 0);
+        //    break;
         case BREATHING:
             breathing(10);
-            break;
-        case CONFETTI:
-            sparkle(20, true, 0);
             break;
         case FLICKER:
             flicker(150);
@@ -729,6 +685,7 @@ int8_t ReAnimator::apply_overlay(Overlay overlay) {
             freezer.timer(7000);
             if (freezer.is_frozen()) {
                 fade_randomly(7, 100);
+                fresh_image = false;
             }
             break;
     }
@@ -1536,7 +1493,6 @@ void ReAnimator::dynamic_rainbow(uint16_t draw_interval, uint16_t(ReAnimator::*d
 // ++++++++++++++++++++++++++++++
 // ++++++++++ OVERLAYS ++++++++++
 // ++++++++++++++++++++++++++++++
-
 void ReAnimator::breathing(uint16_t interval) {
     const uint8_t min_brightness = 2;
     static uint8_t delta = 0; // goes up to 255 then overflows back to 0
@@ -1545,11 +1501,13 @@ void ReAnimator::breathing(uint16_t interval) {
         // since FastLED is managing the maximum power delivered use the following function to find the _actual_ maximum brightness allowed for
         // these power consumption settings. setting brightness to a value higher that max_brightness will not actually increase the brightness.
         //uint8_t max_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, selected_led_strip_milliamps);
-        uint8_t max_brightness = 128;
-        uint8_t b = scale8(triwave8(delta), max_brightness-min_brightness)+min_brightness;
+        //uint8_t max_brightness = 128;
+        extern uint8_t homogenized_brightness;
+        uint8_t max_brightness = homogenized_brightness;
+        brightness = scale8(triwave8(delta), max_brightness-min_brightness)+min_brightness;
 
-        DEBUG_PRINTLN(b);
-        FastLED.setBrightness(b);
+        //DEBUG_PRINTLN(brightness);
+        //FastLED.setBrightness(brightness);
 
         delta++;
     }
@@ -1557,15 +1515,13 @@ void ReAnimator::breathing(uint16_t interval) {
 
 
 void ReAnimator::flicker(uint16_t interval) {
-    fade_randomly(10, 150);
+    //fade_randomly(10, 150);
 
     // an on or off period less than 16 ms probably can't be perceived
     if (finished_waiting(interval)) {
-        //FastLED.setBrightness((random8(1,11) > 4)*homogenized_brightness);
-        uint8_t r = (random8(1,11) > 4);
-        for (uint16_t i = 0; i < NUM_LEDS; i++) {
-            leds[i].fadeToBlackBy(r*homogenized_brightness);
-        }
+        // since FastLED is managing the brightness, flicker is simply on or off, we are not transitioning up to the max it is OK to use 255 to mean show at highest brightness allowed
+        brightness = (random8(1,11) > 4)*255;
+        //FastLED.setBrightness((random8(1,11) > 4)*255);
     }
 }
 
@@ -1589,31 +1545,65 @@ void ReAnimator::fade_randomly(uint8_t chance_of_fade, uint8_t decay) {
 // ++++++++++++++++++++++++++++++
 // +++++++++++ IMAGE ++++++++++++
 // ++++++++++++++++++++++++++++++
-/*
-bool ReAnimator::load_image_from_json(String json, String* message) {
-  bool retval = false;
-  //const size_t CAPACITY = JSON_OBJECT_SIZE(6) + JSON_ARRAY_SIZE(360);
-  //StaticJsonDocument<CAPACITY> doc;
-  DynamicJsonDocument doc(8192);
+//bool ReAnimator::load_image_from_json(String json, String* message) {
+//  bool retval = false;
+//  //const size_t CAPACITY = JSON_OBJECT_SIZE(6) + JSON_ARRAY_SIZE(360);
+//  //StaticJsonDocument<CAPACITY> doc;
+//  DynamicJsonDocument doc(8192);
+//
+//  DeserializationError error = deserializeJson(doc, json);
+//  if (error) {
+//    //Serial.print("deserializeJson() failed: ");
+//    //Serial.println(error.c_str());
+//    if (message) {
+//      *message = F("load_image_from_json: deserializeJson() failed.");
+//    }
+//    return false;
+//  }
+//
+//  JsonObject object = doc.as<JsonObject>();
+//
+//  for (uint16_t i = 0; i < NUM_LEDS; i++) leds[i] = 0;
+//  retval = deserializeSegment(object, leds, NUM_LEDS);
+//
+//  return retval;
+//}
 
-  DeserializationError error = deserializeJson(doc, json);
-  if (error) {
-    //Serial.print("deserializeJson() failed: ");
-    //Serial.println(error.c_str());
+
+bool ReAnimator::load_image_from_file(String fs_path, String* message) {
+  bool retval = false;
+  File file = LittleFS.open(fs_path, "r");
+
+  if(!file){
     if (message) {
-      *message = F("load_image_from_json: deserializeJson() failed.");
+      *message = F("set_image(): File not found.");
     }
     return false;
   }
+  if (file.available()) {
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, file.readString());
+    if (error) {
+      //Serial.print("deserializeJson() failed: ");
+      //Serial.println(error.c_str());
+      if (message) {
+        *message = F("set_image: deserializeJson() failed.");
+      }
+      return false;
+    }
 
-  JsonObject object = doc.as<JsonObject>();
+    JsonObject object = doc.as<JsonObject>();
 
-  for (uint16_t i = 0; i < NUM_LEDS; i++) leds[i] = 0;
-  retval = deserializeSegment(object, leds, NUM_LEDS);
+    for (uint16_t i = 0; i < NUM_LEDS; i++) leds[i] = 0xFFFFFF00;
+    retval = deserializeSegment(object, leds, NUM_LEDS);
+  }
+  file.close();
 
+  if (message) {
+    *message = F("set_image(): Matrix loaded.");
+  }
   return retval;
 }
-*/
 
 
 
@@ -1933,8 +1923,9 @@ uint16_t ReAnimator::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8
   uint8_t ux = (sx > 0) ? MD-1-p1.x: p1.x; // flip heading output travels
   uint8_t uy = (sy > 0) ? MD-1-p1.y: p1.y;
 
-  int8_t vx = ux+dx; // shift input over into output by d
+  int8_t vx = ux+dx; // shift input over into output by dx
   int8_t vy = uy+dy;
+
   if (t_has_entered && wrap) {
     vx = vx % (MD+gap);
     vy = vy % (MD+gap);
@@ -1949,7 +1940,7 @@ uint16_t ReAnimator::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8
     ti = cart2serp(p2);
   }
 
-  if (i == NUM_LEDS-1) {
+  if (i == NUM_LEDS-1 && !freezer.is_frozen()) {
     dx += abs(sx%MD);
     dy += abs(sy%MD);
     // need to track when input has entered into view for the first time
@@ -2112,7 +2103,6 @@ uint16_t ReAnimator::backwards(uint16_t index) {
 // function and an overlay function are both called at the same time.
 // Patterns should use is_wait_over() and overlays should use finished_waiting(). 
 bool ReAnimator::is_wait_over(uint16_t interval) {
-    //static uint32_t iwopm = 0; // previous millis
     if ( (millis() - iwopm) > interval ) {
         iwopm = millis();
         return true;
@@ -2124,7 +2114,6 @@ bool ReAnimator::is_wait_over(uint16_t interval) {
 
 
 bool ReAnimator::finished_waiting(uint16_t interval) {
-    //static uint32_t fwpm = 0; // previous millis
     if ( (millis() - fwpm) > interval ) {
         fwpm = millis();
         return true;
@@ -2224,37 +2213,32 @@ void ReAnimator::fission() {
 
 // freeze_interval must be greater than m_failsafe_timeout
 void ReAnimator::Freezer::timer(uint16_t freeze_interval) {
-    static uint32_t pm = millis() - freeze_interval; // previous millis
-
-    if ((millis() - pm) > freeze_interval) {
-        pm = millis();
+    if ((millis() - m_pm) > freeze_interval) {
+        m_pm = millis();
+        m_frozen_previous_millis = m_pm;
         m_frozen = true;
-        m_frozen_previous_millis = millis();
     }
 }
 
 
 bool ReAnimator::Freezer::is_frozen() {
-    static bool all_black = false;
-    static uint16_t frozen_duration = m_failsafe_timeout;
-
-    if ((millis() - m_frozen_previous_millis) > frozen_duration) {
+    if ((millis() - m_frozen_previous_millis) > m_frozen_duration) {
         m_frozen = false;
-        all_black = false;
-        frozen_duration = m_failsafe_timeout;
+        m_all_black = false;
+        m_frozen_duration = m_failsafe_timeout;
     }
-    else if (!all_black) {
+    else if (!m_all_black) {
         for (uint16_t i = 0; i < NUM_LEDS; i++) {
-            all_black = true;
+            m_all_black = true;
             if (parent.leds[i] != CRGBA::Transparent) {
-                all_black = false;
+                m_all_black = false;
                 break;
             }
         }
-        if (all_black && ((m_frozen_previous_millis + m_failsafe_timeout) - millis()) > m_after_all_black_pause) {
+        if (m_all_black && ((m_frozen_previous_millis + m_failsafe_timeout) - millis()) > m_after_all_black_pause) {
             // after all the LEDs after found to be dark unfreeze after a short pause
             m_frozen_previous_millis = millis();
-            frozen_duration = m_after_all_black_pause;
+            m_frozen_duration = m_after_all_black_pause;
         }
     }
 

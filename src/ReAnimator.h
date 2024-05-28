@@ -39,8 +39,6 @@
 
 //#define MIC_PIN    A1  // sound reactive is not implemented yet
 
-#define HOMOGENIZE_BRIGHTNESS true
-
 
 #include "project.h"
 #include "lv_font.h"
@@ -75,7 +73,7 @@ enum Pattern {            ORBIT = 0, THEATER_CHASE = 1,
                  //SOUND_RIBBONS = 17, SOUND_RIPPLE = 18, SOUND_BLOCKS = 19, SOUND_ORBIT = 20
                  };
 */
-enum Overlay {GLITTER = 0, CONFETTI = 1, FLICKER = 2, FROZEN_DECAY = 3, BREATHING = 99, NO_OVERLAY = 100};
+enum Overlay {NO_OVERLAY = 0, BREATHING = 1, FLICKER = 2, FROZEN_DECAY = 3};
 
 enum Info {TIME_12HR = 0, TIME_24HR = 1, DATE_MMDD = 2, DATE_DDMM = 3, TIME_12HR_DATE_MMDD = 4, TIME_24HR_DATE_DDMM = 5};
 
@@ -86,12 +84,12 @@ class ReAnimator {
     //LayerType _ltype = static_cast<LayerType>(-1);
     LayerType _ltype;
     int8_t _id;
+    String image_path;
 
     CRGBA leds[NUM_LEDS];
     //CRGBA tleds[NUM_LEDS]; // for use with ntranslate()
 
-    uint16_t selected_led_strip_milliamps;
-    uint8_t homogenized_brightness;
+    uint8_t brightness;
 
     bool autocycle_enabled;
     uint32_t autocycle_previous_millis;
@@ -123,10 +121,13 @@ class ReAnimator {
 
     class Freezer {
         ReAnimator &parent;
-        bool m_frozen;
         const uint16_t m_after_all_black_pause = 500;
         const uint16_t m_failsafe_timeout = 3000;
-        uint32_t m_frozen_previous_millis;
+        bool m_all_black = false;
+        uint16_t m_frozen_duration = m_failsafe_timeout;
+        bool m_frozen = false;
+        uint32_t m_frozen_previous_millis = 0;
+        uint32_t m_pm = 0;
 
       public:
         Freezer(ReAnimator &r);
@@ -148,6 +149,7 @@ class ReAnimator {
     //uint16_t sound_value;
     //uint8_t sound_value_gain;
 
+    bool fresh_image;
 
     struct Point {
       uint8_t x;
@@ -181,14 +183,9 @@ class ReAnimator {
     uint32_t fwpm = 0; // previous millis for finished_waiting()
 
   public:
-    //ReAnimator(CRGB leds[NUM_LEDS], uint8_t *hue_type, uint16_t led_strip_milliamps);
-    //ReAnimator(CRGB *color, uint16_t led_strip_milliamps);
     ReAnimator();
 
     void setup(LayerType ltype, int8_t id);
-
-    void set_selected_led_strip_milliamps(uint16_t led_strip_milliamps);
-    void homogenize_brightness();
 
     uint32_t get_autocycle_interval();
     void set_autocycle_interval(uint32_t inteval);
@@ -276,6 +273,12 @@ class ReAnimator {
     void flicker(uint16_t interval);
     void glitter(uint16_t chance_of_glitter);
     void fade_randomly(uint8_t chance_of_fade, uint8_t decay);
+
+
+// ++++++++++++++++++++++++++++++
+// +++++++++++ IMAGE ++++++++++++
+// ++++++++++++++++++++++++++++++
+  bool load_image_from_file(String fs_path, String* message = nullptr);
 
 
 // ++++++++++++++++++++++++++++++

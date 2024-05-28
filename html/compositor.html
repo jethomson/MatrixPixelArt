@@ -31,7 +31,7 @@
 
   .grid-container {
     display: grid;
-    grid-template-columns: repeat(8, minmax(20px, 120px)); /*fixes select element overflow grid width problem in chrome*/
+    grid-template-columns: repeat(9, minmax(20px, 120px)); /*fixes select element overflow grid width problem in chrome*/
     grid-column-gap: 50px;
     grid-row-gap: 5px;
     max-width: 100vw;
@@ -133,7 +133,8 @@
     <div class="grid-container">
         <section>
             <label class="item-a">Layer</label>
-            <label>Effect</label>
+            <label>Effect1</label>
+            <label>Effect2</label>
             <label>Dynamic Color</label>
             <label>Complementary Dynamic Color</label>
             <label>Fixed Color</label>
@@ -146,6 +147,9 @@
             <label class="item-a" for="l4">Top</label>
             <select id="l4" data-key="id" onchange="enable_disable_settings(this)">
               <option value="0">Empty</option>
+            </select>
+            <select id="l4" data-key="id2">
+              <option value="0">None</option>
             </select>
             <input type="radio" id="l4rdc" name="l4cc" data-setting-for="patn" data-key="ct" value=0 autocomplete="off" onchange="enable_disable_color_input(this, 'l4c')" disabled checked />
             <input type="radio" id="l4rcdc" name="l4cc" data-setting-for="patn" data-key="ct" value=1 autocomplete="off" onchange="enable_disable_color_input(this, 'l4c')" disabled />
@@ -170,6 +174,9 @@
             <select id="l3" data-key="id" onchange="enable_disable_settings(this)">
               <option value="0">Empty</option>
             </select>
+            <select id="l3" data-key="id2">
+              <option value="0">None</option>
+            </select>
             <input type="radio" id="l3rdc" name="l3cc" data-setting-for="patn" data-key="ct" value=0 autocomplete="off" onchange="enable_disable_color_input(this, 'l3c')" disabled checked />
             <input type="radio" id="l3rcdc" name="l3cc" data-setting-for="patn" data-key="ct" value=1 autocomplete="off" onchange="enable_disable_color_input(this, 'l3c')" disabled />
             <input type="radio" id="l3rfc" name="l3cc" data-setting-for="patn" data-key="ct" value=2 autocomplete="off" onchange="enable_disable_color_input(this, 'l3c')" disabled />
@@ -192,6 +199,9 @@
             <label class="item-a" for="l2">Middle</label>
             <select id="l2" data-key="id" onchange="enable_disable_settings(this)">
               <option value="0">Empty</option>
+            </select>
+            <select id="l2" data-key="id2">
+              <option value="0">None</option>
             </select>
             <input type="radio" id="l2rdc" name="l2cc" data-setting-for="patn" data-key="ct" value="0" autocomplete="off" onchange="enable_disable_color_input(this, 'l2c')" disabled checked />
             <input type="radio" id="l2rcdc" name="l2cc" data-setting-for="patn" data-key="ct" value="1" autocomplete="off" onchange="enable_disable_color_input(this, 'l2c')" disabled />
@@ -216,6 +226,9 @@
             <select id="l1" data-key="id" autocomplete="off" onchange="enable_disable_settings(this)">
               <option value="0">Empty</option>
             </select>
+            <select id="l1" data-key="id2">
+              <option value="0">None</option>
+            </select>
             <input type="radio" id="l1rdc" name="l1cc" data-setting-for="patn" data-key="ct" value="0" autocomplete="off" onchange="enable_disable_color_input(this, 'l1c')" disabled checked />
             <input type="radio" id="l1rcdc" name="l1cc" data-setting-for="patn" data-key="ct" value="1" autocomplete="off" onchange="enable_disable_color_input(this, 'l1c')" disabled />
             <input type="radio" id="l1rfc" name="l1cc" data-setting-for="patn" data-key="ct" value="2" autocomplete="off" onchange="enable_disable_color_input(this, 'l1c')" disabled />
@@ -238,6 +251,9 @@
             <label class="item-a" for="l0">Bottom</label>
             <select id="l0" data-key="id" onchange="enable_disable_settings(this)">
               <option value="0">Empty</option>
+            </select>
+            <select id="l0" data-key="id2">
+              <option value="0">None</option>
             </select>
             <input type="radio" id="l0rdc" name="l0cc" data-setting-for="patn" data-key="ct" value="0" autocomplete="off" onchange="enable_disable_color_input(this, 'l0c')" disabled checked />
             <input type="radio" id="l0rcdc" name="l0cc" data-setting-for="patn" data-key="ct" value="1" autocomplete="off" onchange="enable_disable_color_input(this, 'l0c')" disabled />
@@ -365,22 +381,37 @@ function populate_effects(list) {
     }
   }
 
+  //let accents = list["accents"];
+  //console.log(accents);
+  //if (accents) {
+  //  let el_selects = document.querySelectorAll('select[data-key="id2"]');
+  //  for (el_select of el_selects) {
+  //    el_select.insertAdjacentHTML("beforeend", '<optgroup id="a" label="Accents">');
+  //  }
+
+  //  for (let i = 0; i < accents.length; i++) {
+  //    // Start at 1 instead of 0 because there is a NO_OVERLAY Accent at id = 0 that is not presented as a choice for the user.
+  //    //let id = i+1;
+  //    let id = i;
+  //    let name = accents[i];
+  //    let el_optgroups = document.querySelectorAll('optgroup[id="a"]');
+  //    for (el_optgroup of el_optgroups) {
+  //      el_optgroup.insertAdjacentHTML("beforeend", `<option value="${id}">${name}</option>`);
+  //    }
+  //  }
+  //}
+  
   let accents = list["accents"];
   console.log(accents);
   if (accents) {
-    let el_selects = document.querySelectorAll('select[data-key="id"]');
-    for (el_select of el_selects) {
-      el_select.insertAdjacentHTML("beforeend", '<optgroup id="a" label="Accents">');
-    }
-
     for (let i = 0; i < accents.length; i++) {
       // Start at 1 instead of 0 because there is a NO_OVERLAY Accent at id = 0 that is not presented as a choice for the user.
-      //let id = i+1;
-      let id = i;
+      let id = i+1;
+  
       let name = accents[i];
-      let el_optgroups = document.querySelectorAll('optgroup[id="a"]');
-      for (el_optgroup of el_optgroups) {
-        el_optgroup.insertAdjacentHTML("beforeend", `<option value="${id}">${name}</option>`);
+      let el_selects = document.querySelectorAll('select[data-key="id2"]');
+      for (el_select of el_selects) {
+        el_select.insertAdjacentHTML("beforeend", `<option value="${id}">${name}</option>`);
       }
     }
   }
@@ -476,6 +507,13 @@ async function save() {
             value = opt.value;
           }
         }
+        
+        if (key === "id2") {
+          let opt = el_key.options[el_key.selectedIndex];
+          if (ltype !== "e") {
+            value = opt.value;
+          }
+        }
   
         // move
         if ((ltype === "i" || ltype === "p" || ltype === "a" || ltype === "n") && key === "m") {
@@ -523,7 +561,7 @@ async function save() {
     json = json.replace(regex, '$1')
   
     console.log(`t=${type}&id=${cmid}&json=` + json);
-  
+
     let success = false;
     try {
       const t = await fetch(base_url+"/save", {

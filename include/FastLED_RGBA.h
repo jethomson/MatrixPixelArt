@@ -130,6 +130,7 @@ struct CRGBA  {
   inline CRGBA& fadeToBlackBy (uint8_t fadefactor) {
     nscale8x3(r, g, b, 255 - fadefactor);
     a = scale8(a, 255 - fadefactor);
+    //a = 255;
     return *this;
   }
 

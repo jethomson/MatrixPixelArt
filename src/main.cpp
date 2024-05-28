@@ -28,6 +28,14 @@
 #define COLORSUB (uint32_t)0x004200
 
 
+#define LED_STRIP_VOLTAGE 5
+//#define LED_STRIP_MILLIAMPS 1300  // USB power supply.
+// the highest current I can measure at full brightness with every pixel white is 2.150 A.
+// this measurement does not agree with the power usage calculated by calculate_unscaled_power_mW() nor commonly given methods for estimating LED power usage.
+#define LED_STRIP_MILLIAMPS 3750  // 75% (safety margin) of 5000 mA power supply.
+
+#define HOMOGENIZE_BRIGHTNESS true
+
 AsyncWebServer web_server(80);
 
 CRGB leds[NUM_LEDS] = {0}; // output
@@ -36,13 +44,15 @@ ReAnimator* layers[NUM_LAYERS];
 uint8_t ghost_layers[NUM_LAYERS] = {0};
 
 
-uint8_t gmax_brightness = 255;
+//uint8_t gmax_brightness = 255;
 //const uint8_t gmin_brightness = 2;
 uint8_t gdynamic_hue = 0;
 uint8_t grandom_hue = 0;
 CRGB gdynamic_rgb = 0x000000;
-//CRGB gdynamic_comp_rgb = 0x000000; // complementary color to the dynamic color
-CRGB gdynamic_comp_rgb = 0xF0AAF0; // complementary color to the dynamic color
+CRGB gdynamic_comp_rgb = 0x000000; // complementary color to the dynamic color
+//CRGB gdynamic_comp_rgb = 0xF0AAF0; // complementary color to the dynamic color
+
+uint8_t homogenized_brightness = 255;
 
 //uint8_t gimage_layer_alpha = 255;
 
@@ -58,9 +68,11 @@ struct {
 //const String patterns_json = "{\"patterns\":[\"None\", \"Rainbow\", \"Solid\", \"Orbit\", \"Running Lights\", \"Juggle\", \"Sparkle\", \"Weave\", \"Checkerboard\", \"Binary System\", \"Shooting Star\", \"Puck-Man\", \"Cylon\", \"Demo\"]}";
 //const String accents_json = "{\"accents\":[\"None\", \"Glitter\", \"Confetti\", \"Flicker\", \"Frozen Decay\"]}";
 const String patterns_json = "[\"Rainbow\", \"Solid\", \"Orbit\", \"Running Lights\", \"Riffle\", \"Sparkle\", \"Weave\", \"Checkerboard\", \"Binary System\", \"Shooting Star\", \"Puck-Man\", \"Cylon\", \"Demo\"]";
-const String accents_json = "[\"Glitter\", \"Confetti\", \"Flicker\", \"Frozen Decay\"]";
+//const String accents_json = "[\"Glitter\", \"Confetti\", \"Flicker\", \"Frozen Decay\"]";
+const String accents_json = "[\"Breathing\", \"Flicker\", \"Frozen Decay\"]";
 
 
+void homogenize_brightness();
 void create_dirs(String path);
 void list_files(File dir, String parent);
 void handle_file_list(void);
@@ -77,6 +89,29 @@ bool load_composite(String fs_path);
 bool load_file(String fs_path);
 bool load_from_playlist(String id = "");
 void web_server_initiate(void);
+
+
+
+
+
+// When FastLED's power management functions are used FastLED dynamically adjusts the brightness level to be as high as possible while
+// keeping the power draw near the specified level. This can lead to the brightness level of an animation noticeably increasing when
+// fewer LEDs are lit and the brightness noticeably dipping when more LEDs are lit or their colors change.
+// homogenize_brightness() learns the lowest brightness level of all the animations and uses it across every animation to keep a consistent
+// brightness level. This will lead to dimmer animations and power usage that is almost always a good bit lower than what the FastLED power
+// management function was set to aim for. Set the #define for HOMOGENIZE_BRIGHTNESS to false to disable this feature.
+//
+// Besides keeping the brightness consistent, homogenize_brightness() will also find the maximum safe brightness automatically.
+// homogenize_brightness() is run before any animation is shown, so it sees power required.
+// This is preferable to calculating the max brightness in setup() by setting the LEDs to a guess at what pattern of colors might need the
+// maximum amount of power. The safest guess is all white LEDs; however none of your animations may ever require that much power so using
+// all white to determine the max brightness is giving up brightness that could be safely used.
+void homogenize_brightness() {
+    uint8_t max_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, LED_STRIP_MILLIAMPS);
+    if (max_brightness < homogenized_brightness) {
+        homogenized_brightness = max_brightness;
+    }
+}
 
 
 void create_dirs(String path) {
@@ -369,11 +404,17 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     layers[lnum] = new ReAnimator();
   }
 
-  // sane default in case data is missing.
+  // sane defaults in case data is missing.
   // if this data is missing json is perhaps it is better to not show the layer at all.
+  uint8_t id2 = 0;
   uint8_t ct = 0; // dynamic color
   std::string c = "0xFFFF00"; // yellow if the fixed color
   uint8_t m = 0; // no movement
+
+
+  if (!layer_json[F("id2")].isNull()) {
+    id2 = layer_json[F("id2")];
+  }
 
   // color is not yet used for images. may be implemented in the future to change color palettes.
   if (!layer_json[F("ct")].isNull()) {
@@ -415,6 +456,7 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     }
     layers[lnum]->setup(Image_t, -2);
     layers[lnum]->set_image(id);
+    layers[lnum]->set_overlay(static_cast<Overlay>(id2), true);
     layers[lnum]->set_heading(m);
   }
   else if (layer_json[F("t")] == "p") {
@@ -422,17 +464,19 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     layers[lnum]->setup(Pattern_t, id);
     layers[lnum]->set_cb(&puck_man_cb);
     layers[lnum]->set_pattern(static_cast<Pattern>(id));
+    layers[lnum]->set_overlay(static_cast<Overlay>(id2), true);
     layers[lnum]->set_heading(m);
   }
-  else if (layer_json[F("t")] == "a") {
-    uint8_t id = layer_json[F("id")];
-    layers[lnum]->setup(Accent_t, id);
-    layers[lnum]->set_overlay(static_cast<Overlay>(id), true);
-    layers[lnum]->set_heading(m);
-  }
+  //else if (layer_json[F("t")] == "a") {
+  //  uint8_t id = layer_json[F("id")];
+  //  layers[lnum]->setup(Accent_t, id);
+  //  layers[lnum]->set_overlay(static_cast<Overlay>(id), true);
+  //  layers[lnum]->set_heading(m);
+  //}
   else if (layer_json[F("t")] == "t") {
     layers[lnum]->setup(Text_t, -1);
     layers[lnum]->set_text(layer_json[F("w")]);
+    layers[lnum]->set_overlay(static_cast<Overlay>(id2), true);
     // direction is disabled for text in the frontend. setting to default of 0.
     // if it is not set back to 0 on a layer that previous had movement the text
     // will move.
@@ -442,6 +486,7 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     uint8_t id = layer_json[F("id")];
     layers[lnum]->setup(Info_t, id);
     layers[lnum]->set_info(static_cast<Info>(id));
+    layers[lnum]->set_overlay(static_cast<Overlay>(id2), true);
     layers[lnum]->set_heading(m);
   }
   return true;
@@ -753,29 +798,21 @@ void setup() {
 
   Serial.begin(115200);
 
-  // instead of using FastLED to manage the POWER used we calculate the max brightness one time below
-  //FastLED.setMaxPowerInVoltsAndMilliamps(LED_STRIP_VOLTAGE, LED_STRIP_MILLIAMPS);
-  //FastLED.setCorrection(TypicalPixelString);
-  FastLED.setCorrection(TypicalSMD5050);  // ??? use this instead
+  FastLED.setMaxPowerInVoltsAndMilliamps(LED_STRIP_VOLTAGE, LED_STRIP_MILLIAMPS);
+  FastLED.setCorrection(TypicalSMD5050);
   FastLED.addLeds<WS2812B, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
 
   FastLED.clear();
   FastLED.show(); // clear the matrix on startup
 
+  homogenize_brightness();
+  FastLED.setBrightness(homogenized_brightness);
+  Serial.println(homogenized_brightness);
 
-  for (uint16_t i = 0; i < NUM_LEDS; i++) {
-    leds[i] = 0xFFFFFF; // white
-  }
-  gmax_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, 255, LED_STRIP_VOLTAGE, LED_STRIP_MILLIAMPS);
-  gmax_brightness = 128; // overriding for testing
   FastLED.clear();
-  FastLED.setBrightness(gmax_brightness);
-  FastLED.show();
+  FastLED.setBrightness(homogenized_brightness);
 
   //random16_set_seed(analogRead(A0)); // use randomness ??? need to look up which pin for ESP32 ???
-
-  FastLED.clear();
-  FastLED.show();
 
   if (!LittleFS.begin()) {
     DEBUG_PRINTLN("LittleFS initialisation failed!");
@@ -914,6 +951,19 @@ void loop() {
         //is_bg_layer = false;
       }
     }
+
+#if HOMOGENIZE_BRIGHTNESS
+    homogenize_brightness();
+#endif
+    // safety measure while testing
+    if (homogenized_brightness > 128) {
+      Serial.print("homogenized_brightness > 128: ");
+      Serial.println(homogenized_brightness);
+      homogenized_brightness = 128;
+    }
+
+    Serial.println(homogenized_brightness);
+    FastLED.setBrightness(homogenized_brightness);
   }
 
   FastLED.show(); // what is the best place to call show() ??? call this less frequently ???

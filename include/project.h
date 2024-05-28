@@ -58,7 +58,6 @@
 
 #define NUM_LEDS 256
 #define MD 16 // width or height of matrix in number of LEDs
-#define LED_STRIP_VOLTAGE 5
 #define SOUND_VALUE_GAIN_INITIAL 2
 #define HUE_ALIEN_GREEN 112
 
