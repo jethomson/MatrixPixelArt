@@ -27,7 +27,6 @@
 //#define TRANSPARENT (uint32_t)0x424242
 #define COLORSUB (uint32_t)0x004200
 
-
 #define LED_STRIP_VOLTAGE 5
 //#define LED_STRIP_MILLIAMPS 1300  // USB power supply.
 // the highest current I can measure at full brightness with every pixel white is 2.150 A.
@@ -92,6 +91,64 @@ void web_server_initiate(void);
 
 
 
+// uses custom values for LED power usage.
+// homogenize_brightness_custom() is a combination of calculate_max_brightness_for_power_mW() and calculate_unscaled_power_mW()
+// found in FastLED's power_mgt.cpp. The code was borrowed from these functions in order to redefine the power used per LED color.
+// My measurements showed the defaults to be much higher than my LEDs which resulted in the calculated brightness being much lower
+// than it could be.
+void homogenize_brightness_custom() {
+  //static const uint8_t red_mW   = 16 * 5; ///< 16mA @ 5v = 80mW
+  //static const uint8_t green_mW = 11 * 5; ///< 11mA @ 5v = 55mW
+  //static const uint8_t blue_mW  = 15 * 5; ///< 15mA @ 5v = 75mW
+  //static const uint8_t dark_mW  =  1 * 5; ///<  1mA @ 5v =  5mW
+
+  static const uint8_t red_mW   = 11 * 5; ///< 11mA @ 5v = 55mW
+  static const uint8_t green_mW = 11 * 5; ///< 11mA @ 5v = 55mW
+  static const uint8_t blue_mW  = 11 * 5; ///< 11mA @ 5v = 55mW
+  static const uint8_t dark_mW  =  1 * 5; ///<  1mA @ 5v =  5mW
+
+  uint32_t max_power_mW = LED_STRIP_VOLTAGE * LED_STRIP_MILLIAMPS;
+
+  uint32_t red32 = 0, green32 = 0, blue32 = 0;
+  const CRGB* firstled = &(leds[0]);
+  uint8_t* p = (uint8_t*)(firstled);
+
+  uint16_t count = NUM_LEDS;
+
+  while (count) {
+    red32   += *p++;
+    green32 += *p++;
+    blue32  += *p++;
+    --count;
+  }
+
+  red32   *= red_mW;
+  green32 *= green_mW;
+  blue32  *= blue_mW;
+
+  red32   >>= 8; // ideally this would be divide by 255 since max value of a color channel is 255, but >> 8 (i.e. divide by 256) is faster.
+  green32 >>= 8;
+  blue32  >>= 8;
+
+  //uint32_t total_mW = red32 + green32 + blue32 + (dark_mW * NUM_LEDS);
+  uint32_t total_dark_mW = 780; // measured.
+  uint32_t total_mW = red32 + green32 + blue32 + total_dark_mW;
+
+	uint32_t requested_power_mW = ((uint32_t)total_mW * homogenized_brightness) / 256;
+
+
+	if (requested_power_mW > max_power_mW) { 
+    homogenized_brightness = (uint32_t)((uint8_t)(homogenized_brightness) * (uint32_t)(max_power_mW)) / ((uint32_t)(requested_power_mW));
+	}
+}
+
+//uses builtin values for LED power usage
+void homogenize_brightness_builtin() {
+    uint8_t max_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, LED_STRIP_MILLIAMPS);
+    if (max_brightness < homogenized_brightness) {
+        homogenized_brightness = max_brightness;
+    }
+}
 
 
 // When FastLED's power management functions are used FastLED dynamically adjusts the brightness level to be as high as possible while
@@ -107,11 +164,10 @@ void web_server_initiate(void);
 // maximum amount of power. The safest guess is all white LEDs; however none of your animations may ever require that much power so using
 // all white to determine the max brightness is giving up brightness that could be safely used.
 void homogenize_brightness() {
-    uint8_t max_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, LED_STRIP_MILLIAMPS);
-    if (max_brightness < homogenized_brightness) {
-        homogenized_brightness = max_brightness;
-    }
+    homogenize_brightness_builtin();
+    //homogenize_brightness_custom();
 }
+
 
 
 void create_dirs(String path) {
@@ -798,12 +854,27 @@ void setup() {
 
   Serial.begin(115200);
 
+  // setMaxPowerInVoltsAndMilliamps() should not be used if homogenize_brightness_custom() is used
+  // since setMaxPowerInVoltsAndMilliamps() uses the builtin LED power usage constants 
+  // homogenize_brightness_custom() was created to avoid.
   FastLED.setMaxPowerInVoltsAndMilliamps(LED_STRIP_VOLTAGE, LED_STRIP_MILLIAMPS);
   FastLED.setCorrection(TypicalSMD5050);
   FastLED.addLeds<WS2812B, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
 
   FastLED.clear();
   FastLED.show(); // clear the matrix on startup
+
+  // for taking current measurements at different brightness levels
+  // every LED white is the maximum amout of power that can be used
+  //for (uint16_t i = 0; i < NUM_LEDS; i++) {
+  //  leds[i] = 0xFFFFFF; // white
+  //}
+  //FastLED.setBrightness(255);
+  //homogenize_brightness();
+  //FastLED.setBrightness(homogenized_brightness);
+  //Serial.println(homogenized_brightness); // builtin: 87, custom: 112
+  //FastLED.show();
+  //delay(6000);
 
   homogenize_brightness();
   FastLED.setBrightness(homogenized_brightness);
@@ -956,13 +1027,11 @@ void loop() {
     homogenize_brightness();
 #endif
     // safety measure while testing
-    if (homogenized_brightness > 128) {
-      Serial.print("homogenized_brightness > 128: ");
-      Serial.println(homogenized_brightness);
-      homogenized_brightness = 128;
-    }
-
-    Serial.println(homogenized_brightness);
+    //if (homogenized_brightness > 128) {
+    //  Serial.print("homogenized_brightness > 128: ");
+    //  Serial.println(homogenized_brightness);
+    //  homogenized_brightness = 128;
+    //}
     FastLED.setBrightness(homogenized_brightness);
   }
 
