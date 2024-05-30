@@ -133,8 +133,8 @@
     <div class="grid-container">
         <section>
             <label class="item-a">Layer</label>
-            <label>Effect1</label>
-            <label>Effect2</label>
+            <label>Effect</label>
+            <label>Accent</label>
             <label>Dynamic Color</label>
             <label>Complementary Dynamic Color</label>
             <label>Fixed Color</label>
@@ -142,19 +142,18 @@
             <label>Movement</label>
             <label>Text</label>
         </section>
-        
+
         <section data-layer="l4">
-            <label class="item-a" for="l4">Top</label>
+            <label class="item-a">Top</label>
             <select id="l4" data-key="id" onchange="enable_disable_settings(this)">
               <option value="0">Empty</option>
             </select>
-            <select id="l4" data-key="id2">
-              <option value="0">None</option>
+            <select id="l4a" data-setting-for="iptn" data-key="a" autocomplete="off" disabled >
             </select>
-            <input type="radio" id="l4rdc" name="l4cc" data-setting-for="patn" data-key="ct" value=0 autocomplete="off" onchange="enable_disable_color_input(this, 'l4c')" disabled checked />
-            <input type="radio" id="l4rcdc" name="l4cc" data-setting-for="patn" data-key="ct" value=1 autocomplete="off" onchange="enable_disable_color_input(this, 'l4c')" disabled />
-            <input type="radio" id="l4rfc" name="l4cc" data-setting-for="patn" data-key="ct" value=2 autocomplete="off" onchange="enable_disable_color_input(this, 'l4c')" disabled />
-            <input type="color" id="l4c" data-setting-for="patn" data-key="c" autocomplete="off" value="#3584e4" disabled />
+            <input type="radio" id="l4rdc" name="l4cc" data-setting-for="ptn" data-key="ct" value=0 autocomplete="off" onchange="enable_disable_color_input(this, 'l4c')" disabled checked />
+            <input type="radio" id="l4rcdc" name="l4cc" data-setting-for="ptn" data-key="ct" value=1 autocomplete="off" onchange="enable_disable_color_input(this, 'l4c')" disabled />
+            <input type="radio" id="l4rfc" name="l4cc" data-setting-for="ptn" data-key="ct" value=2 autocomplete="off" onchange="enable_disable_color_input(this, 'l4c')" disabled />
+            <input type="color" id="l4c" data-setting-for="ptn" data-key="c" autocomplete="off" value="#3584e4" disabled />
             <select id="l4m" data-setting-for="ipan" data-key="m" autocomplete="off" disabled />
               <option value="0">Still</option>
               <option value="1">↑</option>
@@ -170,17 +169,16 @@
         </section>
 
         <section data-layer="l3">
-            <label class="item-a" for="l3">Top Middle</label>
+            <label class="item-a">Top Middle</label>
             <select id="l3" data-key="id" onchange="enable_disable_settings(this)">
               <option value="0">Empty</option>
             </select>
-            <select id="l3" data-key="id2">
-              <option value="0">None</option>
+            <select id="l3a" data-setting-for="iptn" data-key="a" autocomplete="off" disabled >
             </select>
-            <input type="radio" id="l3rdc" name="l3cc" data-setting-for="patn" data-key="ct" value=0 autocomplete="off" onchange="enable_disable_color_input(this, 'l3c')" disabled checked />
-            <input type="radio" id="l3rcdc" name="l3cc" data-setting-for="patn" data-key="ct" value=1 autocomplete="off" onchange="enable_disable_color_input(this, 'l3c')" disabled />
-            <input type="radio" id="l3rfc" name="l3cc" data-setting-for="patn" data-key="ct" value=2 autocomplete="off" onchange="enable_disable_color_input(this, 'l3c')" disabled />
-            <input type="color" id="l3c" data-setting-for="patn" data-key="c" autocomplete="off" value="#3584e4" disabled />
+            <input type="radio" id="l3rdc" name="l3cc" data-setting-for="ptn" data-key="ct" value=0 autocomplete="off" onchange="enable_disable_color_input(this, 'l3c')" disabled checked />
+            <input type="radio" id="l3rcdc" name="l3cc" data-setting-for="ptn" data-key="ct" value=1 autocomplete="off" onchange="enable_disable_color_input(this, 'l3c')" disabled />
+            <input type="radio" id="l3rfc" name="l3cc" data-setting-for="ptn" data-key="ct" value=2 autocomplete="off" onchange="enable_disable_color_input(this, 'l3c')" disabled />
+            <input type="color" id="l3c" data-setting-for="ptn" data-key="c" autocomplete="off" value="#3584e4" disabled />
             <select id="l3m" data-setting-for="ipan" data-key="m" autocomplete="off" disabled />
               <option value="0">Still</option>
               <option value="1">↑</option>
@@ -196,17 +194,16 @@
         </section>
 
         <section data-layer="l2">
-            <label class="item-a" for="l2">Middle</label>
+            <label class="item-a">Middle</label>
             <select id="l2" data-key="id" onchange="enable_disable_settings(this)">
               <option value="0">Empty</option>
             </select>
-            <select id="l2" data-key="id2">
-              <option value="0">None</option>
+            <select id="l2a" data-setting-for="iptn" data-key="a" autocomplete="off" disabled >
             </select>
-            <input type="radio" id="l2rdc" name="l2cc" data-setting-for="patn" data-key="ct" value="0" autocomplete="off" onchange="enable_disable_color_input(this, 'l2c')" disabled checked />
-            <input type="radio" id="l2rcdc" name="l2cc" data-setting-for="patn" data-key="ct" value="1" autocomplete="off" onchange="enable_disable_color_input(this, 'l2c')" disabled />
-            <input type="radio" id="l2rfc" name="l2cc" data-setting-for="patn" data-key="ct" value="2" autocomplete="off" onchange="enable_disable_color_input(this, 'l2c')" disabled />
-            <input type="color" id="l2c" data-setting-for="patn" data-key="c" autocomplete="off" value="#3584e4" disabled />
+            <input type="radio" id="l2rdc" name="l2cc" data-setting-for="ptn" data-key="ct" value="0" autocomplete="off" onchange="enable_disable_color_input(this, 'l2c')" disabled checked />
+            <input type="radio" id="l2rcdc" name="l2cc" data-setting-for="ptn" data-key="ct" value="1" autocomplete="off" onchange="enable_disable_color_input(this, 'l2c')" disabled />
+            <input type="radio" id="l2rfc" name="l2cc" data-setting-for="ptn" data-key="ct" value="2" autocomplete="off" onchange="enable_disable_color_input(this, 'l2c')" disabled />
+            <input type="color" id="l2c" data-setting-for="ptn" data-key="c" autocomplete="off" value="#3584e4" disabled />
             <select id="l2m" data-setting-for="ipan" data-key="m" autocomplete="off" disabled />
               <option value="0">Still</option>
               <option value="1">↑</option>
@@ -222,17 +219,16 @@
         </section>
 
         <section data-layer="l1">
-            <label class="item-a" for="l1">Bottom Middle</label>
+            <label class="item-a">Bottom Middle</label>
             <select id="l1" data-key="id" autocomplete="off" onchange="enable_disable_settings(this)">
               <option value="0">Empty</option>
             </select>
-            <select id="l1" data-key="id2">
-              <option value="0">None</option>
+            <select id="l1a" data-setting-for="iptn" data-key="a" autocomplete="off" disabled >
             </select>
-            <input type="radio" id="l1rdc" name="l1cc" data-setting-for="patn" data-key="ct" value="0" autocomplete="off" onchange="enable_disable_color_input(this, 'l1c')" disabled checked />
-            <input type="radio" id="l1rcdc" name="l1cc" data-setting-for="patn" data-key="ct" value="1" autocomplete="off" onchange="enable_disable_color_input(this, 'l1c')" disabled />
-            <input type="radio" id="l1rfc" name="l1cc" data-setting-for="patn" data-key="ct" value="2" autocomplete="off" onchange="enable_disable_color_input(this, 'l1c')" disabled />
-            <input type="color" id="l1c" data-setting-for="patn" data-key="c" autocomplete="off" value="#3584e4" disabled />
+            <input type="radio" id="l1rdc" name="l1cc" data-setting-for="ptn" data-key="ct" value="0" autocomplete="off" onchange="enable_disable_color_input(this, 'l1c')" disabled checked />
+            <input type="radio" id="l1rcdc" name="l1cc" data-setting-for="ptn" data-key="ct" value="1" autocomplete="off" onchange="enable_disable_color_input(this, 'l1c')" disabled />
+            <input type="radio" id="l1rfc" name="l1cc" data-setting-for="ptn" data-key="ct" value="2" autocomplete="off" onchange="enable_disable_color_input(this, 'l1c')" disabled />
+            <input type="color" id="l1c" data-setting-for="ptn" data-key="c" autocomplete="off" value="#3584e4" disabled />
             <select id="l1m" data-setting-for="ipan" data-key="m" autocomplete="off" disabled />
               <option value="0">Still</option>
               <option value="1">↑</option>
@@ -248,17 +244,16 @@
         </section>
 
         <section data-layer="l0">
-            <label class="item-a" for="l0">Bottom</label>
+            <label class="item-a">Bottom</label>
             <select id="l0" data-key="id" onchange="enable_disable_settings(this)">
               <option value="0">Empty</option>
             </select>
-            <select id="l0" data-key="id2">
-              <option value="0">None</option>
+            <select id="l0a" data-setting-for="iptn" data-key="a" autocomplete="off" disabled >
             </select>
-            <input type="radio" id="l0rdc" name="l0cc" data-setting-for="patn" data-key="ct" value="0" autocomplete="off" onchange="enable_disable_color_input(this, 'l0c')" disabled checked />
-            <input type="radio" id="l0rcdc" name="l0cc" data-setting-for="patn" data-key="ct" value="1" autocomplete="off" onchange="enable_disable_color_input(this, 'l0c')" disabled />
-            <input type="radio" id="l0rfc" name="l0cc" data-setting-for="patn" data-key="ct" value="2" autocomplete="off" onchange="enable_disable_color_input(this, 'l0c')" disabled />
-            <input type="color" id="l0c" data-key="c" data-setting-for="patn" autocomplete="off" value="#3584e4" disabled />
+            <input type="radio" id="l0rdc" name="l0cc" data-setting-for="ptn" data-key="ct" value="0" autocomplete="off" onchange="enable_disable_color_input(this, 'l0c')" disabled checked />
+            <input type="radio" id="l0rcdc" name="l0cc" data-setting-for="ptn" data-key="ct" value="1" autocomplete="off" onchange="enable_disable_color_input(this, 'l0c')" disabled />
+            <input type="radio" id="l0rfc" name="l0cc" data-setting-for="ptn" data-key="ct" value="2" autocomplete="off" onchange="enable_disable_color_input(this, 'l0c')" disabled />
+            <input type="color" id="l0c" data-key="c" data-setting-for="ptn" autocomplete="off" value="#3584e4" disabled />
             <select id="l0m" data-setting-for="ipan" data-key="m" autocomplete="off" disabled />
               <option value="0">Still</option>
               <option value="1">↑</option>
@@ -312,17 +307,25 @@ function enable_disable_settings(el_select) {
   }
   
   let id = el_select.id;
-  //let els = document.querySelectorAll(`[id^="${id}"][data-setting-for]:not([data-key="c"])`);
   let els = document.querySelectorAll(`[id^="${id}"][data-setting-for]`);
   for (el of els) {
     //let dnew = "none";
     let dnew = true;
-    if (el.getAttribute("data-setting-for").includes(type) && el.getAttribute("data-key") != "c") {
+    if (el.getAttribute("data-setting-for").includes(type)) {
       //dnew = "";
       dnew = false;
+      // since the radio buttons enable/disable color picker its state should remain unchanged here
+      if (el.getAttribute("data-key") === "c") {
+        dnew = el.disabled;
+      }
     }
     else {
       // set to defaults - maybe should create a function for this that can be called on page load
+      if (el.getAttribute("data-key") == "a") {
+        el.selectedIndex = 0;
+        el.disabled = false;
+      }
+
       if (el.getAttribute("data-key") == "ct") {
         el.checked = (el.value == 0) ? true : false;
       }
@@ -347,7 +350,7 @@ function populate_effects(list) {
     for (el_select of el_selects) {
       el_select.insertAdjacentHTML("beforeend", '<optgroup id="i" label="Images">');
     }
-  
+
     for (let i = 0; i < files.length; i++) {
       let type = files[i]["type"];
       let id = files[i]["path"];
@@ -361,19 +364,17 @@ function populate_effects(list) {
       //ul_playlist.style.minHeight = ul_source.offsetHeight;
     }
   }
-  
+
   let patterns = list["patterns"];
   if (patterns) {
     let el_selects = document.querySelectorAll('select[data-key="id"]');
     for (el_select of el_selects) {
       el_select.insertAdjacentHTML("beforeend", '<optgroup id="p" label="Patterns">');
     }
-  
+
     for (let i = 0; i < patterns.length; i++) {
-      // Start at 1 instead of 0 because there is a NONE Pattern at id = 0 that is not presented as a choice for the user.
-      //let id = i+1;
-      let id = i;
-      let name = patterns[i];
+      let id = patterns[i].id;
+      let name = patterns[i].name;
       let el_optgroups = document.querySelectorAll('optgroup[id="p"]');
       for (el_optgroup of el_optgroups) {
         el_optgroup.insertAdjacentHTML("beforeend", `<option value="${id}">${name}</option>`);
@@ -381,44 +382,19 @@ function populate_effects(list) {
     }
   }
 
-  //let accents = list["accents"];
-  //console.log(accents);
-  //if (accents) {
-  //  let el_selects = document.querySelectorAll('select[data-key="id2"]');
-  //  for (el_select of el_selects) {
-  //    el_select.insertAdjacentHTML("beforeend", '<optgroup id="a" label="Accents">');
-  //  }
-
-  //  for (let i = 0; i < accents.length; i++) {
-  //    // Start at 1 instead of 0 because there is a NO_OVERLAY Accent at id = 0 that is not presented as a choice for the user.
-  //    //let id = i+1;
-  //    let id = i;
-  //    let name = accents[i];
-  //    let el_optgroups = document.querySelectorAll('optgroup[id="a"]');
-  //    for (el_optgroup of el_optgroups) {
-  //      el_optgroup.insertAdjacentHTML("beforeend", `<option value="${id}">${name}</option>`);
-  //    }
-  //  }
-  //}
-  
   let accents = list["accents"];
-  console.log(accents);
   if (accents) {
     for (let i = 0; i < accents.length; i++) {
-      // Start at 1 instead of 0 because there is a NO_OVERLAY Accent at id = 0 that is not presented as a choice for the user.
-      let id = i+1;
-  
-      let name = accents[i];
-      let el_selects = document.querySelectorAll('select[data-key="id2"]');
+      let id = accents[i].id;
+      let name = accents[i].name;
+      let el_selects = document.querySelectorAll('select[data-key="a"]');
       for (el_select of el_selects) {
         el_select.insertAdjacentHTML("beforeend", `<option value="${id}">${name}</option>`);
       }
     }
   }
 
-
   let texts = ["Enter Text"];
-  console.log(texts);
   if (texts) {
     let el_selects = document.querySelectorAll('select[data-key="id"]');
     for (el_select of el_selects) {
@@ -434,10 +410,8 @@ function populate_effects(list) {
       }
     }
   }
-  
-  
+
   let info = ["Time (12 hour)", "Time (24 hour)", "Date (MM/DD)", "Date (DD/MM)", "Time (12 hour) & Date (MM/DD)", "Time (24 hour) & Date (DD/MM)"];
-  console.log(info);
   if (info) {
     let el_selects = document.querySelectorAll('select[data-key="id"]');
     for (el_select of el_selects) {
@@ -459,6 +433,7 @@ function populate_effects(list) {
 async function fetch_source() {
   const t = await fetch(base_url+"/options.json");
   let reply = await t.json();
+  //let reply = JSON.parse('{"files":[{"type":"file","path":"/files/im/blinky.json","name":"blinky"},{"type":"file","path":"/files/im/inky.json","name":"inky"},{"type":"file","path":"/files/im/pinky.json","name":"pinky"},{"type":"file","path":"/files/im/clyde.json","name":"clyde"}],"patterns":[{"id":0,"name":"Rainbow"},{"id":1,"name":"Solid"},{"id":2,"name":"Riffle"},{"id":3,"name":"Puck-Man"}],"accents":[{"id":0,"name":"None"},{"id":1,"name":"Breathing"},{"id":2,"name":"Flicker"},{"id":3,"name":"Frozen Decay"}]}');
   populate_effects(reply);
 }
 
@@ -495,7 +470,7 @@ async function save() {
       let save_color = false;
       for (let j = 0; j < el_keys.length; j++) {
         let el_key = el_keys[j];
-  
+
         let key = el_key.getAttribute("data-key");
         let value;
         if (key === "id") {
@@ -507,21 +482,21 @@ async function save() {
             value = opt.value;
           }
         }
-        
-        if (key === "id2") {
+
+        if (key === "a") {
           let opt = el_key.options[el_key.selectedIndex];
           if (ltype !== "e") {
             value = opt.value;
           }
         }
-  
+
         // move
         if ((ltype === "i" || ltype === "p" || ltype === "a" || ltype === "n") && key === "m") {
         //if (ltype !== "e" && key === "m") {
           let opt = el_key.options[el_key.selectedIndex];
           value = opt.value;
         }
-  
+
         if (ltype !== "e" && key === "ct") {
           value = null;
           if (el_key.checked === true) {
@@ -531,24 +506,24 @@ async function save() {
             save_color = true;
           }
         }
-  
+
         //stringify() wraps numbers in quotes so wrap numbers in !! to make it easy to remove the quotes.
         //any number that you want to represented as a number in json should have the value set above here. 
         if (value && !isNaN(value)) {
           value = "!!"+value+"!!";
         }
-        
+
         // color
         if (ltype !== "e" && key === "c" && save_color) {
           // convert to C format hex. keep below the !! wrap because we want to keep this as a string. 
           value = el_key.value.replace("#", "0x");
         }
-  
+
         // writing
         if (ltype === "t" && key === "w") {
           value = el_key.value;
         }
-  
+
         if (value) {
           lobj[key] = value;
         }
@@ -559,7 +534,7 @@ async function save() {
     let json = JSON.stringify(comp_dict);
     const regex = /"!!(-?[0-9]+\.{0,1}[0-9]*)!!"/g 
     json = json.replace(regex, '$1')
-  
+
     console.log(`t=${type}&id=${cmid}&json=` + json);
 
     let success = false;
@@ -579,7 +554,7 @@ async function save() {
       console.error(e);
       success = false;
     }
-    
+
     let sb = document.getElementById("sendSvgP");
     if (success) {
       sb.setAttribute("fill", "#056b0a");
@@ -589,6 +564,7 @@ async function save() {
       sb.setAttribute("fill", "#6b050c");
       setTimeout(function(){sb.setAttribute("fill", "#777")}, 1000);
     }
+
   }
 }
 

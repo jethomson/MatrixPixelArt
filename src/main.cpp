@@ -506,15 +506,15 @@ bool create_accents_list() {
         match = true;
         break;
     case BREATHING:
-        accent_name = "Rainbow";
+        accent_name = "Breathing";
         match = true;
         break;
     case FLICKER:
-        accent_name = "Solid";
+        accent_name = "Flicker";
         match = true;
         break;
     case FROZEN_DECAY:
-        accent_name = "Orbit";
+        accent_name = "Frozen Decay";
         match = true;
         break;
   }
@@ -598,37 +598,37 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
 
   // sane defaults in case data is missing.
   // if this data is missing json is perhaps it is better to not show the layer at all.
-  uint8_t id2 = 0;
-  uint8_t ct = 0; // dynamic color
-  std::string c = "0xFFFF00"; // yellow if the fixed color
-  uint8_t m = 0; // no movement
+  uint8_t accent_id = 0;
+  uint8_t color_type = 0; // dynamic color
+  std::string color = "0xFFFF00"; // yellow as a warning
+  uint8_t movement = 0; // no movement
 
 
-  if (!layer_json[F("id2")].isNull()) {
-    id2 = layer_json[F("id2")];
+  if (!layer_json[F("a")].isNull()) {
+    accent_id = layer_json[F("a")];
   }
 
   // color is not yet used for images. may be implemented in the future to change color palettes.
   if (!layer_json[F("ct")].isNull()) {
-    ct = layer_json[F("ct")];
+    color_type = layer_json[F("ct")];
   }
-  if (ct == 0) {          
+  if (color_type == 0) {          
     layers[lnum]->set_color(&gdynamic_rgb);
   }
-  else if (ct == 1) {          
+  else if (color_type == 1) {          
     layers[lnum]->set_color(&gdynamic_comp_rgb);
   }
   else {
     if (!layer_json[F("c")].isNull()) {
-      c = layer_json[F("c")].as<std::string>();
+      color = layer_json[F("c")].as<std::string>();
     }
-    uint32_t fc = std::stoul(c, nullptr, 16);
-    layers[lnum]->set_color(fc);
+    uint32_t fixed_color = std::stoul(color, nullptr, 16);
+    layers[lnum]->set_color(fixed_color);
   }
 
 
   if (!layer_json[F("m")].isNull()) {
-    m = layer_json[F("m")];
+    movement = layer_json[F("m")];
   }
 
   if (layer_json[F("t")] == "i") {
@@ -648,38 +648,32 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     }
     layers[lnum]->setup(Image_t, -2);
     layers[lnum]->set_image(id);
-    layers[lnum]->set_overlay(static_cast<Overlay>(id2), true);
-    layers[lnum]->set_heading(m);
+    layers[lnum]->set_overlay(static_cast<Overlay>(accent_id), true);
+    layers[lnum]->set_heading(movement);
   }
   else if (layer_json[F("t")] == "p") {
     uint8_t id = layer_json[F("id")];
     layers[lnum]->setup(Pattern_t, id);
     layers[lnum]->set_cb(&puck_man_cb);
     layers[lnum]->set_pattern(static_cast<Pattern>(id));
-    layers[lnum]->set_overlay(static_cast<Overlay>(id2), true);
-    layers[lnum]->set_heading(m);
+    layers[lnum]->set_overlay(static_cast<Overlay>(accent_id), true);
+    layers[lnum]->set_heading(movement);
   }
-  //else if (layer_json[F("t")] == "a") {
-  //  uint8_t id = layer_json[F("id")];
-  //  layers[lnum]->setup(Accent_t, id);
-  //  layers[lnum]->set_overlay(static_cast<Overlay>(id), true);
-  //  layers[lnum]->set_heading(m);
-  //}
   else if (layer_json[F("t")] == "t") {
     layers[lnum]->setup(Text_t, -1);
     layers[lnum]->set_text(layer_json[F("w")]);
-    layers[lnum]->set_overlay(static_cast<Overlay>(id2), true);
+    layers[lnum]->set_overlay(static_cast<Overlay>(accent_id), true);
     // direction is disabled for text in the frontend. setting to default of 0.
     // if it is not set back to 0 on a layer that previous had movement the text
     // will move.
-    layers[lnum]->set_heading(m);
+    layers[lnum]->set_heading(movement);
   }
   else if (layer_json[F("t")] == "n") {
     uint8_t id = layer_json[F("id")];
     layers[lnum]->setup(Info_t, id);
     layers[lnum]->set_info(static_cast<Info>(id));
-    layers[lnum]->set_overlay(static_cast<Overlay>(id2), true);
-    layers[lnum]->set_heading(m);
+    layers[lnum]->set_overlay(static_cast<Overlay>(accent_id), true);
+    layers[lnum]->set_heading(movement);
   }
   return true;
 }
@@ -1047,7 +1041,7 @@ void setup() {
   gdynamic_rgb = CHSV(gdynamic_hue, 255, 255);
   gdynamic_comp_rgb = CRGB::White - gdynamic_rgb;
 
-  load_file("/files/cm/mycomp.json");
+  load_file("/files/cm/default.json");
 }
 
 
