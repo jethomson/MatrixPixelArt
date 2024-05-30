@@ -583,8 +583,8 @@ void puck_man_cb(uint8_t event) {
 
 
 bool load_layer(uint8_t lnum, JsonVariant layer_json) {
-  //if (layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull() || (layer_json[F("t")] == "t" && layer_json[F("w")].isNull()) ) {
-  if (layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull()) {
+  if (layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull() || (layer_json[F("t")] == "t" && layer_json[F("w")].isNull()) ) {
+  //if (layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull()) {
     if (layers[lnum] != nullptr) {
       delete layers[lnum];
       layers[lnum] = nullptr;
@@ -602,7 +602,6 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
   uint8_t color_type = 0; // dynamic color
   std::string color = "0xFFFF00"; // yellow as a warning
   uint8_t movement = 0; // no movement
-
 
   if (!layer_json[F("a")].isNull()) {
     accent_id = layer_json[F("a")];
@@ -625,7 +624,6 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     uint32_t fixed_color = std::stoul(color, nullptr, 16);
     layers[lnum]->set_color(fixed_color);
   }
-
 
   if (!layer_json[F("m")].isNull()) {
     movement = layer_json[F("m")];
@@ -664,7 +662,7 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     layers[lnum]->set_text(layer_json[F("w")]);
     layers[lnum]->set_overlay(static_cast<Overlay>(accent_id), true);
     // direction is disabled for text in the frontend. setting to default of 0.
-    // if it is not set back to 0 on a layer that previous had movement the text
+    // if it is not set back to 0 on a layer that previously had movement the text
     // will move.
     layers[lnum]->set_heading(movement);
   }
