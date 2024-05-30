@@ -55,25 +55,15 @@ enum Pattern {
               RIFFLE = 4, SPARKLE = 5, 
               WEAVE = 6, CHECKERBOARD = 7, BINARY_SYSTEM = 8, 
               SHOOTING_STAR = 9, PUCK_MAN = 10, CYLON = 11,
-              THEATER_CHASE = 80, JUGGLE = 81, MITOSIS = 82,
-              BUBBLES = 83, MATRIX = 84, STARSHIP_RACE = 85,
-              BALLS = 86, HALLOWEEN_FADE = 87, HALLOWEEN_ORBIT = 88,
+              NO_PATTERN = 50,
+              THEATER_CHASE = 51, JUGGLE = 52, MITOSIS = 53,
+              BUBBLES = 54, MATRIX = 55, STARSHIP_RACE = 56,
+              BALLS = 57, HALLOWEEN_FADE = 58, HALLOWEEN_ORBIT = 59,
               DEMO = 99,
-              NONE = 100
+              //SOUND_RIBBONS = 60, SOUND_RIPPLE = 61, SOUND_BLOCKS = 62, SOUND_ORBIT = 63
              };
 
-/*
-enum Pattern {            ORBIT = 0, THEATER_CHASE = 1,
-                 RUNNING_LIGHTS = 2, SHOOTING_STAR = 3,
-                 CYLON = 4, SOLID = 5, JUGGLE = 6, RIFFLE = 7,
-                 MITOSIS = 8, BUBBLES = 9, SPARKLE = 10, MATRIX = 11,
-                 WEAVE = 12, STARSHIP_RACE = 13, PUCK_MAN = 14, BALLS = 15, 
-                 HALLOWEEN_FADE = 16, HALLOWEEN_ORBIT = 17, 
-                 CHECKERBOARD = 18, BINARY_SYSTEM = 19, DYNAMIC_RAINBOW = 20, NONE = 21
-                 //SOUND_RIBBONS = 17, SOUND_RIPPLE = 18, SOUND_BLOCKS = 19, SOUND_ORBIT = 20
-                 };
-*/
-enum Overlay {NO_OVERLAY = 0, BREATHING = 1, FLICKER = 2, FROZEN_DECAY = 3};
+enum Overlay {NO_OVERLAY = 0, BREATHING = 1, FLICKER = 2, FROZEN_DECAY = 3, GLITTER = 50, CONFETTI = 51};
 
 enum Info {TIME_12HR = 0, TIME_24HR = 1, DATE_MMDD = 2, DATE_DDMM = 3, TIME_12HR_DATE_MMDD = 4, TIME_24HR_DATE_DDMM = 5};
 

@@ -66,9 +66,11 @@ struct {
 //const char* accents[] = {"None", "Glitter", "Confetti", "Flicker", "Frozen Decay"};
 //const String patterns_json = "{\"patterns\":[\"None\", \"Rainbow\", \"Solid\", \"Orbit\", \"Running Lights\", \"Juggle\", \"Sparkle\", \"Weave\", \"Checkerboard\", \"Binary System\", \"Shooting Star\", \"Puck-Man\", \"Cylon\", \"Demo\"]}";
 //const String accents_json = "{\"accents\":[\"None\", \"Glitter\", \"Confetti\", \"Flicker\", \"Frozen Decay\"]}";
-const String patterns_json = "[\"Rainbow\", \"Solid\", \"Orbit\", \"Running Lights\", \"Riffle\", \"Sparkle\", \"Weave\", \"Checkerboard\", \"Binary System\", \"Shooting Star\", \"Puck-Man\", \"Cylon\", \"Demo\"]";
-//const String accents_json = "[\"Glitter\", \"Confetti\", \"Flicker\", \"Frozen Decay\"]";
-const String accents_json = "[\"Breathing\", \"Flicker\", \"Frozen Decay\"]";
+
+//const String patterns_json = "[\"Rainbow\", \"Solid\", \"Orbit\", \"Running Lights\", \"Riffle\", \"Sparkle\", \"Weave\", \"Checkerboard\", \"Binary System\", \"Shooting Star\", \"Puck-Man\", \"Cylon\", \"Demo\"]";
+//const String accents_json = "[\"Breathing\", \"Flicker\", \"Frozen Decay\"]";
+String patterns_json;
+String accents_json;
 
 
 void homogenize_brightness();
@@ -79,6 +81,8 @@ void delete_files(String name, String parent);
 void handle_delete_list(void);
 String get_root(String type);
 String form_path(String root, String id);
+bool create_patterns_list();
+bool create_accents_list();
 bool save_data(String fs_path, String json, String* message = nullptr);
 void puck_man_cb(uint8_t event);
 bool load_layer(uint8_t lnum, JsonVariant layer_json);
@@ -397,6 +401,138 @@ bool save_data(String fs_path, String json, String* message) {
     *message = F("save_data(): Data saved.");
   }
   return true;
+}
+
+
+bool create_patterns_list() {
+  static Pattern pattern_id = static_cast<Pattern>(0);
+  String pattern_name;
+  bool match = false;
+  static bool first = true;
+  bool finished = false;
+  Serial.println(pattern_id);
+  switch(pattern_id) {
+    default:
+        if (pattern_id > 49) {
+          pattern_id = static_cast<Pattern>(0);
+          finished = true;
+        }
+        break;
+    // Note: it does not make sense to present NO_PATTERN as an option in the frontend
+    case DYNAMIC_RAINBOW:
+        pattern_name = "Rainbow";
+        match = true;
+        break;
+    case SOLID:
+        pattern_name = "Solid";
+        match = true;
+        break;
+    case ORBIT:
+        pattern_name = "Orbit";
+        match = true;
+        break;
+    case RUNNING_LIGHTS:
+        pattern_name = "Running Lights";
+        match = true;
+        break;
+    case RIFFLE:
+        pattern_name = "Riffle";
+        match = true;
+        break;
+    case SPARKLE:
+        pattern_name = "Sparkle";
+        match = true;
+        break;
+    case WEAVE:
+        pattern_name = "Weave";
+        match = true;
+        break;
+    case CHECKERBOARD:
+        pattern_name = "Checkerboard";
+        match = true;
+        break;
+    case BINARY_SYSTEM:
+        pattern_name = "Binary System";
+        match = true;
+        break;
+    case SHOOTING_STAR:
+        pattern_name = "Shooting Star";
+        match = true;
+        break;
+    case PUCK_MAN:
+        pattern_name = "Puck-Man";
+        match = true;
+        break;
+    case CYLON:
+        pattern_name = "Cylon";
+        match = true;
+        break;
+  }
+  if (match) {
+    if (!first) {
+      patterns_json += ",";
+    }
+    patterns_json += "{\"name\":\"";
+    patterns_json += pattern_name;
+    patterns_json += "\",\"id\":";
+    patterns_json += pattern_id;
+    patterns_json += "}";
+    first = false;
+  }
+  if (!finished) {
+    pattern_id = static_cast<Pattern>(pattern_id+1);
+  }
+  return finished;
+}
+
+
+bool create_accents_list() {
+  static Overlay accent_id = static_cast<Overlay>(0);
+  String accent_name;
+  bool match = false;
+  static bool first = true;
+  bool finished = false;
+  Serial.println(accent_id);
+  switch(accent_id) {
+    default:
+        if (accent_id > 49) {
+          accent_id = static_cast<Overlay>(0);
+          finished = true;
+        }
+        break;
+    // Since accents are an optional, secondary effect it makes sense to present an option to have no accent in the frontend
+    case NO_OVERLAY:
+        accent_name = "None";
+        match = true;
+        break;
+    case BREATHING:
+        accent_name = "Rainbow";
+        match = true;
+        break;
+    case FLICKER:
+        accent_name = "Solid";
+        match = true;
+        break;
+    case FROZEN_DECAY:
+        accent_name = "Orbit";
+        match = true;
+        break;
+  }
+  if (match) {
+    if (!first) {
+      accents_json += ",";
+    }
+    accents_json += "{\"name\":\"";
+    accents_json += accent_name;
+    accents_json += "\",\"id\":";
+    accents_json += accent_id;
+    accents_json += "}";
+    first = false;
+  }
+  if (!finished) {
+    accent_id = static_cast<Overlay>(accent_id+1);
+  }
+  return finished;
 }
 
 
@@ -802,7 +938,7 @@ void web_server_initiate() {
 
   // memory hog?
   web_server.on("/options.json", HTTP_GET, [](AsyncWebServerRequest *request) {
-    String options_json = "{\"files\":"+gfile_list_json + ",\"patterns\":"+patterns_json + ",\"accents\":"+accents_json + "}"; 
+    String options_json = "{\"files\":"+gfile_list_json + ",\"patterns\":["+patterns_json + "],\"accents\":["+accents_json + "]}"; 
     request->send(200, "application/json", options_json);
   });
 
@@ -903,6 +1039,9 @@ void setup() {
   web_server_initiate();
 
   handle_file_list(); // refresh file list before starting loop() because refreshing is slow
+
+  while(!create_patterns_list());
+  while(!create_accents_list());
 
   // initialzie dynamic colors because otherwise they won't be set until after layer.refresh() has been called which can lead to partially black text
   gdynamic_rgb = CHSV(gdynamic_hue, 255, 255);

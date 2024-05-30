@@ -36,7 +36,7 @@ const char* timezone = "EST5EDT,M3.2.0,M11.1.0";
 ReAnimator::ReAnimator() : freezer(*this) {
     brightness = 255;
 
-    pattern = NONE;
+    pattern = NO_PATTERN;
     transient_overlay = NO_OVERLAY;
     persistent_overlay = NO_OVERLAY;
 
@@ -106,7 +106,7 @@ void ReAnimator::setup(LayerType ltype, int8_t id) {
     set_flipflop_interval(6000);
     set_flipflop_enabled(false);
 
-    set_pattern(NONE);
+    set_pattern(NO_PATTERN);
     set_overlay(NO_OVERLAY, false);
     set_cb(noop_cb);
 
@@ -182,7 +182,7 @@ int8_t ReAnimator::set_pattern(Pattern pattern_in, bool reverse_in, bool disable
 
     int8_t retval = 0;
 
-    if (autocycle_enabled && pattern_in == NONE) {
+    if (autocycle_enabled && pattern_in == NO_PATTERN) {
         pattern_in = static_cast<Pattern>(pattern+1);
     }
 
@@ -271,8 +271,8 @@ int8_t ReAnimator::set_pattern(Pattern pattern_in, bool reverse_in, bool disable
             pattern_out = HALLOWEEN_ORBIT;
             overlay_out = NO_OVERLAY;
             break;
-        case NONE:
-            pattern_out = NONE;
+        case NO_PATTERN:
+            pattern_out = NO_PATTERN;
             overlay_out = NO_OVERLAY;
             break;
         //case SOUND_RIBBONS:
@@ -635,7 +635,7 @@ int8_t ReAnimator::run_pattern(Pattern pattern) {
         case HALLOWEEN_ORBIT:
             halloween_colors_orbit(20, orbit_delta);
             break;
-        case NONE:
+        case NO_PATTERN:
             //fill_solid(leds, NUM_LEDS, CRGBA::Transparent);
             break;
         //case SOUND_RIBBONS:
