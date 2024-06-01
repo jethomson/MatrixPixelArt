@@ -23,9 +23,6 @@
 #define SOFT_AP_SSID "PixelArt"
 #define MDNS_HOSTNAME "pixelart"
 
-//#include "credentials.h" // set const char *wifi_ssid and const char *wifi_password in include/credentials.h
-#include "credentials_private.h"
-
 #define DATA_PIN 16
 #define COLOR_ORDER GRB
 
@@ -1426,13 +1423,6 @@ void setup() {
     DEBUG_PRINTLN("LittleFS initialisation failed!");
     while (1) yield(); // cannot proceed without filesystem
   }
-
-  //WiFi.mode(WIFI_STA);
-  //WiFi.begin(wifi_ssid, wifi_password);
-  //if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-  //    Serial.println("WiFi Failed!");
-  //    return;
-  //}
 
   if (attempt_connect()) {
   	if (!wifi_connect()) {
