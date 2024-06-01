@@ -403,7 +403,11 @@ bool save_data(String fs_path, String json, String* message) {
   return true;
 }
 
-
+// creating the patterns list procedurally rather than hardcoding it allows for rearranging and adding to the patterns that appear
+// in the frontend more easily. this function creates the list based on what is in the enum Pattern, so changes to that enum
+// are reflected here. assigning a new number to the pattern will change where the pattern falls in the list sent to the frontend.
+// setting the pattern to a number of 50 or greater will remove it from the list sent to the frontend.
+// if a new pattern is created a new case pattern_name will still need to be set here.
 bool create_patterns_list() {
   static Pattern pattern_id = static_cast<Pattern>(0);
   String pattern_name;
