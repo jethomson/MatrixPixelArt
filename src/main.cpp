@@ -4,9 +4,12 @@
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <DNSServer.h>
+#include <ESPmDNS.h>
 //#include <SPIFFSEditor.h>
 #include <LittleFS.h>
 //#include <SPI.h>
+#include <Preferences.h>
 
 #include <FastLED.h>
 #include "FastLED_RGBA.h"
@@ -15,6 +18,10 @@
 
 #include "project.h"
 #include "ReAnimator.h"
+
+#define WIFI_CONNECT_TIMEOUT 10000 // milliseconds
+#define SOFT_AP_SSID "PixelArt"
+#define MDNS_HOSTNAME "pixelart"
 
 //#include "credentials.h" // set const char *wifi_ssid and const char *wifi_password in include/credentials.h
 #include "credentials_private.h"
@@ -36,6 +43,20 @@
 #define HOMOGENIZE_BRIGHTNESS true
 
 AsyncWebServer web_server(80);
+
+DNSServer dnsServer;
+
+Preferences preferences;
+
+
+bool restart_needed = false;
+bool station_mode = false;
+
+IPAddress IP;
+String mdns_host;
+
+
+
 
 CRGB leds[NUM_LEDS] = {0}; // output
 
@@ -72,8 +93,9 @@ struct {
 String patterns_json;
 String accents_json;
 
-
-void homogenize_brightness();
+void homogenize_brightness_custom(void);
+void homogenize_brightness_builtin(void);
+void homogenize_brightness(void);
 void create_dirs(String path);
 void list_files(File dir, String parent);
 void handle_file_list(void);
@@ -81,8 +103,8 @@ void delete_files(String name, String parent);
 void handle_delete_list(void);
 String get_root(String type);
 String form_path(String root, String id);
-bool create_patterns_list();
-bool create_accents_list();
+bool create_patterns_list(void);
+bool create_accents_list(void);
 bool save_data(String fs_path, String json, String* message = nullptr);
 void puck_man_cb(uint8_t event);
 bool load_layer(uint8_t lnum, JsonVariant layer_json);
@@ -91,8 +113,16 @@ bool load_image_solo(String fs_path);
 bool load_composite(String fs_path);
 bool load_file(String fs_path);
 bool load_from_playlist(String id = "");
-void web_server_initiate(void);
 
+bool attempt_connect(void);
+String get_mode(void);
+String get_ip(void);
+String get_mdns_addr(void);
+void wifi_AP(void);
+bool wifi_connect(void);
+void web_server_station(void);
+void web_server_initiate(void);
+void show(void);
 
 
 // uses custom values for LED power usage.
@@ -100,7 +130,7 @@ void web_server_initiate(void);
 // found in FastLED's power_mgt.cpp. The code was borrowed from these functions in order to redefine the power used per LED color.
 // My measurements showed the defaults to be much higher than my LEDs which resulted in the calculated brightness being much lower
 // than it could be.
-void homogenize_brightness_custom() {
+void homogenize_brightness_custom(void) {
   //static const uint8_t red_mW   = 16 * 5; ///< 16mA @ 5v = 80mW
   //static const uint8_t green_mW = 11 * 5; ///< 11mA @ 5v = 55mW
   //static const uint8_t blue_mW  = 15 * 5; ///< 15mA @ 5v = 75mW
@@ -147,7 +177,7 @@ void homogenize_brightness_custom() {
 }
 
 //uses builtin values for LED power usage
-void homogenize_brightness_builtin() {
+void homogenize_brightness_builtin(void) {
     uint8_t max_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, LED_STRIP_MILLIAMPS);
     if (max_brightness < homogenized_brightness) {
         homogenized_brightness = max_brightness;
@@ -167,7 +197,7 @@ void homogenize_brightness_builtin() {
 // This is preferable to calculating the max brightness in setup() by setting the LEDs to a guess at what pattern of colors might need the
 // maximum amount of power. The safest guess is all white LEDs; however none of your animations may ever require that much power so using
 // all white to determine the max brightness is giving up brightness that could be safely used.
-void homogenize_brightness() {
+void homogenize_brightness(void) {
     homogenize_brightness_builtin();
     //homogenize_brightness_custom();
 }
@@ -408,7 +438,7 @@ bool save_data(String fs_path, String json, String* message) {
 // are reflected here. assigning a new number to the pattern will change where the pattern falls in the list sent to the frontend.
 // setting the pattern to a number of 50 or greater will remove it from the list sent to the frontend.
 // if a new pattern is created a new case pattern_name will still need to be set here.
-bool create_patterns_list() {
+bool create_patterns_list(void) {
   static Pattern pattern_id = static_cast<Pattern>(0);
   String pattern_name;
   bool match = false;
@@ -490,7 +520,7 @@ bool create_patterns_list() {
 }
 
 
-bool create_accents_list() {
+bool create_accents_list(void) {
   static Overlay accent_id = static_cast<Overlay>(0);
   String accent_name;
   bool match = false;
@@ -833,11 +863,162 @@ bool load_from_playlist(String id) {
   return refresh_needed;
 }
 
+//////////////////////////////////////////////
+//////////////////////////////////////////////
+//////////////////////////////////////////////
+//////////////////////////////////////////////
 
-void web_server_initiate() {
+class CaptiveRequestHandler : public AsyncWebHandler {
+public:
+  CaptiveRequestHandler() {}
+  virtual ~CaptiveRequestHandler() {}
+
+  bool canHandle(AsyncWebServerRequest *request){
+    //request->addInterestingHeader("ANY");
+    return true;
+  }
+
+  void handleRequest(AsyncWebServerRequest *request) {
+    String url = "http://";
+    url += get_ip();
+    url += "/network.html";
+    request->redirect(url);
+  }
+};
+
+void espDelay(uint32_t ms) {
+  esp_sleep_enable_timer_wakeup(ms * 1000);
+  esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
+  esp_light_sleep_start();
+}
+
+bool attempt_connect(void) {
+  bool attempt;
+  preferences.begin("netinfo", false);
+  attempt = !preferences.getBool("create_ap", true);
+  preferences.end();
+  return attempt;
+}
+
+String get_mode(void) {
+  String mode = "unknown";
+  if (WiFi.status() == WL_CONNECTED && WiFi.getMode() == WIFI_STA) {
+    mode = "station";
+  }
+  else if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
+    mode = "AP";
+  }
+  return mode;
+}
+
+String get_ip(void) {
+  return IP.toString();
+}
+
+String get_mdns_addr(void) {
+  String mdns_addr = mdns_host;
+  mdns_addr += ".local";
+  return mdns_addr;
+}
+
+void wifi_AP(void) {
+  DEBUG_PRINTLN(F("Entering AP Mode."));
+  //WiFi.softAP(SOFT_AP_SSID, "123456789");
+  WiFi.softAP(SOFT_AP_SSID, "");
+  
+  IP = WiFi.softAPIP();
+
+  DEBUG_PRINT(F("AP IP address: "));
+  DEBUG_PRINTLN(IP);
+}
+
+bool wifi_connect(void) {
+  bool success = false;
+
+  //if (!WiFi.config(LOCAL_IP, GATEWAY, SUBNET_MASK, DNS1, DNS2)) {
+  //  DEBUG_PRINTLN(F("WiFi config failed."));
+  //}
+
+  preferences.begin("netinfo", false);
+
+  String ssid;
+  String password;
+
+  ssid = preferences.getString("ssid", ""); 
+  password = preferences.getString("password", "");
+
+  DEBUG_PRINTLN(F("Entering Station Mode."));
+  if (WiFi.SSID() != ssid.c_str()) {
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid.c_str(), password.c_str());
+    WiFi.persistent(true);
+    WiFi.setAutoConnect(true);
+    WiFi.setAutoReconnect(true);
+  }
+
+  if (WiFi.waitForConnectResult(WIFI_CONNECT_TIMEOUT) == WL_CONNECTED) {
+    DEBUG_PRINTLN(F(""));
+    DEBUG_PRINT(F("Connected: "));
+    IP = WiFi.localIP();
+    DEBUG_PRINTLN(IP);
+    success = true;
+  }
+  else {
+    DEBUG_PRINT(F("Failed to connect to WiFi."));
+    preferences.putBool("create_ap", true);
+    success = false;
+  }
+  preferences.end();
+  return success;
+}
+
+void mdns_setup(void) {
+  preferences.begin("netinfo", false);
+  mdns_host = preferences.getString("mdns_host", "");
+
+  if (mdns_host == "") {
+    mdns_host = MDNS_HOSTNAME;
+  }
+
+  if(!MDNS.begin(mdns_host.c_str())) {
+    DEBUG_PRINTLN(F("Error starting mDNS"));
+  }
+  preferences.end();
+}
+
+bool filterOnNotLocal(AsyncWebServerRequest *request) {
+  // have to refer to service when requesting hostname from MDNS
+  // but this code is not working for me.
+  //DEBUG_PRINTLN(MDNS.hostname(1));
+  //DEBUG_PRINTLN(MDNS.hostname(MDNS.queryService("http", "tcp")));
+  //return request->host() != get_ip() && request->host() != MDNS.hostname(1); 
+
+  return request->host() != get_ip() && request->host() != mdns_host;
+}
+
+void web_server_station(void) {
+
+  web_server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(LittleFS, "/html/index.html");
+    //request->send(LittleFS, "/html/index.html", String(), false, processor);
+
+    // for reference: alternate methods of sending a webpage
+    //request->send(LittleFS, "/html/index.html");
+    //request->send_P(200, "text/html", index_html);
+    //AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", min_index_html_gz, min_index_html_gz_len);
+    //response->addHeader("Content-Encoding", "gzip");
+    //request->send(response);
+  });
+
+  web_server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->redirect("/");
+  });
+
+  web_server.serveStatic("/", LittleFS, "/html/");
 
   web_server.serveStatic("/", LittleFS, "/").setDefaultFile("html/index.html");
 
+/*
   web_server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(LittleFS, "/html/index.html");
   });
@@ -861,7 +1042,7 @@ void web_server_initiate() {
   web_server.on("/file_manager.html", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(LittleFS, "/html/file_manager.html");
   });
-
+*/
 
   // perhaps use the processor to replace references to IM_ROOT and PL_ROOT in html files
   // this is problematic because the $ is used for formatted strings in javascript
@@ -967,9 +1148,107 @@ void web_server_initiate() {
     if (request->method() == HTTP_OPTIONS) {
       request->send(200);
     } else {
-      request->send(404);
+      //request->send(404);
+      request->redirect("/");
     }
   });
+}
+
+
+
+void web_server_initiate(void) {
+
+  // need to put this before serveStatic(), otherwise serveStatic() will serve restart.html, but not set restart_needed to true;
+  web_server.on("/restart.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+    restart_needed = true;
+    request->send(LittleFS, "/html/restart.html");
+  });
+
+
+  if (WiFi.getMode() == WIFI_STA) {
+    web_server_station();
+
+/*
+    web_server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/html/index.html");
+      //request->send(LittleFS, "/html/index.html", String(), false, processor);
+
+      // for reference: alternate methods of sending a webpage
+      //request->send(LittleFS, "/html/index.html");
+      //request->send_P(200, "text/html", index_html);
+      //AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", min_index_html_gz, min_index_html_gz_len);
+      //response->addHeader("Content-Encoding", "gzip");
+      //request->send(response);
+    });
+
+    web_server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->redirect("/");
+    });
+
+    web_server.serveStatic("/", LittleFS, "/html/");
+
+    // serve all requests to  host/sprites/* (uri) from /littlefs/sprites/ (path)
+    // serveStatic(const char* uri, fs::FS& fs, const char* path, const char* cache_control = NULL)
+    //web_server.serveStatic("/sprites/", LittleFS, "/sprites/").setDefaultFile("notfound.html");
+    //AsyncStaticWebHandler* handler = &web_server.serveStatic("/sprites/", LittleFS, "/sprites/");
+    //handler->setDefaultFile("index.html");
+    //handler->setTemplateProcessor(subst_file_links);
+    //web_server.serveStatic("/images/", LittleFS, "/images/").setDefaultFile("notfound.html");
+
+    web_server.onNotFound([](AsyncWebServerRequest *request) {
+      DEBUG_PRINTLN("onNotFound");
+      request->redirect("/");
+    });
+
+    //using format results in an unusable filesystem
+    //web_server.on("/format", HTTP_GET, [](AsyncWebServerRequest *request) {
+    //  LittleFS.format();
+    //  request->redirect("/");
+    //});
+*/
+  }
+  else {
+    // want limited access when in AP mode. AP mode is just for WiFi setup.
+    web_server.onNotFound([](AsyncWebServerRequest *request) {
+      request->send(LittleFS, "/html/network.html");
+    });
+  }
+
+  web_server.on("/savenetinfo", HTTP_POST, [](AsyncWebServerRequest *request) {
+    preferences.begin("netinfo", false);
+
+    if(request->hasParam("ssid", true)) {
+      AsyncWebParameter* p = request->getParam("ssid", true);
+      preferences.putString("ssid", p->value().c_str());
+    }
+
+    if(request->hasParam("password", true)) {
+      AsyncWebParameter* p = request->getParam("password", true);
+      preferences.putString("password", p->value().c_str());
+    }
+
+    if(request->hasParam("mdns_host", true)) {
+      AsyncWebParameter* p = request->getParam("mdns_host", true);
+      String mdns = p->value();
+      mdns.replace(" ", ""); // autocomplete will add space to end of a word if phone is used to enter mdns hostname. remove it.
+      mdns.toLowerCase();
+      preferences.putString("mdns_host", mdns.c_str());
+    }
+
+    preferences.putBool("create_ap", false);
+
+    preferences.end();
+
+    request->redirect("/restart.html");
+  });
+
+
+  // create a captive portal that catches every attempt to access data besides what the ESP serves to network.html
+  // requests to the ESP are handled normally
+  // a captive portal makes it easier for a user to save their WiFi credentials to the ESP because they do not
+  // need to know the ESP's IP address.
+  dnsServer.start(53, "*", IP);
+  web_server.addHandler(new CaptiveRequestHandler()).setFilter(filterOnNotLocal);
 
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, PUT");
@@ -977,77 +1256,7 @@ void web_server_initiate() {
   web_server.begin();
 }
 
-
-void setup() {
-
-  for (uint8_t i = 0; i < NUM_LAYERS; i++) {
-    layers[i] = nullptr;
-  }
-
-  Serial.begin(115200);
-
-  // setMaxPowerInVoltsAndMilliamps() should not be used if homogenize_brightness_custom() is used
-  // since setMaxPowerInVoltsAndMilliamps() uses the builtin LED power usage constants 
-  // homogenize_brightness_custom() was created to avoid.
-  FastLED.setMaxPowerInVoltsAndMilliamps(LED_STRIP_VOLTAGE, LED_STRIP_MILLIAMPS);
-  FastLED.setCorrection(TypicalSMD5050);
-  FastLED.addLeds<WS2812B, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
-
-  FastLED.clear();
-  FastLED.show(); // clear the matrix on startup
-
-  // for taking current measurements at different brightness levels
-  // every LED white is the maximum amout of power that can be used
-  //for (uint16_t i = 0; i < NUM_LEDS; i++) {
-  //  leds[i] = 0xFFFFFF; // white
-  //}
-  //FastLED.setBrightness(255);
-  //homogenize_brightness();
-  //FastLED.setBrightness(homogenized_brightness);
-  //Serial.println(homogenized_brightness); // builtin: 87, custom: 112
-  //FastLED.show();
-  //delay(6000);
-
-  homogenize_brightness();
-  FastLED.setBrightness(homogenized_brightness);
-  Serial.println(homogenized_brightness);
-
-  FastLED.clear();
-  FastLED.setBrightness(homogenized_brightness);
-
-  //random16_set_seed(analogRead(A0)); // use randomness ??? need to look up which pin for ESP32 ???
-
-  if (!LittleFS.begin()) {
-    DEBUG_PRINTLN("LittleFS initialisation failed!");
-    while (1) yield(); // cannot proceed without filesystem
-  }
-
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(wifi_ssid, wifi_password);
-  if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-      Serial.println("WiFi Failed!");
-      return;
-  }
-
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP());
-
-  web_server_initiate();
-
-  handle_file_list(); // refresh file list before starting loop() because refreshing is slow
-
-  while(!create_patterns_list());
-  while(!create_accents_list());
-
-  // initialzie dynamic colors because otherwise they won't be set until after layer.refresh() has been called which can lead to partially black text
-  gdynamic_rgb = CHSV(gdynamic_hue, 255, 255);
-  gdynamic_comp_rgb = CRGB::White - gdynamic_rgb;
-
-  load_file("/files/cm/default.json");
-}
-
-
-void loop() {
+void show(void) {
   static uint32_t pm = 0;
   static uint32_t pm2 = 0;
   static bool refresh_now = true;
@@ -1171,6 +1380,101 @@ void loop() {
   }
 
   FastLED.show(); // what is the best place to call show() ??? call this less frequently ???
+}
+
+
+void setup() {
+
+  for (uint8_t i = 0; i < NUM_LAYERS; i++) {
+    layers[i] = nullptr;
+  }
+
+  Serial.begin(115200);
+
+  // setMaxPowerInVoltsAndMilliamps() should not be used if homogenize_brightness_custom() is used
+  // since setMaxPowerInVoltsAndMilliamps() uses the builtin LED power usage constants 
+  // homogenize_brightness_custom() was created to avoid.
+  FastLED.setMaxPowerInVoltsAndMilliamps(LED_STRIP_VOLTAGE, LED_STRIP_MILLIAMPS);
+  FastLED.setCorrection(TypicalSMD5050);
+  FastLED.addLeds<WS2812B, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
+
+  FastLED.clear();
+  FastLED.show(); // clear the matrix on startup
+
+  // for taking current measurements at different brightness levels
+  // every LED white is the maximum amout of power that can be used
+  //for (uint16_t i = 0; i < NUM_LEDS; i++) {
+  //  leds[i] = 0xFFFFFF; // white
+  //}
+  //FastLED.setBrightness(255);
+  //homogenize_brightness();
+  //FastLED.setBrightness(homogenized_brightness);
+  //Serial.println(homogenized_brightness); // builtin: 87, custom: 112
+  //FastLED.show();
+  //delay(6000);
+
+  homogenize_brightness();
+  FastLED.setBrightness(homogenized_brightness);
+  Serial.println(homogenized_brightness);
+
+  FastLED.clear();
+  FastLED.setBrightness(homogenized_brightness);
+
+  //random16_set_seed(analogRead(A0)); // use randomness ??? need to look up which pin for ESP32 ???
+
+  if (!LittleFS.begin()) {
+    DEBUG_PRINTLN("LittleFS initialisation failed!");
+    while (1) yield(); // cannot proceed without filesystem
+  }
+
+  //WiFi.mode(WIFI_STA);
+  //WiFi.begin(wifi_ssid, wifi_password);
+  //if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+  //    Serial.println("WiFi Failed!");
+  //    return;
+  //}
+
+  if (attempt_connect()) {
+  	if (!wifi_connect()) {
+	  	// failure to connect will result in creating AP
+      espDelay(2000);
+  		wifi_AP();
+	  }
+  }
+  else {
+    wifi_AP();
+  }
+
+  mdns_setup();
+
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
+
+  web_server_initiate();
+
+  handle_file_list(); // refresh file list before starting loop() because refreshing is slow
+
+  while(!create_patterns_list());
+  while(!create_accents_list());
+
+  // initialzie dynamic colors because otherwise they won't be set until after layer.refresh() has been called which can lead to partially black text
+  gdynamic_rgb = CHSV(gdynamic_hue, 255, 255);
+  gdynamic_comp_rgb = CRGB::White - gdynamic_rgb;
+
+  load_file("/files/cm/default.json");
+}
+
+
+void loop() {
+
+  dnsServer.processNextRequest();
+
+  if (restart_needed || (WiFi.getMode() == WIFI_STA && WiFi.status() != WL_CONNECTED)) {
+    delay(2000);
+    ESP.restart();
+  }
+
+  show();
 
   handle_file_list();
   handle_delete_list();
