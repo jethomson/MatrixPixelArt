@@ -1,17 +1,29 @@
 <!DOCTYPE html>
-<html lang="en" class="">
-
+<html lang="en">
 <head>
-  <meta charset='utf-8'>
-  <meta http-equiv="Cache-Control" content="private, no-store" />
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+  <meta http-equiv="Cache-Control" content="private, no-store" />
   <title>LED Matrix Art Creator</title>
   <style>
+  html {
+    touch-action: manipulation
+    overflow: auto;
+  }
+
   body {
-    text-align: center;
     font-family: Arial, sans-serif;
     color: #faffff;
-    background: #111
+    background: #111;
+    font-size: 17px;
+    text-align: center;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .button-container {
+    display:inline-block;
+    min-width:340px;
   }
 
   div {
@@ -26,20 +38,20 @@
   button {
     border: 0;
     border-radius: 0.3rem;
-    background: #1fa3ec;
     color: #faffff;
+    background: #1fa3ec;
     line-height: 2.4rem;
     font-size: 1.2rem;
     width: 100%;
     -webkit-transition-duration: 0.4s;
     transition-duration: 0.4s;
     cursor: pointer;
+    margin: 5px 0px;
   }
-
   button:hover {
     background: #0e70a4;
   }
-
+  
   .bred {
     background: #d43535;
   }
@@ -47,34 +59,31 @@
   .bred:hover {
     background: #931f1f;
   }
-
   </style>
 </head>
 
 <body>
-  <div style='text-align:left;display:inline-block;color:#eaeaea;min-width:340px;'>
-    <div style='text-align:center;'>
-    <details>
+  <details>
     <summary>Instructions</summary>
-    <b>Use the Image Converter page to convert images to a string of colors for an LED matrix display.</b>
+    <b>Play: load images, composites, or playlists.</b>
     <br>
-    <b>Use the Combine Effects page to layer images and other other effects into composite art.</b>
+    <b>Image Converter: convert images for display on the LED matrix display, and save them.</b>
     <br>
-    <b>Use the Play page to load saved images and composites.</b>
+    <b>Combine Effects: layer images and other other effects to make composite art.</b>
     <br>
-    <b>Use the Playlist Maker page to combine images and composites into a playlist where each piece is shown for a specified duration.</b>
-    </details>
+    <b>Playlist Maker: combine images and composites into a playlists.</b>
+    <br>
+    <b>Manage Files: list of all file, view the contents of files, and delete files.</b>
+  </details>
+  <div class="button-container">
+    <div id="play_button" class="grid-item-button">
+      <a href="./play.html"><button name="">Play</button></a>
     </div>
-    <br>
-    <p>
     <div id="converter_button" class="grid-item-button">
       <a href="./converter.html"><button name="">Image Converter</button></a>
     </div>
     <div id="compositor_button" class="grid-item-button">
       <a href="./compositor.html"><button name="">Combine Effects</button></a>
-    </div>
-    <div id="play_button" class="grid-item-button">
-      <a href="./play.html"><button name="">Play</button></a>
     </div>
     <div id="plm_button" class="grid-item-button">
       <a href="./playlist_maker.html"><button name="">Playlist Maker</button></a>
@@ -82,7 +91,6 @@
     <div id="manage_button" class="grid-item-button">
       <a href="./file_manager.html"><button name="">Manage Files</button></a>
     </div>
-    </p>
   </div>
 </body>
 </html>

@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html lang="en" class="">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+  <meta http-equiv="Cache-Control" content="private, no-store" />
   <title>Compositor</title>
   <style>
   html {
     touch-action: manipulation
     overflow: auto;
   }
-  
+
   body {
     font-family: Arial, sans-serif;
     color: #faffff;
@@ -32,15 +33,17 @@
   .grid-container {
     display: grid;
     grid-template-columns: repeat(9, minmax(20px, 120px)); /*fixes select element overflow grid width problem in chrome*/
-    grid-column-gap: 50px;
+    grid-column-gap: 2vw;
+    grid-auto-rows: 1fr
     grid-row-gap: 5px;
-    max-width: 100vw;
+    width: 1000px;
+    max-width: 95vw;
     justify-content: center;
     margin: 5px auto;
     padding: 5px;
     border-style: solid;
   }
-  
+
   .item-a {
     grid-column-start: 1;
   }
@@ -103,15 +106,19 @@
     background: #0e70a4;
   }
   */
-  
+
   .buttonclass {
     flex: 1;
     padding-top: 5px;
     padding-bottom: 5px;
   }
- 
+
   .svg-icon {
     vertical-align: middle;
+  }
+
+  .header {
+    text-align: center;
   }
 
   input[type="color"] {
@@ -123,7 +130,7 @@
 <body>
   <a id="return_main_menu" href="./index.html"><svg height="24px" width="24px" viewBox="0 0 16 16" id="Layer_1" version="1.1" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path fill="white" d="M15.45,7L14,5.551V2c0-0.55-0.45-1-1-1h-1c-0.55,0-1,0.45-1,1v0.553L9,0.555C8.727,0.297,8.477,0,8,0S7.273,0.297,7,0.555  L0.55,7C0.238,7.325,0,7.562,0,8c0,0.563,0.432,1,1,1h1v6c0,0.55,0.45,1,1,1h3v-5c0-0.55,0.45-1,1-1h2c0.55,0,1,0.45,1,1v5h3  c0.55,0,1-0.45,1-1V9h1c0.568,0,1-0.437,1-1C16,7.562,15.762,7.325,15.45,7z"/></svg></a>
   <h3>Combine images and other effects using layers to make composites.</h3>
-    
+
   <div id="main_div">
     <div id="button-container">
       <input type="text" id="cmid" maxlength=26 placeholder="Enter filename here." value="" autocomplete="off" />
@@ -133,18 +140,18 @@
     <div class="grid-container">
         <section>
             <label class="item-a">Layer</label>
-            <label>Effect</label>
-            <label>Accent</label>
-            <label>Dynamic Color</label>
-            <label>Complementary Dynamic Color</label>
-            <label>Fixed Color</label>
-            <label>Fixed Color Chooser</label>
-            <label>Movement</label>
-            <label>Text</label>
+            <label class="header">Effect</label>
+            <label class="header">Accent</label>
+            <label class="header">Dynamic Color 1</label>
+            <label class="header">Dynamic Color 2</label>
+            <label class="header">Fixed Color</label>
+            <label class="header">Color Chooser</label>
+            <label class="header">Movement</label>
+            <label class="header">Text</label>
         </section>
 
         <section data-layer="l4">
-            <label class="item-a">Top</label>
+            <label class="item-a">4</label>
             <select id="l4" data-key="id" onchange="enable_disable_settings(this)">
               <option value="0">Empty</option>
             </select>
@@ -169,7 +176,7 @@
         </section>
 
         <section data-layer="l3">
-            <label class="item-a">Top Middle</label>
+            <label class="item-a">3</label>
             <select id="l3" data-key="id" onchange="enable_disable_settings(this)">
               <option value="0">Empty</option>
             </select>
@@ -194,7 +201,7 @@
         </section>
 
         <section data-layer="l2">
-            <label class="item-a">Middle</label>
+            <label class="item-a">2</label>
             <select id="l2" data-key="id" onchange="enable_disable_settings(this)">
               <option value="0">Empty</option>
             </select>
@@ -219,7 +226,7 @@
         </section>
 
         <section data-layer="l1">
-            <label class="item-a">Bottom Middle</label>
+            <label class="item-a">1</label>
             <select id="l1" data-key="id" autocomplete="off" onchange="enable_disable_settings(this)">
               <option value="0">Empty</option>
             </select>
@@ -244,7 +251,7 @@
         </section>
 
         <section data-layer="l0">
-            <label class="item-a">Bottom</label>
+            <label class="item-a">0</label>
             <select id="l0" data-key="id" onchange="enable_disable_settings(this)">
               <option value="0">Empty</option>
             </select>
@@ -305,7 +312,7 @@ function enable_disable_settings(el_select) {
   if (opt.parentElement.tagName === "OPTGROUP") {
     type = opt.parentElement.id;
   }
-  
+
   let id = el_select.id;
   let els = document.querySelectorAll(`[id^="${id}"][data-setting-for]`);
   for (el of els) {
