@@ -72,10 +72,7 @@ bool colorFromHexString(byte* rgb, const char* in) {
 // slightly modified version of deserializeSegment() from WLED json.cpp
 bool deserializeSegment(JsonObject root, CRGBA leds[], uint16_t leds_len)
 {
-  JsonVariant elem = root["seg"];
-  if (elem.is<JsonObject>())
-  {
-    JsonArray iarr = elem[F("i")]; //set individual LEDs
+    JsonArray iarr = root[F("i")]; //set individual LEDs
     if (!iarr.isNull()) {
       uint16_t start = 0, stop = 0;
       byte set = 0; //0 nothing set, 1 start set, 2 range set
@@ -113,6 +110,5 @@ bool deserializeSegment(JsonObject root, CRGBA leds[], uint16_t leds_len)
         }
       }
     }
-  }
   return true;
 }
