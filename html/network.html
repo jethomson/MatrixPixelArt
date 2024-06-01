@@ -24,14 +24,46 @@
   #return_main_menu {
     float: left;
   }
-
-  div {
-    padding: 5px;
-    font-size: 1em;
+  
+  input[type=text],
+  input[type=password] {
+    height: 20px;
+    margin: auto 0px;
   }
   
-  p {
-    margin: 0.5em 0;
+  .grid-container {
+    display: grid;
+    grid-template-columns: repeat(5, auto);
+    grid-row-gap: 5px;
+    grid-column-gap: 5px;
+    width: 1000px;
+    max-width: 95vw;
+    justify-content: center;
+    margin: 5px auto;
+    padding: 5px;
+  }
+
+  .item-a {
+    grid-column-start: 1;
+    text-align: right;
+  }
+
+  .item-e {
+    grid-column-start: 5;
+    text-align: left;
+  }
+  
+  .wide-input {
+    grid-column-start: 2;
+    grid-column: span 3;
+  }
+ 
+  .svg-icon {
+    vertical-align: middle;
+  }  
+
+  label {
+    margin: auto 0px;
   }
 
   button {
@@ -42,27 +74,14 @@
     line-height: 2.4rem;
     font-size: 1.2rem;
     width: 100%;
-    -webkit-transition-duration: 0.4s;
     transition-duration: 0.4s;
     cursor: pointer;
     margin: 5px 0px;
+    grid-column: span 5;
   }
   button:hover {
     background: #0e70a4;
   }
-
-  input:hover {
-    background: #0e70a4;
-  }
-
-  .bred {
-    background: #d43535;
-  }
-
-  .bred:hover {
-    background: #931f1f;
-  }
-
   </style>
 </head>
 
@@ -70,28 +89,49 @@
   <a id="return_main_menu" href="./index.html"><svg height="24px" width="24px" viewBox="0 0 16 16" id="Layer_1" version="1.1" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path fill="white" d="M15.45,7L14,5.551V2c0-0.55-0.45-1-1-1h-1c-0.55,0-1,0.45-1,1v0.553L9,0.555C8.727,0.297,8.477,0,8,0S7.273,0.297,7,0.555  L0.55,7C0.238,7.325,0,7.562,0,8c0,0.563,0.432,1,1,1h1v6c0,0.55,0.45,1,1,1h3v-5c0-0.55,0.45-1,1-1h2c0.55,0,1,0.45,1,1v5h3  c0.55,0,1-0.45,1-1V9h1c0.568,0,1-0.437,1-1C16,7.562,15.762,7.325,15.45,7z"/></svg></a>
 
   <h3>Enter your network info here.</h3>
-  <div style='text-align:left;display:inline-block;color:#eaeaea;min-width:340px;'>
-    <div style='text-align:center;color:#eaeaea;'>
-    <p>
-    <form action="/savenetinfo" method="post">
-      <div style='text-align:left;color:#eaeaea;'>
-      <label>SSID:&nbsp;&nbsp;</label><input maxlength="32" name="ssid"><br><br>
-      <label>Password:&nbsp;&nbsp;</label><input maxlength="63" id="password" name="password" value="type password here" type="password">&nbsp;&nbsp;<input id="show" type="checkbox" onclick="sp()" name="" style="position: absolute; opacity: 0; width: 0; height: 0;"><label id="show_lbl" for="show">show</label>
-      <br><br>
-      mDNS address (leave empty for no mDNS):<br>
-      <label>http://&nbsp;&nbsp;</label><input maxlength="30" name="mdns_host">.local<br><br>
-      <button type="submit" value="Save">Save</button>
-      </div>
-    </form>
-    </p>
+
+  <form id="savenetinfo" action="/savenetinfo" method="post"></form>
+  <div class="grid-container">
+    <label class="item-a">SSID</label>
+    <input  class="wide-input" form="savenetinfo" name="ssid" maxlength="32" >
+
+    <label class="item-a">Password</label>
+    <input id="password" class="wide-input" form="savenetinfo" name="password" value="type password here" type="password" maxlength="63">
+    <input id="show" type="checkbox" onclick="sp()" name="" style="position: absolute; opacity: 0; width: 0; height: 0;">
+    <label class="item-e" id="show_lbl" for="show">
+      <svg id="pwd_visible" class="svg-icon" width="20px" height="20px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M1 12C1 12 5 20 12 20C19 20 23 12 23 12" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="12" cy="12" r="3" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <svg id="pwd_hidden" class="svg-icon" style="display: none" width="20px" height="20px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 2L22 22" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M6.71277 6.7226C3.66479 8.79527 2 12 2 12C2 12 5.63636 19 12 19C14.0503 19 15.8174 18.2734 17.2711 17.2884M11 5.05822C11.3254 5.02013 11.6588 5 12 5C18.3636 5 22 12 22 12C22 12 21.3082 13.3317 20 14.8335" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M14 14.2362C13.4692 14.7112 12.7684 15.0001 12 15.0001C10.3431 15.0001 9 13.657 9 12.0001C9 11.1764 9.33193 10.4303 9.86932 9.88818" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </label>
+
+    <label class="item-a">mDNS address</label>
+    <label>http://</label>
+    <input id="mdns_host" form="savenetinfo" name="mdns_host" type="text" maxlength="30">
+    <label>.local</label>
+
+    <button form="savenetinfo" type="submit" value="Save">Save</button>
   </div>
-  </div>
+
   <script>
     function sp(){
       let pf = document.getElementById("password");
-      let lbl = document.getElementById("show_lbl");
-      pf.type = (pf.type === "text" ? "password" : "text");
-      lbl.textContent = (pf.type === "text" ? "hide" : "show");
+      if (pf.type === "password") {
+        pf.type = "text";
+        document.getElementById("pwd_hidden").style.display = "block";
+        document.getElementById("pwd_visible").style.display = "none";
+      }
+      else {
+        pf.type = "password";
+        document.getElementById("pwd_visible").style.display = "block";
+        document.getElementById("pwd_hidden").style.display = "none";
+      }
     }
   </script>
 </body>
