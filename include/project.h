@@ -28,9 +28,6 @@
 //#include <stdint.h>
 //#include "Arduino.h"
 
-#define LED_STRIP_VOLTAGE 5
-#define LED_STRIP_MILLIAMPS 500
-
 // storage locations for animated matrices and playlists.
 // note the pathes are hardcoded in the HTML files, so changing these defines is not enough.
 // do not put a / at the end
@@ -62,6 +59,44 @@
 #define HUE_ALIEN_GREEN 112
 
 
+inline String form_path(String type, String id) {
+  String fs_path = "";
+  if (type == "im") {
+    fs_path += IM_ROOT;
+  }
+  else if (type == "cm") {
+    fs_path += CM_ROOT;
+  }
+  else if (type == "pl") {
+    fs_path += PL_ROOT;
+  }
+  fs_path += "/";
+  fs_path += id;
+  fs_path += ".json";
+
+  return fs_path;
+}
+
+/*
+inline String form_path(String root, String id) {
+  String fs_path = "";
+  String param_path_top_dir = "/";
+  if (id.indexOf('/') == 0) {
+    id.remove(0,1);
+  }
+  param_path_top_dir += id.substring(0, id.indexOf('/'));
+
+  if (param_path_top_dir != root) {
+    fs_path = root;
+  }
+
+  fs_path += "/";
+  fs_path += id;
+  fs_path += ".json";
+
+  return fs_path;
+}
+*/
 
 #endif
 

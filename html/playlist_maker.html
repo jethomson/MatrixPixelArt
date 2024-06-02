@@ -290,42 +290,41 @@ let playlist = new Sortable(ul_playlist, {
 });
 
 
-async function load_effect_into_dropzone(id, stem) {
-  if (id.startsWith("/files/im/")) {
-    ul_playlist.insertAdjacentHTML("beforeend", `<li class="image" data-amid="${id}"><label>${stem}</label></li>`);
+async function load_effect_into_dropzone(type, id) {
+  if (type === "im") {
+    ul_playlist.insertAdjacentHTML("beforeend", `<li class="image" data-type="${type}" data-id="${id}"><label>${id}</label></li>`);
     add(ul_playlist.lastElementChild, 20);
   }
-  else if (id.startsWith("/files/cm/")) {
-    ul_playlist.insertAdjacentHTML("beforeend", `<li class="composite" data-amid="${id}"><label>${stem}</label></li>`);
+  else if (type === "cm") {
+    ul_playlist.insertAdjacentHTML("beforeend", `<li class="composite" data-type="${type}" data-id="${id}"><label>${id}</label></li>`);
     add(ul_playlist.lastElementChild, 20);
   }
 }
 
 
-async function load_playlist_into_dropzone(id) {
-  const t = await fetch(base_url+id);
+async function load_playlist_into_dropzone(path, id) {
+  const t = await fetch(base_url+path);
   let list = await t.json();
   if (list) {
     let items = list["am"];
     console.log(list);
     for (let i = 0; i < items.length; i++) {
+      let type = items[i]["t"]; 
       let id = items[i]["id"];
-      let name = id.substring(id.lastIndexOf('/') + 1);
-      let stem = name.replace(/\.[^/.]+$/, "");
       let d = items[i]["d"];
-      if (id.startsWith("/files/im/")) { 
-        ul_playlist.insertAdjacentHTML("beforeend", `<li class="image" data-amid="${id}"><label>${stem}</label></li>`);
+      if (type === "im") { 
+        ul_playlist.insertAdjacentHTML("beforeend", `<li class="image" data-type="${type}" data-id="${id}"><label>${id}</label></li>`);
         // not sure why this doesn't work
         //let event = new Event('add', { bubbles: true });
         //ul_playlist.lastElementChild.dispatchEvent(event);
         add(ul_playlist.lastElementChild, d/1000);
       }
-      else if (id.startsWith("/files/cm/")) { 
-        ul_playlist.insertAdjacentHTML("beforeend", `<li class="composite" data-amid="${id}"><label>${stem}</label></li>`);
+      else if (type === "cm") { 
+        ul_playlist.insertAdjacentHTML("beforeend", `<li class="composite" data-type="${type}" data-id="${id}"><label>${id}</label></li>`);
         add(ul_playlist.lastElementChild, d/1000);
       }
     }
-    document.getElementById("plid").value = list["id"];
+    document.getElementById("plid").value = id;
   }
 }
 
@@ -339,19 +338,18 @@ function populate_effects(list) {
   art_ul.innerHTML = "";
   pl_ul.innerHTML = "";
   for (let i = 0; i < list.length; i++) {
-    let type = list[i]["type"]; 
-    let id = list[i]["path"];
-    let name = list[i]["name"];
-    let stem = name.replace(/\.[^/.]+$/, "");
-    if (type && id && stem && type === "file") { 
-      if (id.startsWith("/files/im/")) {
-        art_ul.insertAdjacentHTML("beforeend", `<li class="image" onclick="load_effect_into_dropzone('${id}', '${stem}')">${stem}</li>`)
+    let type = list[i]["t"];
+    let path = list[i]["p"];
+    let id = list[i]["id"];
+    if (type && id) { 
+      if (type == "im") {
+        art_ul.insertAdjacentHTML("beforeend", `<li class="image" onclick="load_effect_into_dropzone('${type}', '${id}')">${id}</li>`)
       }
-      else if (id.startsWith("/files/cm/")) {
-        art_ul.insertAdjacentHTML("beforeend", `<li class="composite" onclick="load_effect_into_dropzone('${id}', '${stem}')">${stem}</li>`)
+      else if (type == "cm") {
+        art_ul.insertAdjacentHTML("beforeend", `<li class="composite" onclick="load_effect_into_dropzone('${type}', '${id}')">${id}</li>`)
       }
-      else if (id.startsWith("/files/pl/")) {
-        pl_ul.insertAdjacentHTML("beforeend", `<li class="playlist" onclick="load_playlist_into_dropzone('${id}')">${stem}</li>`)
+      else if (type == "pl") {
+        pl_ul.insertAdjacentHTML("beforeend", `<li class="playlist" onclick="load_playlist_into_dropzone('${path}', '${id}')">${id}</li>`)
       }
     }
     ul_playlist.style.minHeight = art_ul.offsetHeight;
@@ -376,14 +374,13 @@ async function save() {
   if (plid && li.length > 0) {
     let o = {};
     o.t = type;
-    o.id = plid.toString();
     o.am = [];
     for (let i = 0; i < li.length; i++) {
       let v = li[i].children[1].value;
       if (isNaN(v) || v < 0.001) {
         v = 0.001;
       }
-      o.am.push({"id": li[i].getAttribute("data-amid"), "d": "!!"+(1000*v)+"!!"})
+      o.am.push({"t": li[i].getAttribute("data-type"), "id": li[i].getAttribute("data-id"), "d": "!!"+(1000*v)+"!!"})
     }
     let json = JSON.stringify(o);
     //stringify() wraps numbers in quotes so wrap numbers in !! to make it easy to remove the quotes
@@ -392,7 +389,7 @@ async function save() {
     console.log(json);
     
     console.log(`t=${type}&id=${plid}&json=` + json);
-   
+
     let success = false;
     try {
       const t = await fetch(base_url+"/save", {

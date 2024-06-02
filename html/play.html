@@ -126,19 +126,17 @@ function populate_effects(list) {
   let pl_btns_div = document.getElementById("pl_btns");
   
   for (let i = 0; i < list.length; i++) {
-    let type = list[i]["type"]; 
-    let id = list[i]["path"];
-    let name = list[i]["name"];
-    let stem = name.replace(/\.[^/.]+$/, "");
-    if(type && id && name && type === "file") { 
-      if (id.startsWith("/files/im/")) {
-        im_btns_div.insertAdjacentHTML("beforeend", `<input type="button" id="${id}" class="btn image" data-type="im" value="${stem}" onclick="load('im', '${id}')">`)
+    let type = list[i]["t"]; 
+    let id = list[i]["id"];
+    if(type && id) { 
+      if (type === "im") {
+        im_btns_div.insertAdjacentHTML("beforeend", `<input type="button" id="${id}" class="btn image" data-type="im" value="${id}" onclick="load('im', '${id}')">`)
       }
-      else if (id.startsWith("/files/cm/")) {
-        cm_btns_div.insertAdjacentHTML("beforeend", `<input type="button" id="${id}" class="btn composite" data-type="cm" value="${stem}" onclick="load('cm', '${id}')">`)
+      else if (type === "cm") {
+        cm_btns_div.insertAdjacentHTML("beforeend", `<input type="button" id="${id}" class="btn composite" data-type="cm" value="${id}" onclick="load('cm', '${id}')">`)
       }
-      else if (id.startsWith("/files/pl/")) {
-        pl_btns_div.insertAdjacentHTML("beforeend", `<input type="button" id="${id}" class="btn playlist" data-type="pl" value="${stem}" onclick="load('pl', '${id}')">`)
+      else if (type === "pl") {
+        pl_btns_div.insertAdjacentHTML("beforeend", `<input type="button" id="${id}" class="btn playlist" data-type="pl" value="${id}" onclick="load('pl', '${id}')">`)
       }
     }
   }

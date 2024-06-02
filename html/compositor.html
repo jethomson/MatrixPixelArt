@@ -355,20 +355,18 @@ function populate_effects(list) {
   if (files) {
     let el_selects = document.querySelectorAll('select[data-key="id"]');
     for (el_select of el_selects) {
-      el_select.insertAdjacentHTML("beforeend", '<optgroup id="i" label="Images">');
+      el_select.insertAdjacentHTML("beforeend", '<optgroup id="im" label="Images">');
     }
 
     for (let i = 0; i < files.length; i++) {
-      let type = files[i]["type"];
-      let id = files[i]["path"];
-      let name = files[i]["name"];
-      if (type && id && name && type === "file" && id.startsWith("/files/im/")) { 
-        let el_optgroups = document.querySelectorAll('optgroup[id="i"]');
+      let type = files[i]["t"];
+      let id = files[i]["id"];
+      if (type === "im" && id) { 
+        let el_optgroups = document.querySelectorAll('optgroup[id="im"]');
         for (el_optgroup of el_optgroups) {
-          el_optgroup.insertAdjacentHTML("beforeend", `<option value="${id}">${name}</option>`);
+          el_optgroup.insertAdjacentHTML("beforeend", `<option value="${id}">${id}</option>`);
         }
       }
-      //ul_playlist.style.minHeight = ul_source.offsetHeight;
     }
   }
 
@@ -463,7 +461,6 @@ async function save() {
   let cmid = document.getElementById("cmid").value;
 
   comp_dict["t"] = type;
-  comp_dict["id"] = cmid;
   comp_dict["l"] = [];
 
   if (cmid) {

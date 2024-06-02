@@ -381,9 +381,9 @@ void ReAnimator::increment_overlay(bool is_persistent) {
 }
 
 
-bool ReAnimator::set_image(String fs_path, String* message) {
-    image_path = fs_path;
-    fresh_image = load_image_from_file(fs_path, message);
+bool ReAnimator::set_image(String id, String* message) {
+    image_path = form_path(F("im"), id);
+    fresh_image = load_image_from_file(image_path, message);
     return fresh_image;
 }
 

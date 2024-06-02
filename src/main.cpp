@@ -76,7 +76,7 @@ bool gplaylist_enabled = false;
 
 struct {
   String type;
-  String filename;
+  String id;
 } gnextup;
 
 //const char* patterns[] = {"None", "Rainbow", "Solid", "Orbit", "Running Lights", "Juggle", "Sparkle", "Weave", "Checkerboard", "Binary System", "Shooting Star", "Puck-Man", "Cylon", "Demo"};
@@ -97,17 +97,15 @@ void list_files(File dir, String parent);
 void handle_file_list(void);
 void delete_files(String name, String parent);
 void handle_delete_list(void);
-String get_root(String type);
-String form_path(String root, String id);
 bool create_patterns_list(void);
 bool create_accents_list(void);
 bool save_data(String fs_path, String json, String* message = nullptr);
 void puck_man_cb(uint8_t event);
 bool load_layer(uint8_t lnum, JsonVariant layer_json);
-bool load_image_to_layer(uint8_t lnum, String fs_path);
-bool load_image_solo(String fs_path);
+bool load_image_to_layer(uint8_t lnum, String id);
+bool load_image_solo(String id);
 bool load_composite(String fs_path);
-bool load_file(String fs_path);
+bool load_file(String type, String id);
 bool load_from_playlist(String id = "");
 
 bool attempt_connect(void);
@@ -253,9 +251,9 @@ void list_files(File dir, String parent) {
   gfile_list_tmp += path;
   gfile_list_tmp += "/\n";
 
-  gfile_list_json_tmp += "{\"type\":\"dir\",\"name\":\"";
-  gfile_list_json_tmp += path;
-  gfile_list_json_tmp += "\"},";
+  //gfile_list_json_tmp += "{\"t\":\"dir\",\"id\":\"";
+  //gfile_list_json_tmp += path;
+  //gfile_list_json_tmp += "\"},";
 
   while (File entry = dir.openNextFile()) {
     if (entry.isDirectory()) {
@@ -270,17 +268,29 @@ void list_files(File dir, String parent) {
       gfile_list_tmp += entry.size();
       gfile_list_tmp += "\n";
 
-      gfile_list_json_tmp += "{\"type\":\"file\",\"path\":\"";
-      gfile_list_json_tmp += path;
-      gfile_list_json_tmp += "/";
-      gfile_list_json_tmp += entry.name();
-      gfile_list_json_tmp += "\",";
-      gfile_list_json_tmp += "\"name\":\"";
-      gfile_list_json_tmp += entry.name();
-      gfile_list_json_tmp += "\",";
-      gfile_list_json_tmp += "\"size\":";
-      gfile_list_json_tmp += entry.size();
-      gfile_list_json_tmp += "},";
+      String type = dir.name();
+      String id = entry.name();
+      id.remove(id.length()-5); // remove .json extension
+      if (type == "im" || type == "cm") {
+        gfile_list_json_tmp += "{\"t\":\"";
+        gfile_list_json_tmp += type;
+        gfile_list_json_tmp += "\",";
+        gfile_list_json_tmp += "\"id\":\"";
+        gfile_list_json_tmp += id;
+        gfile_list_json_tmp += "\"},";
+      }
+      else if (type == "pl") {
+        gfile_list_json_tmp += "{\"t\":\"";
+        gfile_list_json_tmp += type;
+        gfile_list_json_tmp += "\",\"p\":\"";
+        gfile_list_json_tmp += path; // the frontend only needs paths for playlists
+        gfile_list_json_tmp += "/";
+        gfile_list_json_tmp += entry.name();
+        gfile_list_json_tmp += "\",";
+        gfile_list_json_tmp += "\"id\":\"";
+        gfile_list_json_tmp += id;
+        gfile_list_json_tmp += "\"},";
+      }
 
       entry.close();
     }
@@ -366,39 +376,6 @@ void handle_delete_list(void) {
 }
 
 
-String get_root(String type) {
-  if (type == "im") {
-    return IM_ROOT;
-  }
-  if (type == "pl") {
-    return PL_ROOT;
-  }
-  if (type == "cm") {
-    return CM_ROOT;
-  }
-  return "";
-}
-
-
-String form_path(String root, String id) {
-  String fs_path = "";
-  String param_path_top_dir = "/";
-  if (id.indexOf('/') == 0) {
-    id.remove(0,1);
-  }
-  param_path_top_dir += id.substring(0, id.indexOf('/'));
-
-  if (param_path_top_dir != root) {
-    fs_path = root;
-  }
-
-  fs_path += "/";
-  fs_path += id;
-
-  return fs_path;
-}
-
-
 bool save_data(String fs_path, String json, String* message) {
   if (fs_path == "") {
     if (message) {
@@ -440,7 +417,6 @@ bool create_patterns_list(void) {
   bool match = false;
   static bool first = true;
   bool finished = false;
-  Serial.println(pattern_id);
   switch(pattern_id) {
     default:
         if (pattern_id > 49) {
@@ -522,7 +498,6 @@ bool create_accents_list(void) {
   bool match = false;
   static bool first = true;
   bool finished = false;
-  Serial.println(accent_id);
   switch(accent_id) {
     default:
         if (accent_id > 49) {
@@ -574,16 +549,16 @@ void puck_man_cb(uint8_t event) {
       for (uint8_t i = 0; i < NUM_LAYERS; i++) {
         if (ghost_layers[i] == 1) {
           if (layers[i])
-          load_image_to_layer(i, "/files/im/blinky.json");
+          load_image_to_layer(i, "blinky");
         }
         if (ghost_layers[i] == 2) {
-          load_image_to_layer(i, "/files/im/pinky.json");
+          load_image_to_layer(i, "pinky");
         }
         if (ghost_layers[i] == 3) {
-          load_image_to_layer(i, "/files/im/inky.json");
+          load_image_to_layer(i, "inky");
         }
         if (ghost_layers[i] == 4) {
-          load_image_to_layer(i, "/files/im/clyde.json");
+          load_image_to_layer(i, "clyde");
         }
       }
       break;
@@ -592,7 +567,7 @@ void puck_man_cb(uint8_t event) {
         one_shot = true;
         for (uint8_t i = 0; i < NUM_LAYERS; i++) {
           if (ghost_layers[i]) {
-            load_image_to_layer(i, "/files/im/blue_ghost.json");
+            load_image_to_layer(i, "blue_ghost");
           }
         }
       }
@@ -659,19 +634,19 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     movement = layer_json[F("m")];
   }
 
-  if (layer_json[F("t")] == "i") {
+  if (layer_json[F("t")] == "im") {
     String id = layer_json[F("id")];
     ghost_layers[lnum] = 0;
-    if (id.endsWith("/blinky.json")) {
+    if (id == "blinky.json") {
       ghost_layers[lnum] = 1;
     }
-    if (id.endsWith("/pinky.json")) {
+    if (id == "pinky.json") {
       ghost_layers[lnum] = 2;
     }
-    if (id.endsWith("/inky.json")) {
+    if (id == "inky.json") {
       ghost_layers[lnum] = 3;
     }
-    if (id.endsWith("/clyde.json")) {
+    if (id == "clyde.json") {
       ghost_layers[lnum] = 4;
     }
     layers[lnum]->setup(Image_t, -2);
@@ -711,17 +686,17 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
 // its other attributes but replace its image.
 // this helps streamline code from having the same repeative layer
 // existence check.
-bool load_image_to_layer(uint8_t lnum, String fs_path) {
+bool load_image_to_layer(uint8_t lnum, String id) {
   bool retval = false;
   if (layers[lnum] != nullptr) {
-    retval = layers[lnum]->set_image(fs_path);
+    retval = layers[lnum]->set_image(id);
   }
   return retval;
 }
 
 
 // this loads an image by itself (no other layers) to layer 0.
-bool load_image_solo(String fs_path) {
+bool load_image_solo(String id) {
   bool retval = false;
   for (uint8_t i = 0; i < NUM_LAYERS; i++) {
     if (layers[i] != nullptr) {
@@ -734,7 +709,7 @@ bool load_image_solo(String fs_path) {
     layers[0] = new ReAnimator();
     layers[0]->set_color(CRGB::White);
     //layers[0]->setup(Image_t, -2);
-    retval = layers[0]->set_image(fs_path);
+    retval = layers[0]->set_image(id);
     layers[0]->set_heading(0);
   }
 
@@ -751,8 +726,9 @@ bool load_image_solo(String fs_path) {
 }
 
 
-bool load_composite(String fs_path) {
+bool load_composite(String id) {
   bool retval = false;
+  String fs_path = form_path(F("cm"), id);
   File file = LittleFS.open(fs_path, "r");
   
   if(!file){
@@ -783,14 +759,13 @@ bool load_composite(String fs_path) {
   return retval;
 }
 
-
-bool load_file(String fs_path) {
+bool load_file(String type, String id) {
   bool retval = false;
-  if (fs_path.startsWith(CM_ROOT)) {
-    retval = load_composite(fs_path);
+  if (type == "cm") {
+    retval = load_composite(id);
   }
-  else if (fs_path.startsWith(IM_ROOT)) {
-    retval = load_image_solo(fs_path);
+  else if (type == "im") {
+    retval = load_image_solo(id);
   }
   return true;
 }
@@ -815,7 +790,8 @@ bool load_from_playlist(String id) {
     pm = millis();
     am_duration = 1000; // set to a safe value which will be replaced below
 
-    File file = LittleFS.open(_id, "r");
+    String fs_path = form_path(F("pl"), _id);
+    File file = LittleFS.open(fs_path, "r");
     if (file && file.available()) {
       String json = file.readString();
       file.close();
@@ -836,9 +812,7 @@ bool load_from_playlist(String id) {
       if (!arr.isNull() && arr.size() > 0) {
         if(arr[i].is<JsonVariant>()) {
           JsonVariant am = arr[i];
-          //String msg = "load_from_playlist(): playlist disabled.";
-          String path = am[F("id")];
-          if(load_file(path)) {
+          if(load_file(am[F("t")], am[F("id")])) {
             if(am[F("d")].is<JsonInteger>()) {
               am_duration = am[F("d")];
             }
@@ -1070,13 +1044,12 @@ void web_server_station(void) {
     String type = request->getParam("t", true)->value();
     String id = request->getParam("id", true)->value();
     String json = request->getParam("json", true)->value();
-    String root = get_root(type);
 
-    if (id != "" && root != "") {
-      String fs_path = form_path(root, id+".json");
+    if (id != "") {
+      String fs_path = form_path(type, id);
       if (save_data(fs_path, json, &message)) {
         gnextup.type = type;
-        gnextup.filename = fs_path;
+        gnextup.id = id;
         gfile_list_needs_refresh = true;
         rc = 200;
       }
@@ -1098,8 +1071,8 @@ void web_server_station(void) {
 
     if (id != "" && (type == "im" || type == "cm" || type == "pl")) {
       gnextup.type = type;
-      gnextup.filename = id;
-      message = gnextup.filename + " queued.";
+      gnextup.id = id;
+      message = gnextup.id + " queued.";
       rc = 200;
     }
     else {
@@ -1266,20 +1239,20 @@ void show(void) {
 
   // since web_server interrupts we have to queue changes instead of running them directly from web_server's on functions
   // otherwise changes we make could be undo once the interrupt hands back control which could be in the middle of code setting up a different animation
-  if (gnextup.filename) {
+  if (gnextup.id) {
     if (gnextup.type == "pl") {
-      load_from_playlist(gnextup.filename);
+      load_from_playlist(gnextup.id);
     }
     else if (gnextup.type == "cm") {
       gplaylist_enabled = false;
-      load_file(gnextup.filename);
+      load_composite(gnextup.id);
     }
     else if (gnextup.type == "im") {
       gplaylist_enabled = false;
-      load_file(gnextup.filename);
+      load_image_solo(gnextup.id);
     }
     gnextup.type = "";
-    gnextup.filename = "";
+    gnextup.id = "";
   }
 
   if (gplaylist_enabled) {
@@ -1435,10 +1408,6 @@ void setup() {
   }
 
   mdns_setup();
-
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP());
-
   web_server_initiate();
 
   handle_file_list(); // refresh file list before starting loop() because refreshing is slow
@@ -1450,7 +1419,7 @@ void setup() {
   gdynamic_rgb = CHSV(gdynamic_hue, 255, 255);
   gdynamic_comp_rgb = CRGB::White - gdynamic_rgb;
 
-  load_file("/files/cm/default.json");
+  load_file("cm", "default");
 }
 
 
