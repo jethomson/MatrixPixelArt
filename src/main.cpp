@@ -767,6 +767,9 @@ bool load_file(String type, String id) {
   else if (type == "im") {
     retval = load_image_solo(id);
   }
+  else if (type == "pl") {
+    retval = load_from_playlist(id);
+  }
   return true;
 }
 
@@ -1419,7 +1422,8 @@ void setup() {
   gdynamic_rgb = CHSV(gdynamic_hue, 255, 255);
   gdynamic_comp_rgb = CRGB::White - gdynamic_rgb;
 
-  load_file("cm", "default");
+  //load_file(F("cm"), "cm_example");
+  load_file(F("pl"), "pl_example");
 }
 
 
