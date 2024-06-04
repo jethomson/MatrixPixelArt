@@ -3,17 +3,18 @@ env.Execute("$PYTHONEXE -m pip install minify-html")
 
 from pathlib import Path
 import minify_html
+import gzip
+import os
+import tempfile
 
 def minify(source, target, env):
-  dir = Path("./html")
-  for filename in dir.iterdir():
-    html = filename.read_text()
-    try:
-      minified = minify_html.minify(html, minify_js=True, minify_css=True, keep_input_type_text_attr=True)
-      with open(f'./html_minified/{filename.name}', 'w') as fout:
-        print(minified, file=fout, end='')
-    except SyntaxError as e:
-      print(e)
+  html_dir = Path("./html")
+  for html_filepath in html_dir.iterdir():
+    html_filename = html_filepath.name
+    html = html_filepath.read_text()
+    html_minified = minify_html.minify(html, minify_js=True, minify_css=True, keep_input_type_text_attr=True)
+    with gzip.open(f'./html_minified/{html_filename}.gz', 'wb') as fgz:
+      fgz.write(html_minified.encode("utf-8"))
 
 env.AddPostAction("buildfs", minify)
 
