@@ -777,7 +777,7 @@ bool load_file(String type, String id) {
 bool load_from_playlist(String id) {
   static String _id;
   static uint32_t pm = 0;
-  static uint32_t am_duration = 0;
+  static uint32_t item_duration = 0;
   static uint8_t i = 0;
   bool refresh_needed = false;
 
@@ -785,13 +785,13 @@ bool load_from_playlist(String id) {
     gplaylist_enabled = true;
     _id = id;
     pm = 0;
-    am_duration = 0;
+    item_duration = 0;
     i = 0;
   }
 
-  if (_id != "" && (millis()-pm) > am_duration) {
+  if (_id != "" && (millis()-pm) > item_duration) {
     pm = millis();
-    am_duration = 1000; // set to a safe value which will be replaced below
+    item_duration = 1000; // set to a safe value which will be replaced below
 
     String fs_path = form_path(F("pl"), _id);
     File file = LittleFS.open(fs_path, "r");
@@ -811,21 +811,21 @@ bool load_from_playlist(String id) {
       }
 
       JsonObject object = doc.as<JsonObject>();
-      JsonArray arr = object[F("am")];
-      if (!arr.isNull() && arr.size() > 0) {
-        if(arr[i].is<JsonVariant>()) {
-          JsonVariant am = arr[i];
-          if(load_file(am[F("t")], am[F("id")])) {
-            if(am[F("d")].is<JsonInteger>()) {
-              am_duration = am[F("d")];
+      JsonArray playlist = object[F("pl")];
+      if (!playlist.isNull() && playlist.size() > 0) {
+        if(playlist[i].is<JsonVariant>()) {
+          JsonVariant item = playlist[i];
+          if(load_file(item[F("t")], item[F("id")])) {
+            if(item[F("d")].is<JsonInteger>()) {
+              item_duration = item[F("d")];
             }
             refresh_needed = true;
           }
           else {
-            am_duration = 0;
+            item_duration = 0;
           }
         }
-        i = (i+1) % arr.size();
+        i = (i+1) % playlist.size();
       }
       else {
         gplaylist_enabled = false;
@@ -988,8 +988,9 @@ void web_server_station(void) {
   });
 
   web_server.serveStatic("/", LittleFS, "/html/");
-
+  
   web_server.serveStatic("/", LittleFS, "/").setDefaultFile("html/index.html");
+ 
 
 /*
   web_server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request) {

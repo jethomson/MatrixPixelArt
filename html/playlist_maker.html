@@ -306,7 +306,7 @@ async function load_playlist_into_dropzone(path, id) {
   const t = await fetch(base_url+path);
   let list = await t.json();
   if (list) {
-    let items = list["am"];
+    let items = list["pl"];
     console.log(list);
     for (let i = 0; i < items.length; i++) {
       let type = items[i]["t"]; 
@@ -374,13 +374,13 @@ async function save() {
   if (plid && li.length > 0) {
     let o = {};
     o.t = type;
-    o.am = [];
+    o.pl = [];
     for (let i = 0; i < li.length; i++) {
       let v = li[i].children[1].value;
       if (isNaN(v) || v < 0.001) {
         v = 0.001;
       }
-      o.am.push({"t": li[i].getAttribute("data-type"), "id": li[i].getAttribute("data-id"), "d": "!!"+(1000*v)+"!!"})
+      o.pl.push({"t": li[i].getAttribute("data-type"), "id": li[i].getAttribute("data-id"), "d": "!!"+(1000*v)+"!!"})
     }
     let json = JSON.stringify(o);
     //stringify() wraps numbers in quotes so wrap numbers in !! to make it easy to remove the quotes
