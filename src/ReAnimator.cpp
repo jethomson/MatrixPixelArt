@@ -222,8 +222,12 @@ int8_t ReAnimator::set_pattern(Pattern pattern_in, bool reverse_in, bool disable
             pattern_out = SOLID;
             overlay_out = NO_OVERLAY;
             break;
-        case JUGGLE:
-            pattern_out = JUGGLE;
+        case PENDULUM:
+            pattern_out = PENDULUM;
+            overlay_out = NO_OVERLAY;
+            break;
+        case FUNKY:
+            pattern_out = FUNKY;
             overlay_out = NO_OVERLAY;
             break;
         case RIFFLE:
@@ -599,8 +603,11 @@ int8_t ReAnimator::run_pattern(Pattern pattern) {
         case SOLID:
             solid(200);
             break;
-        case JUGGLE:
-            juggle();
+        case PENDULUM:
+            pendulum();
+            break;
+        case FUNKY:
+            funky();
             break;
         case RIFFLE:
             riffle();
@@ -912,37 +919,61 @@ void ReAnimator::solid(uint16_t draw_interval) {
 }
 
 
-
-// borrowed from FastLED/examples/DemoReel00.ino -Mark Kriegsman, December 2014
-void ReAnimator::juggle() {
-    // eight colored dots, weaving in and out of sync with each other
-    fadeToBlackBy(leds, NUM_LEDS, 20);
-    byte dothue = 0;
-    for(uint8_t i = 0; i < 1; i++) {
-        leds[beatsin16( i+7, 0, NUM_LEDS-1 )] |= CHSV(dothue, 200, 255);
-        dothue += 32;
+// inspired by juggle from FastLED/examples/DemoReel00.ino -Mark Kriegsman, December 2014
+void ReAnimator::pendulum() {
+    const uint8_t bpm_offset = 56;
+    const uint8_t num_columns = MD;
+    fadeToBlackBy(leds, NUM_LEDS, 15);
+    byte ball_hue = hue;
+    const uint8_t num_balls = MD;
+    for (uint8_t i = 0; i < num_columns; i++) {
+        Point p;
+        p.x = i*(MD/num_columns);
+        p.y = beatsin16(i+7, 0, MD-1);
+        uint16_t j = cart2serp(p);
+        leds[j] |= CHSV(ball_hue, 200, 255);
+        ball_hue += 255/num_columns;
     }
 }
 
 
 
+void ReAnimator::funky() {
+    const uint8_t bpm_offset = 14;
+    const uint8_t num_columns = MD;
+    byte ball_hue = hue;
+    fadeToBlackBy(leds, NUM_LEDS, 1);
+    for (uint8_t i = 0; i < num_columns; i++) {
+        Point p;
+        p.x = i*(MD/num_columns);
+        p.y = beatsin16(i+bpm_offset, 0, MD-1);
+        uint16_t j = cart2serp(p);
+        p.y = MD-1 - beatsin16(i+bpm_offset, 0, MD-1);
+        uint16_t k = cart2serp(p);
+        leds[j] |= CHSV(ball_hue, 200, 255);
+        leds[k] |= CHSV(255-ball_hue, 200, 255);
+        ball_hue += 255/num_columns;
+    }
+}
+
+
 void ReAnimator::riffle() {
-    fadeToBlackBy(leds, NUM_LEDS, 5);
-    uint8_t dothue = hue;
+    uint8_t ball_hue = hue;
     uint8_t i = 0;
+    fadeToBlackBy(leds, NUM_LEDS, 5);
     while (true) {
         uint16_t high = ((i+1)*16)-1;
         if (high >= NUM_LEDS/2) {
             break;
         }
         uint16_t p = beatsin16(3, 0, high);
-        leds[NUM_LEDS-1-p] |= CHSV(dothue, 200, 255);
+        leds[NUM_LEDS-1-p] |= CHSV(ball_hue, 200, 255);
 
         uint16_t q = (MD*(p/MD)+MD)-1 - p%MD;
-        leds[q] |= CHSV(dothue, 200, 255);
+        leds[q] |= CHSV(ball_hue, 200, 255);
 
         i++;
-        dothue += 32;
+        ball_hue += 32;
     }
 }
 
@@ -2277,7 +2308,7 @@ void demo() {
   const uint8_t PATTERNS_NUM = 21;
 
   const Pattern patterns[PATTERNS_NUM] = {DYNAMIC_RAINBOW, SOLID, ORBIT, RUNNING_LIGHTS,
-                                          JUGGLE, SPARKLE, WEAVE, CHECKERBOARD, BINARY_SYSTEM,
+                                          PENDULUM, SPARKLE, WEAVE, CHECKERBOARD, BINARY_SYSTEM,
                                           SOLID, SOLID, SOLID, SOLID, DYNAMIC_RAINBOW,
                                           SHOOTING_STAR, //MITOSIS, BUBBLES, MATRIX,
                                           BALLS, CYLON,

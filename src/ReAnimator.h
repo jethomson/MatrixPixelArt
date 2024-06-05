@@ -53,12 +53,14 @@ enum Pattern {
               DYNAMIC_RAINBOW = 0, SOLID = 1,
               ORBIT = 2, RUNNING_LIGHTS = 3,
               RIFFLE = 4, SPARKLE = 5, 
-              WEAVE = 6, CHECKERBOARD = 7, BINARY_SYSTEM = 8, 
+              WEAVE = 6, PENDULUM = 7, BINARY_SYSTEM = 8, 
               SHOOTING_STAR = 9, PUCK_MAN = 10, CYLON = 11,
+              FUNKY = 12,
               NO_PATTERN = 50,
-              THEATER_CHASE = 51, JUGGLE = 52, MITOSIS = 53,
+              THEATER_CHASE = 51, MITOSIS = 52,
               BUBBLES = 54, MATRIX = 55, STARSHIP_RACE = 56,
               BALLS = 57, HALLOWEEN_FADE = 58, HALLOWEEN_ORBIT = 59,
+              CHECKERBOARD = 60, 
               DEMO = 99,
               //SOUND_RIBBONS = 60, SOUND_RIPPLE = 61, SOUND_BLOCKS = 62, SOUND_ORBIT = 63
              };
@@ -234,7 +236,8 @@ class ReAnimator {
     void cylon(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
 
     void solid(uint16_t draw_interval);
-    void juggle();
+    void pendulum();
+    void funky();
     void riffle();
     void mitosis(uint16_t draw_interval, uint8_t cell_size);
     void bubbles(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
