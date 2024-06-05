@@ -44,21 +44,16 @@ DNSServer dnsServer;
 
 Preferences preferences;
 
-
-bool restart_needed = false;
-bool station_mode = false;
+bool grestart_needed = false;
+bool gdns_up = false;
 
 IPAddress IP;
 String mdns_host;
-
-
-
 
 CRGB leds[NUM_LEDS] = {0}; // output
 
 ReAnimator* layers[NUM_LAYERS];
 uint8_t ghost_layers[NUM_LAYERS] = {0};
-
 
 //uint8_t gmax_brightness = 255;
 //const uint8_t gmin_brightness = 2;
@@ -109,12 +104,12 @@ bool load_file(String type, String id);
 bool load_from_playlist(String id = "");
 
 bool attempt_connect(void);
-String get_mode(void);
 String get_ip(void);
 String get_mdns_addr(void);
 void wifi_AP(void);
 bool wifi_connect(void);
-void web_server_station(void);
+void web_server_station_setup(void);
+void web_server_ap_setup(void);
 void web_server_initiate(void);
 void show(void);
 
@@ -854,7 +849,7 @@ public:
   void handleRequest(AsyncWebServerRequest *request) {
     String url = "http://";
     url += get_ip();
-    url += "/network.html";
+    url += "/network.htm";
     request->redirect(url);
   }
 };
@@ -871,17 +866,6 @@ bool attempt_connect(void) {
   attempt = !preferences.getBool("create_ap", true);
   preferences.end();
   return attempt;
-}
-
-String get_mode(void) {
-  String mode = "unknown";
-  if (WiFi.status() == WL_CONNECTED && WiFi.getMode() == WIFI_STA) {
-    mode = "station";
-  }
-  else if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
-    mode = "AP";
-  }
-  return mode;
 }
 
 String get_ip(void) {
@@ -969,78 +953,7 @@ bool filterOnNotLocal(AsyncWebServerRequest *request) {
   return request->host() != get_ip() && request->host() != mdns_host;
 }
 
-void web_server_station(void) {
-
-  web_server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/html/index.html");
-    //request->send(LittleFS, "/html/index.html", String(), false, processor);
-
-    // for reference: alternate methods of sending a webpage
-    //request->send(LittleFS, "/html/index.html");
-    //request->send_P(200, "text/html", index_html);
-    //AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", min_index_html_gz, min_index_html_gz_len);
-    //response->addHeader("Content-Encoding", "gzip");
-    //request->send(response);
-  });
-
-  web_server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->redirect("/");
-  });
-
-  web_server.serveStatic("/", LittleFS, "/html/");
-  
-  web_server.serveStatic("/", LittleFS, "/").setDefaultFile("html/index.html");
- 
-
-/*
-  web_server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/html/index.html");
-  });
-
-  web_server.on("/converter.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/html/converter.html");
-  });
-
-  web_server.on("/compositor.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/html/compositor.html");
-  });
-
-  web_server.on("/playlist_maker.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/html/playlist_maker.html");
-  });
-
-  web_server.on("/play.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/html/play.html");
-  });
-
-  web_server.on("/file_manager.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/html/file_manager.html");
-  });
-*/
-
-  // perhaps use the processor to replace references to IM_ROOT and PL_ROOT in html files
-  // this is problematic because the $ is used for formatted strings in javascript
-  //web_server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-  //  //request->send(LittleFS, "/html/index.html", String(), false, processor);
-  //  request->send(LittleFS, "/html/index.html");
-  //});
-
-  //web_server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-  //  request->redirect("/");
-  //});
-
-
-  //AsyncCallbackWebHandler& on(const char* uri, WebRequestMethodComposite method, ArRequestHandlerFunction onRequest, ArUploadHandlerFunction onUpload);
-  //web_server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request) {
-  //  if (upload_status) {
-  //    request->send(200, "application/json", "{\"upload_status\": 0}"); // maybe return filesize instead so client can verify
-  //  }
-  //  else {
-  //    request->send(500, "application/json", "{\"upload_status\": -1}");
-  //  }
-  //}, handle_upload);
-
-
+void web_server_station_setup(void) {
   web_server.on("/save", HTTP_POST, [](AsyncWebServerRequest *request) {
     int rc = 400;
     String message;
@@ -1097,7 +1010,6 @@ void web_server_station(void) {
   });
 
   web_server.on("/file_list.json", HTTP_GET, [](AsyncWebServerRequest *request) {
-    //request->send(200, "text/plain", gfile_list_json);
     request->send(200, "application/json", gfile_list_json);
   });
 
@@ -1114,78 +1026,53 @@ void web_server_station(void) {
         gdelete_list += "\n";
       }
     }
-    request->redirect("/remove.html");
+    request->redirect("/remove.htm");
   });
+
+  // files/ and html/ are both direct children of the littlefs root directory
+  // /littlefs/files/ and /littlefs/html/
+  // if the URL starts with /files/ then first look in /littlefs/files/ for the requested file
+  web_server.serveStatic("/files/", LittleFS, "/files/");
+  // if the URL starts with / then first look in /littlefs/html/ for the requested page
+  web_server.serveStatic("/", LittleFS, "/html/");
 
   web_server.onNotFound([](AsyncWebServerRequest *request) {
     if (request->method() == HTTP_OPTIONS) {
       request->send(200);
     } else {
-      //request->send(404);
-      request->redirect("/");
+      //request->send(404, "text/plain", "404"); // for testing
+      request->redirect("/"); // will cause redirect loop if request handlers are not set up properly
     }
   });
 }
 
+void web_server_ap_setup() {
+  // create a captive portal that catches every attempt to access data besides what the ESP serves to network.htm
+  // requests to the ESP are handled normally
+  // a captive portal makes it easier for a user to save their WiFi credentials to the ESP because they do not
+  // need to know the ESP's IP address.
+  gdns_up = dnsServer.start(53, "*", IP);
+  web_server.addHandler(new CaptiveRequestHandler()).setFilter(filterOnNotLocal);
 
+  // want limited access when in AP mode. AP mode is just for WiFi setup.
+  web_server.onNotFound([](AsyncWebServerRequest *request) {
+    request->send(LittleFS, "/html/network.htm");
+  });
+}
 
 void web_server_initiate(void) {
 
-  // need to put this before serveStatic(), otherwise serveStatic() will serve restart.html, but not set restart_needed to true;
-  web_server.on("/restart.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-    restart_needed = true;
-    request->send(LittleFS, "/html/restart.html");
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, PUT");
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  // it is possible for more than one handler to serve a file
+  // the first handler that matches a request will server the file
+  // so need to put this before serveStatic(), otherwise serveStatic() will serve restart.htm, but not set grestart_needed to true;
+  web_server.on("/restart.htm", HTTP_GET, [](AsyncWebServerRequest *request) {
+    grestart_needed = true;
+    request->send(LittleFS, "/html/restart.htm");
   });
-
-
-  if (WiFi.getMode() == WIFI_STA) {
-    web_server_station();
-
-/*
-    web_server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/html/index.html");
-      //request->send(LittleFS, "/html/index.html", String(), false, processor);
-
-      // for reference: alternate methods of sending a webpage
-      //request->send(LittleFS, "/html/index.html");
-      //request->send_P(200, "text/html", index_html);
-      //AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", min_index_html_gz, min_index_html_gz_len);
-      //response->addHeader("Content-Encoding", "gzip");
-      //request->send(response);
-    });
-
-    web_server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->redirect("/");
-    });
-
-    web_server.serveStatic("/", LittleFS, "/html/");
-
-    // serve all requests to  host/sprites/* (uri) from /littlefs/sprites/ (path)
-    // serveStatic(const char* uri, fs::FS& fs, const char* path, const char* cache_control = NULL)
-    //web_server.serveStatic("/sprites/", LittleFS, "/sprites/").setDefaultFile("notfound.html");
-    //AsyncStaticWebHandler* handler = &web_server.serveStatic("/sprites/", LittleFS, "/sprites/");
-    //handler->setDefaultFile("index.html");
-    //handler->setTemplateProcessor(subst_file_links);
-    //web_server.serveStatic("/images/", LittleFS, "/images/").setDefaultFile("notfound.html");
-
-    web_server.onNotFound([](AsyncWebServerRequest *request) {
-      DEBUG_PRINTLN("onNotFound");
-      request->redirect("/");
-    });
-
-    //using format results in an unusable filesystem
-    //web_server.on("/format", HTTP_GET, [](AsyncWebServerRequest *request) {
-    //  LittleFS.format();
-    //  request->redirect("/");
-    //});
-*/
-  }
-  else {
-    // want limited access when in AP mode. AP mode is just for WiFi setup.
-    web_server.onNotFound([](AsyncWebServerRequest *request) {
-      request->send(LittleFS, "/html/network.html");
-    });
-  }
 
   web_server.on("/savenetinfo", HTTP_POST, [](AsyncWebServerRequest *request) {
     preferences.begin("netinfo", false);
@@ -1212,20 +1099,17 @@ void web_server_initiate(void) {
 
     preferences.end();
 
-    request->redirect("/restart.html");
+    request->redirect("/restart.htm");
   });
 
 
-  // create a captive portal that catches every attempt to access data besides what the ESP serves to network.html
-  // requests to the ESP are handled normally
-  // a captive portal makes it easier for a user to save their WiFi credentials to the ESP because they do not
-  // need to know the ESP's IP address.
-  dnsServer.start(53, "*", IP);
-  web_server.addHandler(new CaptiveRequestHandler()).setFilter(filterOnNotLocal);
+  if (ON_STA_FILTER) {
+    web_server_station_setup();
+  }
+  else if (ON_AP_FILTER) {
+    web_server_ap_setup();
+  }
 
-  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
-  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, PUT");
-  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
   web_server.begin();
 }
 
@@ -1430,9 +1314,11 @@ void setup() {
 
 void loop() {
 
-  dnsServer.processNextRequest();
+  if (gdns_up) {
+    dnsServer.processNextRequest();
+  }
 
-  if (restart_needed || (WiFi.getMode() == WIFI_STA && WiFi.status() != WL_CONNECTED)) {
+  if (grestart_needed || (WiFi.getMode() == WIFI_STA && WiFi.status() != WL_CONNECTED)) {
     delay(2000);
     ESP.restart();
   }
