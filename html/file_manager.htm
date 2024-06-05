@@ -83,7 +83,7 @@
     </div>
   </div>
 
-  <script type="text/javascript">
+  <script>
   base_url = "";
   if (window.location.protocol == "file:") {
     // makes for easier debugging.
@@ -96,11 +96,14 @@
     let container = document.getElementById("container");
     let form = document.getElementById("delete_form");
     let insert_point = document.getElementById("insert_file_list_before_here");
+    
+    let newline = String.fromCharCode(10);
+    let tab = String.fromCharCode(9)
 
     let checkbox_div = document.getElementById("checkbox_div");
     if (responseText != "") {
-      var files = responseText.split("\n");
-      for (var i in files) {
+      let files = responseText.split(newline);
+      for (let i in files) {
         if (files[i] != "") {
           let row = document.createElement("div");
           row.classList.add("grid-checkbox-row");
@@ -115,13 +118,13 @@
           let label_anchor = document.createElement("a");
   
           let label_text = files[i];
-          if (label_text.indexOf("\t") > -1) {
+          if (label_text.indexOf(tab) > -1) {
             label_anchor.classList.add("span-regular-file");
-            label_href = base_url+label_text.substring(0, label_text.indexOf("\t"));
+            label_href = base_url+label_text.substring(0, label_text.indexOf(tab));
             label_anchor.href = label_href;
             //label_text = "├──"+label_text;
             //label_text = "\\___"+label_text;
-            label_text = label_text.replace("\t", "\t(");
+            label_text = label_text.replace(tab, tab+"(");
             label_text += " bytes)";
           }
 

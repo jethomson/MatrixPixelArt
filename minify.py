@@ -8,6 +8,8 @@ import os
 import tempfile
 
 def minify(source, target, env):
+  #html_dir = Path("./html/converter.htm")
+  #for html_filepath in [html_dir]:
   html_dir = Path("./html")
   for html_filepath in html_dir.iterdir():
     html_filename = html_filepath.name
