@@ -2062,34 +2062,36 @@ void ReAnimator::ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi, 
 
 uint16_t ReAnimator::mover(uint16_t i) {
   uint16_t ti;
+  const int8_t s = 1; // to be replaced by speed option in the future.
+  //int8_t s = random8(1, 4); // testing out variable speed. 
   switch (heading) {
     default:
     case 0:
       ti = i;
       break;
     case 1:
-      ti = translate(i, 0, MD, 0, -1, true, -1);
+      ti = translate(i, 0, MD, 0, -s, true, -1);
       break;
     case 2:
-      ti = translate(i, MD, MD, -1, -1, true, -1);
+      ti = translate(i, MD, MD, -s, -s, true, -1);
       break;
     case 3:
-      ti = translate(i, MD, 0, -1, 0, true, -1);
+      ti = translate(i, MD, 0, -s, 0, true, -1);
       break;
     case 4:
-      ti = translate(i, MD, -MD, -1, 1, true, -1);
+      ti = translate(i, MD, -MD, -s, s, true, -1);
       break;
     case 5:
-      ti = translate(i, 0, -MD, 0, 1, true, -1);
+      ti = translate(i, 0, -MD, 0, s, true, -1);
       break;
     case 6:
-      ti = translate(i, -MD, -MD, 1, 1, true, -1);
+      ti = translate(i, -MD, -MD, s, s, true, -1);
       break;
     case 7:
-      ti = translate(i, -MD, 0, 1, 0, true, -1);
+      ti = translate(i, -MD, 0, s, 0, true, -1);
       break;
     case 8:
-      ti = translate(i, -MD, MD, 1, -1, true, -1);
+      ti = translate(i, -MD, MD, s, -s, true, -1);
       break;
   }
   return ti;
