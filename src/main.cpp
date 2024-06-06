@@ -1303,8 +1303,7 @@ void setup() {
   gdynamic_rgb = CHSV(gdynamic_hue, 255, 255);
   gdynamic_comp_rgb = CRGB::White - gdynamic_rgb;
 
-  //load_file(F("cm"), "cm_example");
-  load_file(F("pl"), "pl_example");
+  load_file(F("pl"), "startup");
 }
 
 
