@@ -540,7 +540,6 @@ void puck_man_cb(uint8_t event) {
       one_shot = false;
       for (uint8_t i = 0; i < NUM_LAYERS; i++) {
         if (ghost_layers[i] == 1) {
-          if (layers[i])
           load_image_to_layer(i, "blinky");
         }
         if (ghost_layers[i] == 2) {
@@ -629,16 +628,16 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
   if (layer_json[F("t")] == "im") {
     String id = layer_json[F("id")];
     ghost_layers[lnum] = 0;
-    if (id == "blinky.json") {
+    if (id == "blinky") {
       ghost_layers[lnum] = 1;
     }
-    if (id == "pinky.json") {
+    if (id == "pinky") {
       ghost_layers[lnum] = 2;
     }
-    if (id == "inky.json") {
+    if (id == "inky") {
       ghost_layers[lnum] = 3;
     }
-    if (id == "clyde.json") {
+    if (id == "clyde") {
       ghost_layers[lnum] = 4;
     }
     layers[lnum]->setup(Image_t, -2);
