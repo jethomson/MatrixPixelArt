@@ -1223,12 +1223,14 @@ void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uin
             ghost_delta = 1;
             speed_jump_cnt = 0;
 
-            // the power pellet must be at least 16 leds forward of led[0]
-            // from 18 to (3/4)*NUM_LEDS, multiply makes it even so that it falls on a puck_dot led
-            //power_pellet_pos = 2*random16(9, (3*NUM_LEDS)/8 + 1); 
-            // try different bounds for new chase speeds
-            //power_pellet_pos = 2*random16(24, (3*NUM_LEDS)/8 + 1);
-            power_pellet_pos = 48;
+            // the power pellet must be at least at led[48] so the pattern completes correctly
+            // 48 is close to the beginning though and that leaves a lot of boring animation of
+            // just puck-man eating puck dots, so it is better to put the power pellet closer to
+            // the end.
+            //power_pellet_pos = 48;
+            // the power pellet must be at an even led so multiply by 2.
+            // power pellet falls between 60% and 80% of the length of LEDs
+            power_pellet_pos = 2*random16((3*NUM_LEDS)/10, (4*NUM_LEDS)/10 + 1);
 
             for (uint16_t i = 0; i < NUM_LEDS; i+=2) {
                 puck_dots[i] = 1;
