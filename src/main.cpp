@@ -25,7 +25,7 @@
 #define DATA_PIN 16
 #define COLOR_ORDER GRB
 
-#define NUM_LAYERS 5
+#define NUM_LAYERS 6  // changes to NUM_LAYERS will be reflected in compositor.htm
 
 //#define TRANSPARENT (uint32_t)0x424242
 #define COLORSUB (uint32_t)0x004200
@@ -874,6 +874,13 @@ String get_mdns_addr(void) {
   return mdns_addr;
 }
 
+String processor(const String& var) {
+  Serial.println(var);
+  if (var == "NUM_LAYERS")
+    return String(NUM_LAYERS);
+  return String();
+}
+
 void wifi_AP(void) {
   DEBUG_PRINTLN(F("Entering AP Mode."));
   //WiFi.softAP(SOFT_AP_SSID, "123456789");
@@ -1025,12 +1032,17 @@ void web_server_station_setup(void) {
     request->redirect("/remove.htm");
   });
 
-  // files/ and html/ are both direct children of the littlefs root directory
-  // /littlefs/files/ and /littlefs/html/
+  //web_server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+  //  request->send(LittleFS, "/www/compositor_template_variables.js", String(), false, processor);
+  //});
+
+  // files/ and www/ are both direct children of the littlefs root directory
+  // /littlefs/files/ and /littlefs/www/
   // if the URL starts with /files/ then first look in /littlefs/files/ for the requested file
   web_server.serveStatic("/files/", LittleFS, "/files/");
-  // if the URL starts with / then first look in /littlefs/html/ for the requested page
-  web_server.serveStatic("/", LittleFS, "/html/");
+  web_server.serveStatic("/js", LittleFS, "/www/js").setTemplateProcessor(processor);
+  // if the URL starts with / then first look in /littlefs/www/ for the requested page
+  web_server.serveStatic("/", LittleFS, "/www/");
 
   web_server.onNotFound([](AsyncWebServerRequest *request) {
     if (request->method() == HTTP_OPTIONS) {
@@ -1052,7 +1064,7 @@ void web_server_ap_setup() {
 
   // want limited access when in AP mode. AP mode is just for WiFi setup.
   web_server.onNotFound([](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/html/network.htm");
+    request->send(LittleFS, "/www/network.htm");
   });
 }
 
@@ -1067,7 +1079,7 @@ void web_server_initiate(void) {
   // so need to put this before serveStatic(), otherwise serveStatic() will serve restart.htm, but not set grestart_needed to true;
   web_server.on("/restart.htm", HTTP_GET, [](AsyncWebServerRequest *request) {
     grestart_needed = true;
-    request->send(LittleFS, "/html/restart.htm");
+    request->send(LittleFS, "/www/restart.htm");
   });
 
   web_server.on("/savenetinfo", HTTP_POST, [](AsyncWebServerRequest *request) {
