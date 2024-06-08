@@ -625,9 +625,9 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     movement = layer_json[F("m")];
   }
 
+  ghost_layers[lnum] = 0;
   if (layer_json[F("t")] == "im") {
     String id = layer_json[F("id")];
-    ghost_layers[lnum] = 0;
     if (id == "blinky") {
       ghost_layers[lnum] = 1;
     }
