@@ -6,5 +6,6 @@
 .vscode/extensions.json
 include/credentials_private.h
 html_minified/*
+dist/*
 data_non-free
 notes.txt
