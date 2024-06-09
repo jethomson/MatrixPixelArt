@@ -514,6 +514,33 @@ CRGBA ReAnimator::get_pixel(uint16_t i) {
     uint16_t ti = mover(i);
     if (0 <= ti && ti < NUM_LEDS) {
         pixel_out = leds[ti];
+
+        //Serial.print(_ltype == Image_t);
+        //Serial.print(" :: ");
+        //Serial.print(proxy_color_set);
+        //Serial.print(" :: ");
+        //Serial.print(pixel_out.r);
+        //Serial.print(" :: ");
+        //Serial.print(pixel_out.g);
+        //Serial.print(" :: ");
+        //Serial.print(pixel_out.b);
+        //Serial.print(" :: ");
+        //Serial.print(proxy_color.r);
+        //Serial.print(" :: ");
+        //Serial.print(proxy_color.g);
+        //Serial.print(" :: ");
+        //Serial.print(proxy_color.b);
+        //Serial.println("");
+
+        // some browsers slightly modify the RGB values of the canvas to prevent tracking. Brave calls this farbling.
+        // this means the values sent from the converter page are not pixel perfect to the source image
+        // this if condition accepts values that are similar to the proxy_color
+        //if ( _ltype == Image_t && proxy_color_set && (abs(pixel_out.r - proxy_color.r) + abs(pixel_out.g - proxy_color.g) + abs(pixel_out.b - proxy_color.b) < 7) ) {
+        if ( _ltype == Image_t && proxy_color_set && pixel_out.r == proxy_color.r && pixel_out.g == proxy_color.g && pixel_out.b == proxy_color.b ) {
+          uint8_t alpha = pixel_out.a;
+          pixel_out = *rgb;
+          pixel_out.a = alpha; // necessary ?
+        }
 #if DIM_METHOD == 1
         pixel_out.fadeToBlackBy(255-brightness);
 #elif DIM_METHOD == 2
@@ -1629,6 +1656,12 @@ bool ReAnimator::load_image_from_file(String fs_path, String* message) {
 
     for (uint16_t i = 0; i < NUM_LEDS; i++) leds[i] = 0xFFFFFF00;
     retval = deserializeSegment(object, leds, NUM_LEDS);
+
+    proxy_color_set = false;
+    if (!object[F("pc")].isNull()) {
+      proxy_color = std::stoul(object[F("pc")].as<std::string>(), nullptr, 16);
+      proxy_color_set = true;
+    }
   }
   file.close();
 

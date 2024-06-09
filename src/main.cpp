@@ -27,9 +27,6 @@
 
 #define NUM_LAYERS 6  // changes to NUM_LAYERS will be reflected in compositor.htm
 
-//#define TRANSPARENT (uint32_t)0x424242
-#define COLORSUB (uint32_t)0x004200
-
 #define LED_STRIP_VOLTAGE 5
 //#define LED_STRIP_MILLIAMPS 1300  // USB power supply.
 // the highest current I can measure at full brightness with every pixel white is 2.150 A.
@@ -61,7 +58,6 @@ uint8_t gdynamic_hue = 0;
 uint8_t grandom_hue = 0;
 CRGB gdynamic_rgb = 0x000000;
 CRGB gdynamic_comp_rgb = 0x000000; // complementary color to the dynamic color
-//CRGB gdynamic_comp_rgb = 0xF0AAF0; // complementary color to the dynamic color
 
 uint8_t homogenized_brightness = 255;
 
@@ -698,20 +694,11 @@ bool load_image_solo(String id) {
 
   if (layers[0] == nullptr) {
     layers[0] = new ReAnimator();
+    layers[0]->setup(Image_t, -2);
     layers[0]->set_color(CRGB::White);
-    //layers[0]->setup(Image_t, -2);
     retval = layers[0]->set_image(id);
     layers[0]->set_heading(0);
   }
-
-  // can also load image to layer like this to be more consistent with load_composite()
-  //StaticJsonDocument<256> doc;
-  //JsonVariant layer_json = doc.to<JsonVariant>();
-  //layer_json["t"] = "i";
-  //layer_json["id"] = fs_path;
-  //layer_json["ct"] = 0;
-  //layer_json["m"] = 0;
-  //retval = load_layer(0, layer_json);
 
   return retval;
 }
@@ -875,7 +862,6 @@ String get_mdns_addr(void) {
 }
 
 String processor(const String& var) {
-  Serial.println(var);
   if (var == "NUM_LAYERS")
     return String(NUM_LAYERS);
   return String();
@@ -1054,7 +1040,7 @@ void web_server_station_setup(void) {
   });
 }
 
-void web_server_ap_setup() {
+void web_server_ap_setup(void) {
   // create a captive portal that catches every attempt to access data besides what the ESP serves to network.htm
   // requests to the ESP are handled normally
   // a captive portal makes it easier for a user to save their WiFi credentials to the ESP because they do not
@@ -1123,15 +1109,8 @@ void web_server_initiate(void) {
 
 void show(void) {
   static uint32_t pm = 0;
-  static uint32_t pm2 = 0;
   static bool refresh_now = true;
   static bool image_has_transparency = true;
-
-  //if ((millis()-pm2) > 2000) {
-  //  pm2 = millis();
-  //  Serial.print("heap free: ");
-  //  Serial.println(esp_get_free_heap_size());
-  //}
 
   // since web_server interrupts we have to queue changes instead of running them directly from web_server's on functions
   // otherwise changes we make could be undo once the interrupt hands back control which could be in the middle of code setting up a different animation
@@ -1166,16 +1145,15 @@ void show(void) {
   if ((millis()-pm) > 100 || refresh_now) {
     pm = millis();
     refresh_now = false;
-    image_has_transparency = false;
     gdynamic_hue+=3;
     gdynamic_rgb = CHSV(gdynamic_hue, 255, 255);
     gdynamic_comp_rgb = CRGB::White - gdynamic_rgb;
     grandom_hue = random8();
 
+    bool DBG_printed = false;
 
     FastLED.clear(); // use clear instead of tracking bg layer.
     CRGBA pixel;
-    //bool is_bg_layer = true;
     for (uint8_t i = 0; i < NUM_LAYERS; i++) {
       if (layers[i] != nullptr) {
         for (uint16_t j = 0; j < NUM_LEDS; j++) {
@@ -1186,32 +1164,47 @@ void show(void) {
           // in short 1) local/pixel level effect and 2) global effect
           //
 
-          image_has_transparency = true; // for testing
           pixel = layers[i]->get_pixel(j);
-
-
-          // color substitution experiment. hard to get exact color in the Pixel Art Creator
-          //uint8_t pixel_alpha = pixel.a;
-          //if (pixel == COLORSUB) {
-          //  pixel = CHSV(gdynamic_hue+96, 255, 255); // CHSV overwrites the alpha value
-          //  pixel.a = pixel_alpha;
-          //}
-
-          // treat the first non-empty layer we touch as the background layer and give it zero transparency to completely overwrite the previous frame.
           uint8_t alpha = pixel.a;
-          //if (is_bg_layer) {
-          //  alpha = 255;
+
+          // color substitution experiment.
+          // if you browser has anti-fingerprinting methods in place the image convertor page will
+          // not output a pixel perfect representation of your image. some of the colors will be slightly off.
+          //if ((CRGB)pixel == COLORSUB) {
+          //if (pixel.r < 0x10 && pixel.b < 0x10 and 0x40 <= pixel.g && pixel.g < 0x50) {
+
+/*
+          if (j == 0) {
+            Serial.print(pixel.r, HEX);
+            Serial.print(" : ");
+            Serial.print(pixel.g, HEX);
+            Serial.print(" : ");
+            Serial.println(pixel.b, HEX);
+            Serial.print(pixel.r & 0xF0, HEX);
+            Serial.print(" | ");
+            Serial.print(pixel.g & 0xF0, HEX);
+            Serial.print(" | ");
+            Serial.println(pixel.b & 0xF0, HEX);
+            Serial.println( ((pixel.r & 0xF0) == 0x00) );
+            Serial.println( ((pixel.g & 0xF0) == 0x20) );
+            Serial.println( ((pixel.b & 0xF0) == 0x10) );
+            Serial.println( (abs(pixel.r - proxy_color.r) + abs(pixel.g - proxy_color.g) + abs(pixel.b - proxy_color.b) < 6) );
+            Serial.println( ((pixel.r & 0xF0 == 0x00) && (pixel.g & 0xF0 == 0x20) && (pixel.b & 0xF0 == 0x10)) && (abs(pixel.r - proxy_color.r) + abs(pixel.g - proxy_color.g) + abs(pixel.b - proxy_color.b) < 6) );
+          }
+*/          
+
+          //if ( ( ((pixel.r & 0xF0) == 0x00) && ((pixel.g & 0xF0) == 0x20) && ((pixel.b & 0xF0) == 0x10) ) && ( abs(pixel.r - proxy_color.r) + abs(pixel.g - proxy_color.g) + abs(pixel.b - proxy_color.b) < 6 ) ) {
+          //  pixel = CHSV(gdynamic_hue+96, 255, 255); // CHSV overwrites the alpha value
+          //  pixel.a = alpha;
           //}
 
           CRGB bgpixel = leds[j];
           // before implementing pixel level transparency previously used a global alpha that is not currently implemented
           //alpha = scale8(alpha, gimage_layer_alpha);
-          if (alpha != 255) {
-            image_has_transparency = true;
-            //bgpixel.fadeLightBy(64); // fading the background areas make the pixel art stand out
-          }
+          //if (alpha != 255) {
+          //  bgpixel.fadeLightBy(64); // fading the background areas make the pixel art stand out
+          //}
           leds[j] = nblend(bgpixel, (CRGB)pixel, alpha);
-
           //leds[j] = (CRGB)pixel;
         }
 /*
@@ -1228,7 +1221,6 @@ void show(void) {
         Serial.println(pixel.a);
         Serial.println((uint32_t)pixel, HEX);
 */
-        //is_bg_layer = false;
       }
     }
 
@@ -1244,7 +1236,7 @@ void show(void) {
     FastLED.setBrightness(homogenized_brightness);
   }
 
-  FastLED.show(); // what is the best place to call show() ??? call this less frequently ???
+  FastLED.show();
 }
 
 
@@ -1320,6 +1312,12 @@ void setup() {
 
 
 void loop() {
+  //static uint32_t pm = 0;
+  //if ((millis()-pm) > 2000) {
+  //  pm = millis();
+  //  Serial.print("heap free: ");
+  //  Serial.println(esp_get_free_heap_size());
+  //}
 
   if (gdns_up) {
     dnsServer.processNextRequest();

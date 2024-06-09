@@ -108,6 +108,8 @@ class ReAnimator {
     CRGB* rgb = nullptr;
     uint8_t hue;
     CRGB internal_rgb;
+    CRGB proxy_color;
+    bool proxy_color_set = false;
 
     void(*_cb)(uint8_t) = nullptr;
 
