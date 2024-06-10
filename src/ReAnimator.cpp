@@ -1643,8 +1643,11 @@ bool ReAnimator::load_image_from_file(String fs_path, String* message) {
 
     proxy_color_set = false;
     if (!object[F("pc")].isNull()) {
-      proxy_color = std::stoul(object[F("pc")].as<std::string>(), nullptr, 16);
-      proxy_color_set = true;
+      std::string pc = object[F("pc")].as<std::string>();
+      if (!pc.empty()) {
+        proxy_color = std::stoul(pc, nullptr, 16);
+        proxy_color_set = true;
+      }
     }
   }
   file.close();
