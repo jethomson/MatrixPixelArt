@@ -69,7 +69,7 @@ struct CRGBA  {
     this->r = c.r;
     this->g = c.g;
     this->b = c.b;
-    this->a = 255;
+    //this->a = 255;
   }
   
   // setting with HTMLColorCode (e.g. CRGB::White, CRGB::Red, 0x00FF00) can call this
@@ -106,7 +106,7 @@ struct CRGBA  {
     this->r = c.r;
     this->g = c.g;
     this->b = c.b;
-    this->a = 255;
+    this->a = 255; // necessary?
   }
 
   inline CRGBA& operator= (const CHSV& rhs) __attribute__((always_inline)) {
@@ -115,7 +115,7 @@ struct CRGBA  {
     this->r = c.r;
     this->g = c.g;
     this->b = c.b;
-    this->a = 255;
+    this->a = 255; // necessary?
     return *this;
   }
 

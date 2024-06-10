@@ -695,7 +695,7 @@ bool load_image_solo(String id) {
   if (layers[0] == nullptr) {
     layers[0] = new ReAnimator();
     layers[0]->setup(Image_t, -2);
-    layers[0]->set_color(CRGB::White);
+    layers[0]->set_color(&gdynamic_rgb);
     retval = layers[0]->set_image(id);
     layers[0]->set_heading(0);
   }
@@ -1018,14 +1018,12 @@ void web_server_station_setup(void) {
     request->redirect("/remove.htm");
   });
 
-  //web_server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-  //  request->send(LittleFS, "/www/compositor_template_variables.js", String(), false, processor);
-  //});
-
-  // files/ and www/ are both direct children of the littlefs root directory
-  // /littlefs/files/ and /littlefs/www/
+  // files/ and www/ are both direct children of the littlefs root directory: /littlefs/files/ and /littlefs/www/
   // if the URL starts with /files/ then first look in /littlefs/files/ for the requested file
   web_server.serveStatic("/files/", LittleFS, "/files/");
+  // since htm files are gzipped they cannot be run through the template processor. so extract variables that
+  // we wish to set through template processing to non-gzipped js files. this has the added advantage of the
+  // file being read through the template processor being much smaller and therefore quicker to process.
   web_server.serveStatic("/js", LittleFS, "/www/js").setTemplateProcessor(processor);
   // if the URL starts with / then first look in /littlefs/www/ for the requested page
   web_server.serveStatic("/", LittleFS, "/www/");
@@ -1152,7 +1150,7 @@ void show(void) {
 
     bool DBG_printed = false;
 
-    FastLED.clear(); // use clear instead of tracking bg layer.
+    FastLED.clear(); // use clear instead of tracking background layer.
     CRGBA pixel;
     for (uint8_t i = 0; i < NUM_LAYERS; i++) {
       if (layers[i] != nullptr) {
@@ -1163,41 +1161,8 @@ void show(void) {
           //    non-transparent parts of the original image are blended with the layers below it.
           // in short 1) local/pixel level effect and 2) global effect
           //
-
           pixel = layers[i]->get_pixel(j);
           uint8_t alpha = pixel.a;
-
-          // color substitution experiment.
-          // if you browser has anti-fingerprinting methods in place the image convertor page will
-          // not output a pixel perfect representation of your image. some of the colors will be slightly off.
-          //if ((CRGB)pixel == COLORSUB) {
-          //if (pixel.r < 0x10 && pixel.b < 0x10 and 0x40 <= pixel.g && pixel.g < 0x50) {
-
-/*
-          if (j == 0) {
-            Serial.print(pixel.r, HEX);
-            Serial.print(" : ");
-            Serial.print(pixel.g, HEX);
-            Serial.print(" : ");
-            Serial.println(pixel.b, HEX);
-            Serial.print(pixel.r & 0xF0, HEX);
-            Serial.print(" | ");
-            Serial.print(pixel.g & 0xF0, HEX);
-            Serial.print(" | ");
-            Serial.println(pixel.b & 0xF0, HEX);
-            Serial.println( ((pixel.r & 0xF0) == 0x00) );
-            Serial.println( ((pixel.g & 0xF0) == 0x20) );
-            Serial.println( ((pixel.b & 0xF0) == 0x10) );
-            Serial.println( (abs(pixel.r - proxy_color.r) + abs(pixel.g - proxy_color.g) + abs(pixel.b - proxy_color.b) < 6) );
-            Serial.println( ((pixel.r & 0xF0 == 0x00) && (pixel.g & 0xF0 == 0x20) && (pixel.b & 0xF0 == 0x10)) && (abs(pixel.r - proxy_color.r) + abs(pixel.g - proxy_color.g) + abs(pixel.b - proxy_color.b) < 6) );
-          }
-*/          
-
-          //if ( ( ((pixel.r & 0xF0) == 0x00) && ((pixel.g & 0xF0) == 0x20) && ((pixel.b & 0xF0) == 0x10) ) && ( abs(pixel.r - proxy_color.r) + abs(pixel.g - proxy_color.g) + abs(pixel.b - proxy_color.b) < 6 ) ) {
-          //  pixel = CHSV(gdynamic_hue+96, 255, 255); // CHSV overwrites the alpha value
-          //  pixel.a = alpha;
-          //}
-
           CRGB bgpixel = leds[j];
           // before implementing pixel level transparency previously used a global alpha that is not currently implemented
           //alpha = scale8(alpha, gimage_layer_alpha);
@@ -1205,22 +1170,7 @@ void show(void) {
           //  bgpixel.fadeLightBy(64); // fading the background areas make the pixel art stand out
           //}
           leds[j] = nblend(bgpixel, (CRGB)pixel, alpha);
-          //leds[j] = (CRGB)pixel;
         }
-/*
-        Serial.print("layer ");
-        Serial.print(i);
-        Serial.print(" :: ");
-        Serial.print("red: ");
-        Serial.print(pixel.r);
-        Serial.print("| green: ");
-        Serial.print(pixel.g);
-        Serial.print("| blue: ");
-        Serial.print(pixel.b);
-        Serial.print("| alpha: ");
-        Serial.println(pixel.a);
-        Serial.println((uint32_t)pixel, HEX);
-*/
       }
     }
 

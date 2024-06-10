@@ -515,31 +515,15 @@ CRGBA ReAnimator::get_pixel(uint16_t i) {
     if (0 <= ti && ti < NUM_LEDS) {
         pixel_out = leds[ti];
 
-        //Serial.print(_ltype == Image_t);
-        //Serial.print(" :: ");
-        //Serial.print(proxy_color_set);
-        //Serial.print(" :: ");
-        //Serial.print(pixel_out.r);
-        //Serial.print(" :: ");
-        //Serial.print(pixel_out.g);
-        //Serial.print(" :: ");
-        //Serial.print(pixel_out.b);
-        //Serial.print(" :: ");
-        //Serial.print(proxy_color.r);
-        //Serial.print(" :: ");
-        //Serial.print(proxy_color.g);
-        //Serial.print(" :: ");
-        //Serial.print(proxy_color.b);
-        //Serial.println("");
-
+        // color substitution
         // some browsers slightly modify the RGB values of the canvas to prevent tracking. Brave calls this farbling.
-        // this means the values sent from the converter page are not pixel perfect to the source image
-        // this if condition accepts values that are similar to the proxy_color
-        //if ( _ltype == Image_t && proxy_color_set && (abs(pixel_out.r - proxy_color.r) + abs(pixel_out.g - proxy_color.g) + abs(pixel_out.b - proxy_color.b) < 7) ) {
-        if ( _ltype == Image_t && proxy_color_set && pixel_out.r == proxy_color.r && pixel_out.g == proxy_color.g && pixel_out.b == proxy_color.b ) {
-          uint8_t alpha = pixel_out.a;
+        // this means the values sent from the converter page do not have the exact same RGB values as the source image.
+        // this if condition accepts values that are similar to the proxy_color.
+        if ( _ltype == Image_t && proxy_color_set && (abs(pixel_out.r - proxy_color.r) + abs(pixel_out.g - proxy_color.g) + abs(pixel_out.b - proxy_color.b) < 7) ) {
+        //if ( _ltype == Image_t && proxy_color_set && pixel_out == proxy_color ) {
+          //uint8_t alpha = pixel_out.a;
           pixel_out = *rgb;
-          pixel_out.a = alpha; // necessary ?
+          //pixel_out.a = alpha;
         }
 #if DIM_METHOD == 1
         pixel_out.fadeToBlackBy(255-brightness);
