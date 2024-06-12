@@ -84,34 +84,34 @@ ReAnimator::Freezer::Freezer(ReAnimator &r) : parent(r) {
 
 
 void ReAnimator::setup(LayerType ltype, int8_t id) {
-  // we want patterns (and accents) to persist from one composite to another if they are on the same layer.
-  // this allows for a pattern to play continuously (i.e without restarting) when the next item in a playlist is loaded.
-  //
-  // scrolling text uses an id of -1 because we always want to clear() when new text is set.
-  // images use an id of -2 because real image ids (paths) are more complicated and it is unnecessary to clear since a new image should completely overwrite leds[]
-  // in practice there is probably no observable difference between -2 and -1 for images.
-  // could possibly get an interesting effect with -2 if the new image does not write to all of leds[] and part of the previous image remains.
-  if (id == -1 || (_ltype != ltype && _id != id)) {
-    _id = id;
-    _ltype = ltype;
+    // we want patterns (and accents) to persist from one composite to another if they are on the same layer.
+    // this allows for a pattern to play continuously (i.e without restarting) when the next item in a playlist is loaded.
+    //
+    // scrolling text uses an id of -1 because we always want to clear() when new text is set.
+    // images use an id of -2 because real image ids (paths) are more complicated and it is unnecessary to clear since a new image should completely overwrite leds[]
+    // in practice there is probably no observable difference between -2 and -1 for images.
+    // could possibly get an interesting effect with -2 if the new image does not write to all of leds[] and part of the previous image remains.
+    if (id == -1 || (_ltype != ltype && _id != id)) {
+        _id = id;
+        _ltype = ltype;
 
-    // since layers are reused the remnants of the old effect may still be in leds[]
-    // these leftovers may not be overwritten by the new effect, so it is best to clear leds[]
-    clear();
+        // since layers are reused the remnants of the old effect may still be in leds[]
+        // these leftovers may not be overwritten by the new effect, so it is best to clear leds[]
+        clear();
 
-    brightness = 255;
+        brightness = 255;
 
-    set_autocycle_interval(10000);
-    set_autocycle_enabled(false);
-    set_flipflop_interval(6000);
-    set_flipflop_enabled(false);
+        set_autocycle_interval(10000);
+        set_autocycle_enabled(false);
+        set_flipflop_interval(6000);
+        set_flipflop_enabled(false);
 
-    set_pattern(NO_PATTERN);
-    set_overlay(NO_OVERLAY, false);
-    set_cb(noop_cb);
+        set_pattern(NO_PATTERN);
+        set_overlay(NO_OVERLAY, false);
+        set_cb(noop_cb);
 
-    fresh_image = false;
-  }
+        fresh_image = false;
+    }
 }
 
 
@@ -137,7 +137,6 @@ void ReAnimator::set_autocycle_enabled(bool enabled) {
 }
 
 
-
 uint32_t ReAnimator::get_flipflop_interval() {
     return flipflop_interval;
 }
@@ -158,7 +157,6 @@ void ReAnimator::set_flipflop_enabled(bool enabled) {
     flipflop_enabled = enabled;
     flipflop_previous_millis = 0; // set to zero so flipfloping will start without waiting
 }
-
 
 
 Pattern ReAnimator::get_pattern() {
@@ -393,12 +391,12 @@ bool ReAnimator::set_image(String id, String* message) {
 
 
 void ReAnimator::set_text(String s) {
-  // need to reinitialize when one string was already being written and new string is set
-  refresh_text_index = 0; // start at the beginning of a string
-  shift_char_column = 0; // start at the beginning of a glyph
+    // need to reinitialize when one string was already being written and new string is set
+    refresh_text_index = 0; // start at the beginning of a string
+    shift_char_column = 0; // start at the beginning of a glyph
 
-  ftext.s = s;
-  ftext.vmargin = MD/2 - get_text_center(ftext.s);
+    ftext.s = s;
+    ftext.vmargin = MD/2 - get_text_center(ftext.s);
 }
 
 
@@ -433,9 +431,9 @@ void ReAnimator::set_color(CRGB *color) {
 
 
 void ReAnimator::set_color(CRGB color) {
-  internal_rgb = color;
-  rgb = &internal_rgb;
-  set_color(rgb);
+    internal_rgb = color;
+    rgb = &internal_rgb;
+    set_color(rgb);
 }
 
 
@@ -445,10 +443,10 @@ void ReAnimator::set_cb(void(*cb)(uint8_t)) {
 
 
 void ReAnimator::set_heading(uint8_t h) {
-  // initial only needs to be set to true, which resets the translation variables, if the heading changes.
-  // this allows for one image to be swapped in for another while maintaining the same position and path.
-  t_initial = (heading != h);
-  heading = h;
+    // initial only needs to be set to true, which resets the translation variables, if the heading changes.
+    // this allows for one image to be swapped in for another while maintaining the same position and path.
+    t_initial = (heading != h);
+    heading = h;
 }
 
 
@@ -459,9 +457,9 @@ void ReAnimator::set_heading(uint8_t h) {
 
 
 void ReAnimator::clear() {
-  for (uint16_t i = 0; i < NUM_LEDS; i++) {
-    leds[i] = CRGBA::Transparent;
-  }
+    for (uint16_t i = 0; i < NUM_LEDS; i++) {
+        leds[i] = CRGBA::Transparent;
+    }
 }
 
 
@@ -1615,47 +1613,47 @@ void ReAnimator::fade_randomly(uint8_t chance_of_fade, uint8_t decay) {
 
 
 bool ReAnimator::load_image_from_file(String fs_path, String* message) {
-  bool retval = false;
-  File file = LittleFS.open(fs_path, "r");
+    bool retval = false;
+    File file = LittleFS.open(fs_path, "r");
 
-  if(!file){
+    if(!file){
+        if (message) {
+            *message = F("set_image(): File not found.");
+        }
+        return false;
+    }
+    if (file.available()) {
+        DynamicJsonDocument doc(8192);
+        DeserializationError error = deserializeJson(doc, file.readString());
+        if (error) {
+            //Serial.print("deserializeJson() failed: ");
+            //Serial.println(error.c_str());
+            if (message) {
+                *message = F("set_image: deserializeJson() failed.");
+            }
+            return false;
+        }
+
+        JsonObject object = doc.as<JsonObject>();
+
+        for (uint16_t i = 0; i < NUM_LEDS; i++) leds[i] = 0xFFFFFF00;
+        retval = deserializeSegment(object, leds, NUM_LEDS);
+
+        proxy_color_set = false;
+        if (!object[F("pc")].isNull()) {
+            std::string pc = object[F("pc")].as<std::string>();
+            if (!pc.empty()) {
+                proxy_color = std::stoul(pc, nullptr, 16);
+                proxy_color_set = true;
+            }
+        }
+    }
+    file.close();
+
     if (message) {
-      *message = F("set_image(): File not found.");
+        *message = F("set_image(): Matrix loaded.");
     }
-    return false;
-  }
-  if (file.available()) {
-    DynamicJsonDocument doc(8192);
-    DeserializationError error = deserializeJson(doc, file.readString());
-    if (error) {
-      //Serial.print("deserializeJson() failed: ");
-      //Serial.println(error.c_str());
-      if (message) {
-        *message = F("set_image: deserializeJson() failed.");
-      }
-      return false;
-    }
-
-    JsonObject object = doc.as<JsonObject>();
-
-    for (uint16_t i = 0; i < NUM_LEDS; i++) leds[i] = 0xFFFFFF00;
-    retval = deserializeSegment(object, leds, NUM_LEDS);
-
-    proxy_color_set = false;
-    if (!object[F("pc")].isNull()) {
-      std::string pc = object[F("pc")].as<std::string>();
-      if (!pc.empty()) {
-        proxy_color = std::stoul(pc, nullptr, 16);
-        proxy_color_set = true;
-      }
-    }
-  }
-  file.close();
-
-  if (message) {
-    *message = F("set_image(): Matrix loaded.");
-  }
-  return retval;
+    return retval;
 }
 
 
@@ -1664,134 +1662,134 @@ bool ReAnimator::load_image_from_file(String fs_path, String* message) {
 // ++++++++++++ TEXT ++++++++++++
 // ++++++++++++++++++++++++++++++
 uint8_t ReAnimator::get_text_center(String s) {
-  uint8_t min_row = MD;
-  uint8_t max_row = 0;
-  for (uint8_t i = 0; i < s.length(); i++) {
-    char c = s[i];
-    const uint8_t* glyph = font->get_bitmap(font, c);
-    if (glyph) {
-      uint8_t width = font->get_width(font, c);
-      for (uint8_t j = 0; j < MD; j++) {
-        for (uint8_t k = 0; k < width; k++) {
-          uint16_t n = j*width + k;
-          if(glyph[n]) {
-            min_row = min(j, min_row);
-            max_row = max(j, max_row);
-            break;
-          }
+    uint8_t min_row = MD;
+    uint8_t max_row = 0;
+    for (uint8_t i = 0; i < s.length(); i++) {
+        char c = s[i];
+        const uint8_t* glyph = font->get_bitmap(font, c);
+        if (glyph) {
+            uint8_t width = font->get_width(font, c);
+            for (uint8_t j = 0; j < MD; j++) {
+                for (uint8_t k = 0; k < width; k++) {
+                    uint16_t n = j*width + k;
+                    if(glyph[n]) {
+                        min_row = min(j, min_row);
+                        max_row = max(j, max_row);
+                        break;
+                    }
+                }
+            }
         }
-      }
     }
-  }
 
-  if ((max_row-min_row+1)/2 + min_row > 0) {
-    return (max_row-min_row+1)/2 + min_row;
-  }
-  return 0;
+    if ((max_row-min_row+1)/2 + min_row > 0) {
+        return (max_row-min_row+1)/2 + min_row;
+    }
+    return 0;
 }
 
 
 /*
 // do not delete these yet. they might be better for use with position functions.
 void ReAnimator::matrix_char(char c) {
-  const uint8_t* glyph = font->get_bitmap(font, c);
-  if (glyph) {
-    for (uint16_t q = 0; q < NUM_LEDS; q++) {
-      leds[q] = CHSV(0, 0, 0);
+    const uint8_t* glyph = font->get_bitmap(font, c);
+    if (glyph) {
+        for (uint16_t q = 0; q < NUM_LEDS; q++) {
+            leds[q] = CHSV(0, 0, 0);
+        }
+        uint8_t width = font->get_width(font, c);
+        uint16_t n = 0;
+        uint8_t pad = (MD-width)/2;
+        for (uint8_t i = 0; i < MD; i++) {
+            for (uint8_t j = 0; j < width; j++) {
+                uint8_t k = (MD-1)-pad-j;
+                Point p;
+                p.x = k;
+                p.y = i;
+                leds[cart2serp(p)] = CHSV(hue, 255, glyph[n]);
+                n++;
+            }
+        }
     }
-    uint8_t width = font->get_width(font, c);
-    uint16_t n = 0;
-    uint8_t pad = (MD-width)/2;
-    for (uint8_t i = 0; i < MD; i++) {
-      for (uint8_t j = 0; j < width; j++) {
-        uint8_t k = (MD-1)-pad-j;
-        Point p;
-        p.x = k;
-        p.y = i;
-        leds[cart2serp(p)] = CHSV(hue, 255, glyph[n]);
-        n++;
-      }
-    }
-  }
 }
 
 void ReAnimator::matrix_text(String s) {
-  static uint32_t pm = 0;
-  static uint16_t i = 0;
-  if ((millis()-pm) > 1000) {
-    pm = millis();
-    matrix_char(s[i]);
-    i = (i+1) % s.length();
-  }
+    static uint32_t pm = 0;
+    static uint16_t i = 0;
+    if ((millis()-pm) > 1000) {
+        pm = millis();
+        matrix_char(s[i]);
+        i = (i+1) % s.length();
+    }
 }
 */
 
 
 bool ReAnimator::shift_char(char c, int8_t vmargin) {
-  if (shift_char_tracking) {
-    for (uint8_t i = 0; i < MD; i++) {
-      for (uint8_t j = 0; j < MD-1; j++) {
-        uint8_t k = (MD-1)-j;
-        Point p1;
-        Point p2;
-        p1.x = k;
-        p1.y = i;
-        p2.x = k-1;
-        p2.y = i;
-        leds[cart2serp(p1)] = leds[cart2serp(p2)];
-      }
-      Point p;
-      p.x = 0;
-      p.y = i;
-      leds[cart2serp(p)] = 0x00000000; // transparent black
+    if (shift_char_tracking) {
+        for (uint8_t i = 0; i < MD; i++) {
+            for (uint8_t j = 0; j < MD-1; j++) {
+                uint8_t k = (MD-1)-j;
+                Point p1;
+                Point p2;
+                p1.x = k;
+                p1.y = i;
+                p2.x = k-1;
+                p2.y = i;
+                leds[cart2serp(p1)] = leds[cart2serp(p2)];
+            }
+            Point p;
+            p.x = 0;
+            p.y = i;
+            leds[cart2serp(p)] = 0x00000000; // transparent black
 
-    }
-    shift_char_tracking--;
-    return false;
-  }
-
-  bool finished_shifting = false;
-  uint8_t width = 0;
-
-  const uint8_t* glyph = font->get_bitmap(font, c);
-  if (glyph != nullptr) {
-    width = font->get_width(font, c);
-    for (uint8_t i = 0; i < MD; i++) {
-      for (uint8_t j = 0; j < MD-1; j++) {
-        uint8_t k = (MD-1)-j;
-        Point p1;
-        Point p2;
-        p1.x = k;
-        p1.y = i;
-        p2.x = k-1;
-        p2.y = i;
-        leds[cart2serp(p1)] = leds[cart2serp(p2)];
-      }
-      Point p;
-      p.x = 0;
-      p.y = i;
-
-      uint16_t n = (i-vmargin)*width + shift_char_column;
-      if (0 <= n && n < width*font->h_px) {
-        CRGB pixel = *rgb;
-        //pixel = pixel.scale8(glyph[n]); // not all glyph pixels are completely off or on, so dim for those in between.
-        leds[cart2serp(p)] = pixel;
-        //leds[cart2serp(p)].a = (glyph[n] == 0) ? 0 : 255; // remove partial transparency
-        leds[cart2serp(p)].a = glyph[n];
-      }
-      else {
-        leds[cart2serp(p)] = 0x00000000; // transparent black
-      }
+        }
+        shift_char_tracking--;
+        return false;
     }
 
-    shift_char_column = (shift_char_column+1)%width;
-    if (shift_char_column == 0) {
-      finished_shifting = true;  // character fully shifted onto matrix.
-      shift_char_tracking = 1; // add tracking (spacing between letters) on next call
-    }
-  }
+    bool finished_shifting = false;
+    uint8_t width = 0;
 
-  return finished_shifting;
+    const uint8_t* glyph = font->get_bitmap(font, c);
+    if (glyph != nullptr) {
+        width = font->get_width(font, c);
+        for (uint8_t i = 0; i < MD; i++) {
+            for (uint8_t j = 0; j < MD-1; j++) {
+                uint8_t k = (MD-1)-j;
+                Point p1;
+                Point p2;
+                p1.x = k;
+                p1.y = i;
+                p2.x = k-1;
+                p2.y = i;
+                leds[cart2serp(p1)] = leds[cart2serp(p2)];
+            }
+            Point p;
+            p.x = 0;
+            p.y = i;
+
+            uint16_t n = (i-vmargin)*width + shift_char_column;
+            if (0 <= n && n < width*font->h_px) {
+                CRGB pixel = *rgb;
+                //pixel = pixel.scale8(glyph[n]); // not all glyph pixels are completely off or on, so dim for those in between.
+                leds[cart2serp(p)] = pixel;
+                //leds[cart2serp(p)].a = (glyph[n] == 0) ? 0 : 255; // remove partial transparency
+                leds[cart2serp(p)].a = glyph[n];
+            }
+            else {
+                leds[cart2serp(p)] = 0x00000000; // transparent black
+            }
+        }
+
+        shift_char_column = (shift_char_column+1)%width;
+        if (shift_char_column == 0) {
+            finished_shifting = true; // character fully shifted onto matrix.
+            shift_char_tracking = 1; // add tracking (spacing between letters) on next call
+        }
+    }
+
+    return finished_shifting;
 }
 
 
@@ -1800,7 +1798,7 @@ bool ReAnimator::shift_char(char c, int8_t vmargin) {
 // ++++++++++++ INFO ++++++++++++
 // ++++++++++++++++++++++++++++++
 void ReAnimator::setup_clock() {
-  configTzTime(timezone, "pool.ntp.org");
+    configTzTime(timezone, "pool.ntp.org");
 }
 
 
@@ -1910,36 +1908,36 @@ void ReAnimator::flipflop() {
 // ++++++++ POSITIONING +++++++++
 // ++++++++++++++++++++++++++++++
 ReAnimator::Point ReAnimator::serp2cart(uint8_t i) {
-  const uint8_t rl = 16;
-  Point p;
-  p.y = i/rl;
-  p.x = (p.y % 2) ? (rl-1) - (i % rl) : i % rl;
-  return p;
+    const uint8_t rl = 16;
+    Point p;
+    p.y = i/rl;
+    p.x = (p.y % 2) ? (rl-1) - (i % rl) : i % rl;
+    return p;
 }
 
 
 int16_t ReAnimator::cart2serp(Point p) {
-  const uint8_t rl = 16;
-  int16_t i = (p.y % 2) ? (rl*p.y + rl-1) - p.x : rl*p.y + p.x;
-  return i;
+    const uint8_t rl = 16;
+    int16_t i = (p.y % 2) ? (rl*p.y + rl-1) - p.x : rl*p.y + p.x;
+    return i;
 }
 
 
 void ReAnimator::flip(CRGB sm[NUM_LEDS], bool dim) {
-  Point p1;
-  Point p2;
-  const uint8_t rl = 16;
-  for (uint8_t j = 0; j < rl; j++) {
-    for (uint8_t k = 0; k < rl/2; k++) {
-      p1.x = dim ? j : k;
-      p1.y = dim ? k : j;
-      p2.x = dim ? j : rl-1-k;
-      p2.y = dim ? rl-1-k : j;
-      CRGB tmp = sm[cart2serp(p1)];
-      sm[cart2serp(p1)] = sm[cart2serp(p2)];
-      sm[cart2serp(p2)] = tmp;
+    Point p1;
+    Point p2;
+    const uint8_t rl = 16;
+    for (uint8_t j = 0; j < rl; j++) {
+        for (uint8_t k = 0; k < rl/2; k++) {
+            p1.x = dim ? j : k;
+            p1.y = dim ? k : j;
+            p2.x = dim ? j : rl-1-k;
+            p2.y = dim ? rl-1-k : j;
+            CRGB tmp = sm[cart2serp(p1)];
+            sm[cart2serp(p1)] = sm[cart2serp(p2)];
+            sm[cart2serp(p2)] = tmp;
+        }
     }
-  }
 }
 
 
@@ -1947,53 +1945,123 @@ void ReAnimator::flip(CRGB sm[NUM_LEDS], bool dim) {
 //sy: + is SOUTH, - is NORTH
 // where WEST means right to left, EAST means left to right, SOUTH means down, and NORTH means up
 uint16_t ReAnimator::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8_t sy, bool wrap, int8_t gap) {
-  // the origin of the matrix is in the NORTHEAST corner, so positive moves head WEST and SOUTH
-  // this function's logic treats entering the matrix from the EAST border (WESTWARD movement) or NORTH border (SOUTHWARD movement)
-  // as the basic case and flips those to get EAST and NORTH.
-  // this approach simplifies the code because d and v will be positive (after transient period) 
-  // which lets us just use mod to wrap the output instead of having to account for wrapping around
-  // when d is positive or negative.
+// the origin of the matrix is in the NORTHEAST corner, so positive moves head WEST and SOUTH
+// this function's logic treats entering the matrix from the EAST border (WESTWARD movement) or NORTH border (SOUTHWARD movement)
+// as the basic case and flips those to get EAST and NORTH.
+// this approach simplifies the code because d and v will be positive (after transient period) 
+// which lets us just use mod to wrap the output instead of having to account for wrapping around
+// when d is positive or negative.
 
-  if (t_initial) {
-    t_initial = false;
-    dx = (xi >= MD) ? -abs(xi) : xi;
-    dy = (yi >= MD) ? -abs(yi) : yi;
-  }
+    if (t_initial) {
+        t_initial = false;
+        dx = (xi >= MD) ? -abs(xi) : xi;
+        dy = (yi >= MD) ? -abs(yi) : yi;
+    }
 
-  uint16_t ti = NUM_LEDS; // used to indicate pixel is not in bounds and should not be drawn.
+    uint16_t ti = NUM_LEDS; // used to indicate pixel is not in bounds and should not be drawn.
 
-  Point p1 = serp2cart(i);
-  Point p2;
+    Point p1 = serp2cart(i);
+    Point p2;
 
-  if (t_has_entered && !wrap && !t_visible) {
-    // wrapping is not turned on and input has passed through matrix never to return
+    if (t_has_entered && !wrap && !t_visible) {
+        // wrapping is not turned on and input has passed through matrix never to return
+        return ti;
+    }
+
+    t_visible = false;
+    gap = (gap == -1) ? MD : gap; // if gap is -1 set gap to MD so that the input only appears in one place but will still loop around
+
+    uint8_t ux = (sx > 0) ? MD-1-p1.x: p1.x; // flip heading output travels
+    uint8_t uy = (sy > 0) ? MD-1-p1.y: p1.y;
+
+    int8_t vx = ux+dx; // shift input over into output by dx
+    int8_t vy = uy+dy;
+
+    if (t_has_entered && wrap) {
+        vx = vx % (MD+gap);
+        vy = vy % (MD+gap);
+    }
+
+    if ( 0 <= vx && vx < MD && 0 <= vy && vy < MD ) {
+        t_visible = true;
+        vx = (sx > 0) ? MD-1-vx : vx; // flip image
+        vy = (sy > 0) ? MD-1-vy : vy;
+        p2.x = vx;
+        p2.y = vy;
+        ti = cart2serp(p2);
+    }
+
+    if (i == NUM_LEDS-1 && !freezer.is_frozen()) {
+        dx += abs(sx%MD);
+        dy += abs(sy%MD);
+        // need to track when input has entered into view for the first time
+        // to prevent wrapping until the transient period has ended
+        // this allows controlling how long it takes the input to enter the matrix
+        // by setting abs(xi) or abs(yi) to higher numbers.
+        if (dx >= 0 && dy >= 0) {
+            t_has_entered = true;
+        }
+
+        if (t_has_entered && wrap) {
+                dx = dx % (MD+gap);
+                dy = dy % (MD+gap);
+        }
+    }
     return ti;
-  }
+}
 
-  t_visible = false;
-  gap = (gap == -1) ? MD : gap; // if gap is -1 set gap to MD so that the input only appears in one place but will still loop around
 
-  uint8_t ux = (sx > 0) ? MD-1-p1.x: p1.x; // flip heading output travels
-  uint8_t uy = (sy > 0) ? MD-1-p1.y: p1.y;
+void ReAnimator::ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi, int8_t yi, int8_t sx, int8_t sy, bool wrap, int8_t gap) {
+// an output array is required to use this function. out[] should be what is displayed on the matrix.
+    if (t_initial) {
+        t_initial = false;
+        t_visible = false;
+        t_has_entered = false;
+        dx = (xi >= MD) ? -abs(xi) : xi;
+        dy = (yi >= MD) ? -abs(yi) : yi;
+    }
 
-  int8_t vx = ux+dx; // shift input over into output by dx
-  int8_t vy = uy+dy;
+    Point p1;
+    Point p2;
 
-  if (t_has_entered && wrap) {
-    vx = vx % (MD+gap);
-    vy = vy % (MD+gap);
-  }
+    if (t_has_entered && !wrap && !t_visible) {
+        // wrapping is not turned on and input has passed through matrix never to return
+        return;
+    }
 
-  if ( 0 <= vx && vx < MD && 0 <= vy && vy < MD ) {
-    t_visible = true;
-    vx = (sx > 0) ? MD-1-vx : vx; // flip image
-    vy = (sy > 0) ? MD-1-vy : vy;
-    p2.x = vx;
-    p2.y = vy;
-    ti = cart2serp(p2);
-  }
+    t_visible = false;
+    gap = (gap == -1) ? MD : gap; // if gap is -1 set gap to MD so that the input only appears in one place but will still loop around
 
-  if (i == NUM_LEDS-1 && !freezer.is_frozen()) {
+    for (uint8_t j = 0; j < MD; j++) {
+        for (uint8_t k = 0; k < MD; k++) {
+            uint8_t ux = (sx > 0) ? MD-1-k: k; // flip heading output travels
+            uint8_t uy = (sy > 0) ? MD-1-j: j;
+
+            p1.x = ux;
+            p1.y = uy;
+            out[cart2serp(p1)] = CRGB::Black; // ??? TRANSPARENT 0x424242
+
+            int8_t vx = k+dx; // shift input over into output by d
+            int8_t vy = j+dy;
+            if (t_has_entered && wrap) {
+                vx = vx % (MD+gap);
+                vy = vy % (MD+gap);
+            }
+
+            if ( 0 <= vx && vx < MD && 0 <= vy && vy < MD ) {
+                t_visible = true;
+                vx = (sx > 0) ? MD-1-vx : vx; // flip image
+                vy = (sy > 0) ? MD-1-vy : vy;
+                p2.x = vx;
+                p2.y = vy;
+                out[cart2serp(p1)] = in[cart2serp(p2)];
+            }
+            //else {
+            //    out[cart2serp(p1)] = CRGB::Black; // ??? TRANSPARENT 0x424242
+            //}
+        }
+    }
+
     dx += abs(sx%MD);
     dy += abs(sy%MD);
     // need to track when input has entered into view for the first time
@@ -2001,122 +2069,52 @@ uint16_t ReAnimator::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8
     // this allows controlling how long it takes the input to enter the matrix
     // by setting abs(xi) or abs(yi) to higher numbers.
     if (dx >= 0 && dy >= 0) {
-      t_has_entered = true;
+        t_has_entered = true;
     }
 
     if (t_has_entered && wrap) {
         dx = dx % (MD+gap);
         dy = dy % (MD+gap);
     }
-  }
-  return ti;
 }
 
-
-void ReAnimator::ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi, int8_t yi, int8_t sx, int8_t sy, bool wrap, int8_t gap) {
-// an output array is required to use this function. out[] should be what is displayed on the matrix.
-  if (t_initial) {
-    t_initial = false;
-    t_visible = false;
-    t_has_entered = false;
-    dx = (xi >= MD) ? -abs(xi) : xi;
-    dy = (yi >= MD) ? -abs(yi) : yi;
-  }
-
-  Point p1;
-  Point p2;
-
-  if (t_has_entered && !wrap && !t_visible) {
-    // wrapping is not turned on and input has passed through matrix never to return
-    return;
-  }
-
-  t_visible = false;
-  gap = (gap == -1) ? MD : gap; // if gap is -1 set gap to MD so that the input only appears in one place but will still loop around
-
-  for (uint8_t j = 0; j < MD; j++) {
-    for (uint8_t k = 0; k < MD; k++) {
-      uint8_t ux = (sx > 0) ? MD-1-k: k; // flip heading output travels
-      uint8_t uy = (sy > 0) ? MD-1-j: j;
-
-      p1.x = ux;
-      p1.y = uy;
-      out[cart2serp(p1)] = CRGB::Black; // ??? TRANSPARENT 0x424242
-
-      int8_t vx = k+dx; // shift input over into output by d
-      int8_t vy = j+dy;
-      if (t_has_entered && wrap) {
-        vx = vx % (MD+gap);
-        vy = vy % (MD+gap);
-      }
-
-      if ( 0 <= vx && vx < MD && 0 <= vy && vy < MD ) {
-        t_visible = true;
-        vx = (sx > 0) ? MD-1-vx : vx; // flip image
-        vy = (sy > 0) ? MD-1-vy : vy;
-        p2.x = vx;
-        p2.y = vy;
-        out[cart2serp(p1)] = in[cart2serp(p2)];
-      }
-      //else {
-      //  out[cart2serp(p1)] = CRGB::Black; // ??? TRANSPARENT 0x424242
-      //}
-    }
-  }
-
-  dx += abs(sx%MD);
-  dy += abs(sy%MD);
-  // need to track when input has entered into view for the first time
-  // to prevent wrapping until the transient period has ended
-  // this allows controlling how long it takes the input to enter the matrix
-  // by setting abs(xi) or abs(yi) to higher numbers.
-  if (dx >= 0 && dy >= 0) {
-    t_has_entered = true;
-  }
-
-  if (t_has_entered && wrap) {
-      dx = dx % (MD+gap);
-      dy = dy % (MD+gap);
-  }
-}
 
 uint16_t ReAnimator::mover(uint16_t i) {
-  uint16_t ti;
-  const int8_t s = 1; // to be replaced by speed option in the future.
-  //int8_t s = random8(1, 4); // testing out variable speed. 
-  switch (heading) {
-    default:
-    case 0:
-      ti = i;
-      break;
-    case 1:
-      ti = translate(i, 0, MD, 0, -s, true, -1);
-      break;
-    case 2:
-      ti = translate(i, MD, MD, -s, -s, true, -1);
-      break;
-    case 3:
-      ti = translate(i, MD, 0, -s, 0, true, -1);
-      break;
-    case 4:
-      ti = translate(i, MD, -MD, -s, s, true, -1);
-      break;
-    case 5:
-      ti = translate(i, 0, -MD, 0, s, true, -1);
-      break;
-    case 6:
-      ti = translate(i, -MD, -MD, s, s, true, -1);
-      break;
-    case 7:
-      ti = translate(i, -MD, 0, s, 0, true, -1);
-      break;
-    case 8:
-      ti = translate(i, -MD, MD, s, -s, true, -1);
-      break;
-  }
-  return ti;
+    uint16_t ti;
+    const int8_t s = 1; // to be replaced by speed option in the future.
+    //int8_t s = random8(1, 4); // testing out variable speed. 
+    switch (heading) {
+        default:
+        case 0:
+            ti = i;
+            break;
+        case 1:
+            ti = translate(i, 0, MD, 0, -s, true, -1);
+            break;
+        case 2:
+            ti = translate(i, MD, MD, -s, -s, true, -1);
+            break;
+        case 3:
+            ti = translate(i, MD, 0, -s, 0, true, -1);
+            break;
+        case 4:
+            ti = translate(i, MD, -MD, -s, s, true, -1);
+            break;
+        case 5:
+            ti = translate(i, 0, -MD, 0, s, true, -1);
+            break;
+        case 6:
+            ti = translate(i, -MD, -MD, s, s, true, -1);
+            break;
+        case 7:
+            ti = translate(i, -MD, 0, s, 0, true, -1);
+            break;
+        case 8:
+            ti = translate(i, -MD, MD, s, -s, true, -1);
+            break;
+    }
+    return ti;
 }
-
 
 
 // ++++++++++++++++++++++++++++++
@@ -2128,9 +2126,9 @@ uint16_t ReAnimator::mover(uint16_t i) {
 //}
 
 void ReAnimator::fadeToBlackBy(CRGBA* leds, uint16_t num_leds, uint8_t fadeBy) {
-  for (uint16_t i = 0; i < num_leds; i++) {
-    leds[i].fadeToBlackBy(fadeBy);
-  }
+    for (uint16_t i = 0; i < num_leds; i++) {
+        leds[i].fadeToBlackBy(fadeBy);
+    }
 }
 
 void ReAnimator::fill_solid( struct CRGBA * targetArray, int numToFill, const struct CRGB& color) {
@@ -2303,10 +2301,10 @@ bool ReAnimator::Freezer::is_frozen() {
 
 // ??? static int ReAnimator::compare(const void *a, const void *b) {
 int ReAnimator::compare(const void *a, const void *b) {
-  Starship *StarshipA = (Starship *)a;
-  Starship *StarshipB = (Starship *)b;
+    Starship *StarshipA = (Starship *)a;
+    Starship *StarshipB = (Starship *)b;
 
-  return (StarshipB->distance > StarshipA->distance) - (StarshipA->distance > StarshipB->distance); // descending order
+    return (StarshipB->distance > StarshipA->distance) - (StarshipA->distance > StarshipB->distance); // descending order
 }
 
 
