@@ -576,7 +576,6 @@ void puck_man_cb(uint8_t event) {
 
 bool load_layer(uint8_t lnum, JsonVariant layer_json) {
   if (layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull() || (layer_json[F("t")] == "t" && layer_json[F("w")].isNull()) ) {
-  //if (layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull()) {
     if (layers[lnum] != nullptr) {
       delete layers[lnum];
       layers[lnum] = nullptr;
@@ -1154,6 +1153,8 @@ void show(void) {
     CRGBA pixel;
     for (uint8_t i = 0; i < NUM_LAYERS; i++) {
       if (layers[i] != nullptr) {
+        //Serial.print("show: ");
+        //Serial.println(i);
         for (uint16_t j = 0; j < NUM_LEDS; j++) {
           // transparency is used in two different ways here.
           // 1) if the pixels of the image have an alpha less than 100% (255) then they will be replaced with the background layer.
