@@ -70,6 +70,9 @@ inline String form_path(String type, String id) {
   else if (type == "pl") {
     fs_path += PL_ROOT;
   }
+  else {
+    return fs_path;
+  }
   fs_path += "/";
   fs_path += id;
   fs_path += ".json";

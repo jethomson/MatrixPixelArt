@@ -24,27 +24,7 @@
 #define REANIMATOR_H
 
 #include "project.h"
-
-// Conventions
-// -----------
-// Forward means a directional pattern moves away from pixel 0 and toward the last pixel in the strip.
-// Backward means a directional pattern moves toward pixel 0 and away from the last pixel in the strip.
-// If LEFT_TO_RIGHT_IS_FORWARD is true then pixel 0 is the leftmost pixel as seen by the viewer (i.e. the viewer's left),
-// pushing a right arrow button moves a pattern forward from left to right, and pushing a left arrow button moves a 
-// pattern backward from right to left.
-// If LEFT_TO_RIGHT_IS_FORWARD is false then pixel 0 is the rightmost pixel as seen by the viewer (i.e. the viewer's right),
-// pushing a right arrow button moves a pattern backward from left to right, and pushing a left arrow button moves a 
-// pattern forward from right to left.
-#define LEFT_TO_RIGHT_IS_FORWARD true
-
-//#define MIC_PIN    A1  // sound reactive is not implemented yet
-
-
-#include "project.h"
 #include "lv_font.h"
-
-extern lv_font_t ascii_sector;
-extern lv_font_t seven_segment;
 
 
 enum LayerType {Pattern_t = 0, Accent_t = 1, Image_t = 2, Text_t = 3, Info_t = 4};
@@ -73,9 +53,9 @@ enum Info {TIME_12HR = 0, TIME_24HR = 1, DATE_MMDD = 2, DATE_DDMM = 3, TIME_12HR
 class ReAnimator {
     //enum Direction {STILL = 0, N = 1, NE = 2, E = 3, SE = 4, S = 5, SW = 6, W = 7, NW = 8};
 
-    //LayerType _ltype = static_cast<LayerType>(-1);
     LayerType _ltype;
-    int8_t _id;
+    int8_t _id ;
+
     String image_path;
 
     CRGBA leds[NUM_LEDS];
@@ -105,13 +85,13 @@ class ReAnimator {
     // sometimes it makes more sense to work with a hue, so we have a hue variable that is derived from rgb.
     // color can be determined externally (*rgb) or internally (internal_rgb) to the layer.
     // if internal_rgb is user rgb points to that.
-    CRGB* rgb = nullptr;
-    uint8_t hue;
     CRGB internal_rgb;
+    CRGB* rgb;
+    uint8_t hue;
     CRGB proxy_color;
-    bool proxy_color_set = false;
+    bool proxy_color_set;
 
-    void(*_cb)(uint8_t) = nullptr;
+    void(*_cb)(uint8_t);
 
     class Freezer {
         ReAnimator &parent;
@@ -131,10 +111,29 @@ class ReAnimator {
 
     Freezer freezer;
 
+    // puck-man variables
+    uint16_t pm_puck_man_pos;
+    int8_t pm_puck_man_delta;
+    uint16_t pm_blinky_pos;
+    uint16_t pm_pinky_pos;
+    uint16_t pm_inky_pos;
+    uint16_t pm_clyde_pos;
+    uint8_t pm_blinky_visible;
+    uint8_t pm_pinky_visible;
+    uint8_t pm_inky_visible;
+    uint8_t pm_clyde_visible;
+    int8_t pm_ghost_delta;
+    uint16_t pm_power_pellet_pos;
+    bool pm_power_pellet_flash_state;
+    uint8_t pm_puck_dots[NUM_LEDS];
+    uint8_t pm_speed_jump_cnt;
+
     struct Starship {
         uint16_t distance;
         uint8_t color;
     };
+
+    uint16_t dr_delta;
 
     //uint16_t previous_sample;
     //bool sample_peak;
@@ -150,8 +149,8 @@ class ReAnimator {
       uint8_t y;
     };
 
-    lv_font_t* font = &ascii_sector;
-    lv_font_t* clkfont = &seven_segment;
+    lv_font_t* font;
+    lv_font_t* clkfont;
 
     struct fstring {
       String s;
@@ -160,21 +159,20 @@ class ReAnimator {
     } ftext;
 
 
-    uint16_t refresh_text_index = 0;
-    uint8_t shift_char_column = 0;
-    uint8_t shift_char_tracking = 0; // spacing between letters
+    uint16_t refresh_text_index;
+    uint8_t shift_char_column;
+    uint8_t shift_char_tracking; // spacing between letters
 
     // heading indicates which direction an object (image, patter, text, etc.) displayed on the matrix moves
-    uint8_t heading = 0;
-    bool t_initial = true;
-    bool t_visible = false;
-    bool t_has_entered = false;
-    int8_t dx = 0;
-    int8_t dy = 0;
+    uint8_t heading;
+    bool t_initial;
+    bool t_visible;
+    bool t_has_entered;
+    int8_t dx;
+    int8_t dy;
 
-
-    uint32_t iwopm = 0; // previous millis for is_wait_over()
-    uint32_t fwpm = 0; // previous millis for finished_waiting()
+    uint32_t iwopm; // previous millis for is_wait_over()
+    uint32_t fwpm ; // previous millis for finished_waiting()
 
   public:
     ReAnimator();

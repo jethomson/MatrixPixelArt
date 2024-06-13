@@ -30,32 +30,37 @@
 #include "ArduinoJson-v6.h"
 #include "JSON_Image_Decoder.h"
 
+
+// Conventions
+// -----------
+// Forward means a directional pattern moves away from pixel 0 and toward the last pixel in the strip.
+// Backward means a directional pattern moves toward pixel 0 and away from the last pixel in the strip.
+// If LEFT_TO_RIGHT_IS_FORWARD is true then pixel 0 is the leftmost pixel as seen by the viewer (i.e. the viewer's left),
+// pushing a right arrow button moves a pattern forward from left to right, and pushing a left arrow button moves a 
+// pattern backward from right to left.
+// If LEFT_TO_RIGHT_IS_FORWARD is false then pixel 0 is the rightmost pixel as seen by the viewer (i.e. the viewer's right),
+// pushing a right arrow button moves a pattern backward from left to right, and pushing a left arrow button moves a 
+// pattern forward from right to left.
+#define LEFT_TO_RIGHT_IS_FORWARD true
+//#define MIC_PIN    A1  // sound reactive is not implemented yet
+
+
+extern lv_font_t ascii_sector;
+extern lv_font_t seven_segment;
+
 const char* timezone = "EST5EDT,M3.2.0,M11.1.0";
 
 
 ReAnimator::ReAnimator() : freezer(*this) {
+
+    _ltype = static_cast<LayerType>(-1);
+    _id = -1;
+
+    image_path = "";
+
+    clear(); // initialize leds[]
+
     brightness = 255;
-
-    pattern = NO_PATTERN;
-    transient_overlay = NO_OVERLAY;
-    persistent_overlay = NO_OVERLAY;
-
-#if !defined(LEFT_TO_RIGHT_IS_FORWARD) || LEFT_TO_RIGHT_IS_FORWARD
-    direction_fp = &ReAnimator::forwards;
-    antidirection_fp = &ReAnimator::backwards;
-#else
-    direction_fp = &ReAnimator::backwards;
-    antidirection_fp = &ReAnimator::forwards;
-#endif
-
-    reverse = false;
-
-    //error: invalid conversion from 'int' to 'Pattern' [-fpermissive]
-    // setting to NULL throws an error.
-    // I believe NULL was resolved to 0 anyway before I switch to over to pio.
-    // I believe I used NULL to try to be explicit that Patterns and Overlays weren't set yet.
-    //last_pattern_ran = NULL;
-    //last_pattern_ran = 0;
 
     autocycle_previous_millis = 0;
     autocycle_interval = 10000;
@@ -65,15 +70,67 @@ ReAnimator::ReAnimator() : freezer(*this) {
     flipflop_interval = 6000;
     flipflop_enabled = false;
 
-    //previous_sample = 0;
-    //sample_peak = 0;
-    //sample_average = 0;
-    //sample_threshold = 20;
-    //sound_value_gain = SOUND_VALUE_GAIN_INITIAL;
+    pattern = NO_PATTERN;
+    last_pattern_ran = NO_PATTERN;
+    transient_overlay = NO_OVERLAY;
+    persistent_overlay = NO_OVERLAY;
+
+    // direction indicates why point the leading pixel of a pattern advances toward: end of strip or beginning of strip.
+#if !defined(LEFT_TO_RIGHT_IS_FORWARD) || LEFT_TO_RIGHT_IS_FORWARD
+    direction_fp = &ReAnimator::forwards;
+    antidirection_fp = &ReAnimator::backwards;
+#else
+    direction_fp = &ReAnimator::backwards;
+    antidirection_fp = &ReAnimator::forwards;
+#endif
+    reverse = false;
+
+    CRGB internal_rgb = CHSV(HUE_YELLOW, 255, 255);
+    CRGB* rgb = &internal_rgb;
+    uint8_t hue = HUE_YELLOW;
+    CRGB proxy_color = internal_rgb;
+    proxy_color_set = false;
+
+    _cb = noop_cb;
+
+    // puck-man variables
+    pm_puck_man_pos = 0;
+    pm_puck_man_delta = 1;
+    pm_blinky_pos = (-2 + NUM_LEDS) % NUM_LEDS;
+    pm_pinky_pos  = (-3 + NUM_LEDS) % NUM_LEDS;
+    pm_inky_pos   = (-4 + NUM_LEDS) % NUM_LEDS;
+    pm_clyde_pos  = (-5 + NUM_LEDS) % NUM_LEDS;
+    pm_blinky_visible = 1;
+    pm_pinky_visible = 1;
+    pm_inky_visible = 1;
+    pm_clyde_visible = 1;
+    pm_ghost_delta = 1;
+    pm_power_pellet_pos = 0;
+    pm_power_pellet_flash_state = 1;
+    pm_puck_dots[NUM_LEDS] = {};
+    pm_speed_jump_cnt = 0;
+
+    dr_delta = 0;
 
     fresh_image = false;
 
-    clear();
+    font = &ascii_sector;
+    clkfont = &seven_segment;
+
+    refresh_text_index = 0;
+    shift_char_column = 0;
+    shift_char_tracking = 0; // spacing between letters
+
+    // heading indicates which direction an object (image, patter, text, etc.) displayed on the matrix moves
+    heading = 0;
+    t_initial = true;
+    t_visible = false;
+    t_has_entered = false;
+    dx = 0;
+    dy = 0;
+
+    iwopm = millis(); // previous millis for is_wait_over()
+    fwpm = millis(); // previous millis for finished_waiting()
 }
 
 
@@ -92,8 +149,8 @@ void ReAnimator::setup(LayerType ltype, int8_t id) {
     // in practice there is probably no observable difference between -2 and -1 for images.
     // could possibly get an interesting effect with -2 if the new image does not write to all of leds[] and part of the previous image remains.
     if (id == -1 || (_ltype != ltype && _id != id)) {
-        _id = id;
         _ltype = ltype;
+        _id = id;
 
         // since layers are reused the remnants of the old effect may still be in leds[]
         // these leftovers may not be overwritten by the new effect, so it is best to clear leds[]
@@ -384,9 +441,9 @@ void ReAnimator::increment_overlay(bool is_persistent) {
 
 
 bool ReAnimator::set_image(String id, String* message) {
-    image_path = form_path(F("im"), id);
-    fresh_image = load_image_from_file(image_path, message);
-    return fresh_image;
+  image_path = form_path(F("im"), id);
+  fresh_image = load_image_from_file(image_path, message);
+  return fresh_image;
 }
 
 
@@ -401,34 +458,37 @@ void ReAnimator::set_text(String s) {
 
 
 void ReAnimator::set_info(Info type) {
-    _id = type;
-    switch(type) {
-      default:
-          // fall through to next case
+  _id = type;
+  switch(type) {
+    default:
+      // fall through to next case
       case TIME_12HR:
       case TIME_24HR:
       case DATE_MMDD:
       case DATE_DDMM:
       case TIME_12HR_DATE_MMDD:
       case TIME_24HR_DATE_DDMM:
-          setup_clock();
-          break;
+        setup_clock();
+        break;
       //case 6:
         // maybe do scrolling count down here
         //break;
       //case 7:
         // maybe do weather info
         //break;
-    }
+  }
 }
 
 
+// the frontend color picker is focused on RGB so try to honor the RGB color picked.
+// sometimes it makes more sense to work with a hue, so we have a hue variable that is derived from rgb.
+// color can be determined externally (*rgb) or internally (internal_rgb) to the layer.
+// if internal_rgb is used then rgb is made to point to that.
 void ReAnimator::set_color(CRGB *color) {
-    rgb = color;
-    CHSV chsv = rgb2hsv_approximate(*color);
-    hue = chsv.h;
+  rgb = color;
+  CHSV chsv = rgb2hsv_approximate(*color);
+  hue = chsv.h;
 }
-
 
 void ReAnimator::set_color(CRGB color) {
     internal_rgb = color;
@@ -438,7 +498,7 @@ void ReAnimator::set_color(CRGB color) {
 
 
 void ReAnimator::set_cb(void(*cb)(uint8_t)) {
-    _cb = cb;
+  _cb = cb;
 }
 
 
@@ -464,10 +524,7 @@ void ReAnimator::clear() {
 
 
 void ReAnimator::reanimate() {
-    //if (rgb == nullptr) {
-    //  internal_rgb = CRGB::Yellow;
-    //  rgb = &internal_rgb;
-    //}
+    // some patterns rely on hue. if rgb is dynamic, it is ever changing, so hue has to be updated to reflect the current rgb value.
     CHSV chsv = rgb2hsv_approximate(*rgb);
     hue = chsv.h; // !!BUG!! if color is 0x000000 (black) then hue will be 0 which is red when CHSV(hue, 255, 255)
 
@@ -508,7 +565,7 @@ CRGBA ReAnimator::get_pixel(uint16_t i) {
     static uint8_t b1 = 0;
     static uint8_t b2 = 0;
     //CRGBA pixel_out = 0xFF000000; // if black with no transparency is used it creates a sort of spotlight effect
-    CRGBA pixel_out = 0x00000000;
+    CRGBA pixel_out = 0xDA000000;
     uint16_t ti = mover(i);
     if (0 <= ti && ti < NUM_LEDS) {
         pixel_out = leds[ti];
@@ -1192,136 +1249,117 @@ void ReAnimator::starship_race(uint16_t draw_interval, uint16_t(ReAnimator::*dfp
 
 
 void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
-    static uint16_t puck_man_pos = 0;
-    static int8_t puck_man_delta = 1;
-
-    static uint16_t blinky_pos = (-2 + NUM_LEDS) % NUM_LEDS;
-    static uint16_t pinky_pos  = (-3 + NUM_LEDS) % NUM_LEDS;
-    static uint16_t inky_pos   = (-4 + NUM_LEDS) % NUM_LEDS;
-    static uint16_t clyde_pos  = (-5 + NUM_LEDS) % NUM_LEDS;
-    static uint8_t blinky_visible = 1;
-    static uint8_t pinky_visible = 1;
-    static uint8_t inky_visible = 1;
-    static uint8_t clyde_visible = 1;
-    static int8_t ghost_delta = 1;
-
-    static uint16_t power_pellet_pos = 0;
-    static bool power_pellet_flash_state = 1;
-    static uint8_t puck_dots[NUM_LEDS] = {};
-
-    static uint8_t speed_jump_cnt = 0;
-
     if (pattern != last_pattern_ran) {
-        puck_man_pos = 0;
+        pm_puck_man_pos = 0;
     }
 
     if (is_wait_over(draw_interval)) {
         clear();
 
-        if (puck_man_pos == 0) {
+        if (pm_puck_man_pos == 0) {
             (*_cb)(0);
-            blinky_pos = (-2 + NUM_LEDS) % NUM_LEDS;
-            pinky_pos  = (-3 + NUM_LEDS) % NUM_LEDS;
-            inky_pos   = (-4 + NUM_LEDS) % NUM_LEDS;
-            clyde_pos  = (-5 + NUM_LEDS) % NUM_LEDS;
-            blinky_visible = 1;
-            pinky_visible = 1;
-            inky_visible = 1;
-            clyde_visible = 1;
-            puck_man_delta = 1;
-            ghost_delta = 1;
-            speed_jump_cnt = 0;
+            pm_blinky_pos = (-2 + NUM_LEDS) % NUM_LEDS;
+            pm_pinky_pos  = (-3 + NUM_LEDS) % NUM_LEDS;
+            pm_inky_pos   = (-4 + NUM_LEDS) % NUM_LEDS;
+            pm_clyde_pos  = (-5 + NUM_LEDS) % NUM_LEDS;
+            pm_blinky_visible = 1;
+            pm_pinky_visible = 1;
+            pm_inky_visible = 1;
+            pm_clyde_visible = 1;
+            pm_puck_man_delta = 1;
+            pm_ghost_delta = 1;
+            pm_speed_jump_cnt = 0;
 
             // the power pellet must be at least at led[48] so the pattern completes correctly
             // 48 is close to the beginning though and that leaves a lot of boring animation of
             // just puck-man eating puck dots, so it is better to put the power pellet closer to
             // the end.
-            //power_pellet_pos = 48;
+            //pm_power_pellet_pos = 48;
             // the power pellet must be at an even led so multiply by 2.
             // power pellet falls between 60% and 80% of the length of LEDs
-            power_pellet_pos = 2*random16((3*NUM_LEDS)/10, (4*NUM_LEDS)/10 + 1);
+            pm_power_pellet_pos = 2*random16((3*NUM_LEDS)/10, (4*NUM_LEDS)/10 + 1);
 
             for (uint16_t i = 0; i < NUM_LEDS; i+=2) {
-                puck_dots[i] = 1;
+                pm_puck_dots[i] = 1;
             }
-            puck_dots[power_pellet_pos] = 2;
+            pm_puck_dots[pm_power_pellet_pos] = 2;
         }
 
         for (uint16_t i = 0; i < NUM_LEDS; i+=2) {
-            leds[(this->*dfp)(i)] = (puck_dots[i] == 1) ? CRGBA::White : CRGBA::Transparent;
+            leds[(this->*dfp)(i)] = (pm_puck_dots[i] == 1) ? CRGBA::White : CRGBA::Transparent;
         }
 
-        if (puck_dots[power_pellet_pos] == 2) {
-            if (power_pellet_flash_state) {
-                power_pellet_flash_state = !power_pellet_flash_state;
-                leds[(this->*dfp)(power_pellet_pos)] = CHSV(HUE_RED, 255, 255);
+        if (pm_puck_dots[pm_power_pellet_pos] == 2) {
+            if (pm_power_pellet_flash_state) {
+                pm_power_pellet_flash_state = !pm_power_pellet_flash_state;
+                leds[(this->*dfp)(pm_power_pellet_pos)] = CHSV(HUE_RED, 255, 255);
             }
             else {
-                power_pellet_flash_state = !power_pellet_flash_state;
-                leds[(this->*dfp)(power_pellet_pos)] = CRGBA::Transparent;
+                pm_power_pellet_flash_state = !pm_power_pellet_flash_state;
+                leds[(this->*dfp)(pm_power_pellet_pos)] = CRGBA::Transparent;
             }
         }
 
-        if (puck_dots[power_pellet_pos] == 2) {
-            leds[(this->*dfp)(blinky_pos)] = CHSV(HUE_RED, 255, blinky_visible*255);
-            leds[(this->*dfp)(pinky_pos)]  = CHSV(HUE_PINK, 255, pinky_visible*255);
-            leds[(this->*dfp)(inky_pos)]   = CHSV(HUE_AQUA, 255, inky_visible*255);
-            leds[(this->*dfp)(clyde_pos)]  = CHSV(HUE_ORANGE, 255, clyde_visible*255);
+        if (pm_puck_dots[pm_power_pellet_pos] == 2) {
+            leds[(this->*dfp)(pm_blinky_pos)] = CHSV(HUE_RED, 255, pm_blinky_visible*255);
+            leds[(this->*dfp)(pm_pinky_pos)]  = CHSV(HUE_PINK, 255, pm_pinky_visible*255);
+            leds[(this->*dfp)(pm_inky_pos)]   = CHSV(HUE_AQUA, 255, pm_inky_visible*255);
+            leds[(this->*dfp)(pm_clyde_pos)]  = CHSV(HUE_ORANGE, 255, pm_clyde_visible*255);
         }
-        else if (blinky_visible || pinky_visible || inky_visible || clyde_visible) {
+        else if (pm_blinky_visible || pm_pinky_visible || pm_inky_visible || pm_clyde_visible) {
             (*_cb)(1);
-            puck_man_delta = -3;
-            ghost_delta = -2;
+            pm_puck_man_delta = -3;
+            pm_ghost_delta = -2;
 
-            ghost_delta = -2;
-            if (speed_jump_cnt < 5)
-              puck_man_delta = -1;
-            else if (speed_jump_cnt < 10) {
-              puck_man_delta = -2;
+            pm_ghost_delta = -2;
+            if (pm_speed_jump_cnt < 5)
+              pm_puck_man_delta = -1;
+            else if (pm_speed_jump_cnt < 10) {
+              pm_puck_man_delta = -2;
             }
             else {
-              puck_man_delta = -3;
+              pm_puck_man_delta = -3;
             }
-            speed_jump_cnt++;
+            pm_speed_jump_cnt++;
 
-            if (puck_man_pos == blinky_pos) {
+            if (pm_puck_man_pos == pm_blinky_pos) {
                 (*_cb)(2);
-                blinky_visible = 0;
+                pm_blinky_visible = 0;
             }
-            else if (puck_man_pos == pinky_pos) {
-                pinky_visible = 0;
+            else if (pm_puck_man_pos == pm_pinky_pos) {
+                pm_pinky_visible = 0;
             }
-            else if (puck_man_pos == inky_pos) {
-                inky_visible = 0;
+            else if (pm_puck_man_pos == pm_inky_pos) {
+                pm_inky_visible = 0;
             }
-            else if (puck_man_pos == clyde_pos) {
-                clyde_visible = 0;
+            else if (pm_puck_man_pos == pm_clyde_pos) {
+                pm_clyde_visible = 0;
             }
 
-            leds[(this->*dfp)(blinky_pos)] = CHSV(HUE_BLUE, 255, blinky_visible*255);
-            leds[(this->*dfp)(pinky_pos)]  = CHSV(HUE_BLUE, 255, pinky_visible*255);
-            leds[(this->*dfp)(inky_pos)]   = CHSV(HUE_BLUE, 255, inky_visible*255);
-            leds[(this->*dfp)(clyde_pos)]  = CHSV(HUE_BLUE, 255, clyde_visible*255);
+            leds[(this->*dfp)(pm_blinky_pos)] = CHSV(HUE_BLUE, 255, pm_blinky_visible*255);
+            leds[(this->*dfp)(pm_pinky_pos)]  = CHSV(HUE_BLUE, 255, pm_pinky_visible*255);
+            leds[(this->*dfp)(pm_inky_pos)]   = CHSV(HUE_BLUE, 255, pm_inky_visible*255);
+            leds[(this->*dfp)(pm_clyde_pos)]  = CHSV(HUE_BLUE, 255, pm_clyde_visible*255);
 
         }
         else {
-            puck_man_delta = 1;
+            pm_puck_man_delta = 1;
         }
 
-        blinky_pos = blinky_pos + ghost_delta;
-        blinky_pos = (NUM_LEDS+blinky_pos) % NUM_LEDS;
-        pinky_pos = pinky_pos + ghost_delta;
-        pinky_pos = (NUM_LEDS+pinky_pos) % NUM_LEDS;
-        inky_pos = inky_pos + ghost_delta;
-        inky_pos = (NUM_LEDS+inky_pos) % NUM_LEDS;
-        clyde_pos = clyde_pos + ghost_delta;
-        clyde_pos = (NUM_LEDS+clyde_pos) % NUM_LEDS;
+        pm_blinky_pos = pm_blinky_pos + pm_ghost_delta;
+        pm_blinky_pos = (NUM_LEDS+pm_blinky_pos) % NUM_LEDS;
+        pm_pinky_pos = pm_pinky_pos + pm_ghost_delta;
+        pm_pinky_pos = (NUM_LEDS+pm_pinky_pos) % NUM_LEDS;
+        pm_inky_pos = pm_inky_pos + pm_ghost_delta;
+        pm_inky_pos = (NUM_LEDS+pm_inky_pos) % NUM_LEDS;
+        pm_clyde_pos = pm_clyde_pos + pm_ghost_delta;
+        pm_clyde_pos = (NUM_LEDS+pm_clyde_pos) % NUM_LEDS;
 
-        leds[(this->*dfp)(puck_man_pos)] = CHSV(HUE_YELLOW, 255, 255);
-        puck_dots[puck_man_pos] = 0;
+        leds[(this->*dfp)(pm_puck_man_pos)] = CHSV(HUE_YELLOW, 255, 255);
+        pm_puck_dots[pm_puck_man_pos] = 0;
 
-        puck_man_pos = puck_man_pos + puck_man_delta;
-        puck_man_pos = (NUM_LEDS+puck_man_pos) % NUM_LEDS;
+        pm_puck_man_pos = pm_puck_man_pos + pm_puck_man_delta;
+        pm_puck_man_pos = (NUM_LEDS+pm_puck_man_pos) % NUM_LEDS;
     }
 
 }
@@ -1518,16 +1556,16 @@ void ReAnimator::halloween_colors_orbit(uint16_t draw_interval, int8_t delta) {
 
 
 void ReAnimator::dynamic_rainbow(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
-    static uint16_t delta = 0;
+    uint16_t dr_delta = 0;
 
     if (is_wait_over(draw_interval)) {
         for(uint16_t i = NUM_LEDS-1; i > 0; i--) {
             leds[(this->*dfp)(i)] = leds[(this->*dfp)(i-1)];
         }
 
-        leds[(this->*dfp)(0)] = CHSV(((NUM_LEDS-1-delta)*255/NUM_LEDS), 255, 255);
+        leds[(this->*dfp)(0)] = CHSV(((NUM_LEDS-1-dr_delta)*255/NUM_LEDS), 255, 255);
 
-        delta = (delta + 1) % NUM_LEDS;
+        dr_delta = (dr_delta + 1) % NUM_LEDS;
     }
 }
 
@@ -1614,6 +1652,9 @@ void ReAnimator::fade_randomly(uint8_t chance_of_fade, uint8_t decay) {
 
 bool ReAnimator::load_image_from_file(String fs_path, String* message) {
     bool retval = false;
+    if (fs_path == "") {
+      return false;
+    }
     File file = LittleFS.open(fs_path, "r");
 
     if(!file){
