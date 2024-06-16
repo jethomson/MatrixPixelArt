@@ -988,6 +988,7 @@ void ReAnimator::solid(uint16_t draw_interval) {
 
 // inspired by juggle from FastLED/examples/DemoReel00.ino -Mark Kriegsman, December 2014
 void ReAnimator::pendulum() {
+    static uint32_t t = 0;
     const uint8_t bpm_offset = 56;
     const uint8_t num_columns = MD;
     fadeToBlackBy(leds, NUM_LEDS, 15);
@@ -996,16 +997,23 @@ void ReAnimator::pendulum() {
     for (uint8_t i = 0; i < num_columns; i++) {
         Point p;
         p.x = i*(MD/num_columns);
-        p.y = beatsin16(i+7, 0, MD-1);
+        // normally beatsin16() is based on millis(), but since this effect is called irregularly
+        // in time use a different timebase that does increase with calls to this effect in a regular way.
+        // beatsin16() effectively uses this: uint16_t beat = ((millis() - timebase) * beats_per_minute_88 * 280) >> 16;
+        // so to cancel out the effect of millis() use this: timebase = millis()-t
+        // redefining the timebase prevents the effect from skipping
+        p.y = beatsin16(i+7, 0, MD-1, millis()-t);
         uint16_t j = cart2serp(p);
         leds[j] |= CHSV(ball_hue, 200, 255);
         ball_hue += 255/num_columns;
     }
+    t+=12;
 }
 
 
 
 void ReAnimator::funky() {
+    static uint32_t t = 0;
     const uint8_t bpm_offset = 14;
     const uint8_t num_columns = MD;
     byte ball_hue = hue;
@@ -1013,18 +1021,20 @@ void ReAnimator::funky() {
     for (uint8_t i = 0; i < num_columns; i++) {
         Point p;
         p.x = i*(MD/num_columns);
-        p.y = beatsin16(i+bpm_offset, 0, MD-1);
+        p.y = beatsin16(i+bpm_offset, 0, MD-1, millis()-t);
         uint16_t j = cart2serp(p);
-        p.y = MD-1 - beatsin16(i+bpm_offset, 0, MD-1);
+        p.y = MD-1 - beatsin16(i+bpm_offset, 0, MD-1, millis()-t);
         uint16_t k = cart2serp(p);
         leds[j] |= CHSV(ball_hue, 200, 255);
         leds[k] |= CHSV(255-ball_hue, 200, 255);
         ball_hue += 255/num_columns;
     }
+    t+=12;
 }
 
 
 void ReAnimator::riffle() {
+    static uint32_t t = 0;
     uint8_t ball_hue = hue;
     uint8_t i = 0;
     fadeToBlackBy(leds, NUM_LEDS, 5);
@@ -1033,7 +1043,7 @@ void ReAnimator::riffle() {
         if (high >= NUM_LEDS/2) {
             break;
         }
-        uint16_t p = beatsin16(3, 0, high);
+        uint16_t p = beatsin16(3, 0, high, millis()-t);
         leds[NUM_LEDS-1-p] |= CHSV(ball_hue, 200, 255);
 
         uint16_t q = (MD*(p/MD)+MD)-1 - p%MD;
@@ -1042,6 +1052,7 @@ void ReAnimator::riffle() {
         i++;
         ball_hue += 32;
     }
+    t+=12;
 }
 
 
