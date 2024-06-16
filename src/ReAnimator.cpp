@@ -29,6 +29,7 @@
 #include "ReAnimator.h"
 #include "ArduinoJson-v6.h"
 #include "JSON_Image_Decoder.h"
+#include <StreamUtils.h>
 
 
 // Conventions
@@ -1665,7 +1666,8 @@ bool ReAnimator::load_image_from_file(String fs_path, String* message) {
     }
     if (file.available()) {
         DynamicJsonDocument doc(8192);
-        DeserializationError error = deserializeJson(doc, file.readString());
+        ReadBufferingStream bufferedFile(file, 64);
+        DeserializationError error = deserializeJson(doc, bufferedFile);
         if (error) {
             //Serial.print("deserializeJson() failed: ");
             //Serial.println(error.c_str());
@@ -1677,6 +1679,8 @@ bool ReAnimator::load_image_from_file(String fs_path, String* message) {
 
         JsonObject object = doc.as<JsonObject>();
 
+        // for unknown reasons initializing the leds[] to all black
+        // makes the code slightly faster
         for (uint16_t i = 0; i < NUM_LEDS; i++) leds[i] = 0xFFFFFF00;
         retval = deserializeSegment(object, leds, NUM_LEDS);
 

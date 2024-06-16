@@ -14,6 +14,7 @@
 #include "FastLED_RGBA.h"
 
 #include "ArduinoJson-v6.h"
+#include <StreamUtils.h>
 
 #include "project.h"
 #include "ReAnimator.h"
@@ -72,6 +73,11 @@ struct {
 
 String patterns_json;
 String accents_json;
+
+// we have a JsonArray that needs to persist after load_from_playlist() exits,
+// therefore the document the JsonArray references must persist between function calls.
+//DynamicJsonDocument gpldoc(2048); //DynamicJsonDocument is recommended for documents larger than 1KB
+StaticJsonDocument<2048> gpldoc; // about 5 ms faster than DynamicJsonDocument. faster here compared to declaring as static inside load_from_playlist().
 
 void homogenize_brightness_custom(void);
 void homogenize_brightness_builtin(void);
@@ -713,21 +719,42 @@ bool load_composite(String id) {
   }
 
   if (file.available()) {
-    DynamicJsonDocument doc(768);
-    String json = file.readString();
-    DeserializationError error = deserializeJson(doc, json);
+    // 360 ms on average
+    // 333 ms on average
+    // 346 ms on average
+
+    // 214 ms on average total time between show(), global StaticJSONDoc
+    //String json = file.readString();
+    //DeserializationError error = deserializeJson(gcmdoc, json);
+    //file.close();
+
+    // 241 ms on average total time between show(), global DynamicJSONDoc
+    // 212 ms on average total time between show(), global StaticJSONDoc
+    //DeserializationError error = deserializeJson(gcmdoc, file);
+    //file.close();
+
+    // 213 ms on average total time between show(), global DynamicJSONDoc
+    // 209 ms on average total time between show(), global StaticJSONDoc
+    // 189 ms on average total time between show(), local DynamicJSONDoc
+    // 186 ms on average total time between show(), local StaticJSONDoc
+    //DynamicJsonDocument gcmdoc(768);
+    StaticJsonDocument<768> gcmdoc;
+    ReadBufferingStream bufferedFile(file, 64);
+    DeserializationError error = deserializeJson(gcmdoc, bufferedFile);
+    file.close();
+
     if (error) {
       DEBUG_PRINT("deserializeJson() failed: ");
       DEBUG_PRINTLN(error.c_str());
       return false;
     }
 
-    JsonObject object = doc.as<JsonObject>();
-    JsonArray arr = object[F("l")];
-    if (!arr.isNull() && arr.size() > 0) {
-      for (uint8_t i = 0; i < arr.size(); i++) {
-        if(arr[i].is<JsonVariant>()) {
-          retval = load_layer(i, arr[i]);
+    JsonObject object = gcmdoc.as<JsonObject>();
+    JsonArray layer_objects = object[F("l")];
+    if (!layer_objects.isNull() && layer_objects.size() > 0) {
+      for (uint8_t i = 0; i < layer_objects.size(); i++) {
+        if(layer_objects[i].is<JsonVariant>()) {
+          retval = load_layer(i, layer_objects[i]);
         }
       }
     }
@@ -752,62 +779,84 @@ bool load_file(String type, String id) {
 
 
 bool load_from_playlist(String id) {
-  static String _id;
+  static String resume_id;
   static uint32_t pm = 0;
   static uint32_t item_duration = 0;
   static uint8_t i = 0;
+  static JsonArray playlist;
+  static bool playlist_loaded = false;
   bool refresh_needed = false;
 
   if (id != "") {
-    gplaylist_enabled = true;
-    _id = id;
-    pm = 0;
+    // should not do if (id != "" && id != resume_id)
+    // because a playlist with an id matching resume_id may have been edited,
+    // and therefore we would like to reload it to see the changes.
+    // calling with an id means we want to load a new playlist so reinitialize everything
+    gplaylist_enabled = false;
+    resume_id = id;
+    pm = 0; // using zero pm and item_duration ensures first item will be loaded immediately next time load_from_playlist() is called
     item_duration = 0;
     i = 0;
-  }
+    playlist_loaded = false;
 
-  if (_id != "" && (millis()-pm) > item_duration) {
-    pm = millis();
-    item_duration = 1000; // set to a safe value which will be replaced below
-
-    String fs_path = form_path(F("pl"), _id);
+    String fs_path = form_path(F("pl"), id);
     File file = LittleFS.open(fs_path, "r");
     if (file && file.available()) {
-      String json = file.readString();
+      // 29 ms slower on average
+      //String json = file.readString();
+      //file.close();
+      //DeserializationError error = deserializeJson(gpldoc, json);
+
+      // 19 ms slower on average
+      //String json = file.readString();
+      //file.close();
+      //DeserializationError error = deserializeJson(gpldoc, file);
+
+      // fastest
+      // is this still the fastest if the playlist is long?
+      ReadBufferingStream bufferedFile(file, 64);
+      DeserializationError error = deserializeJson(gpldoc, bufferedFile);
       file.close();
-
-      DynamicJsonDocument doc(2048); //DynamicJsonDocument (vs StaticJsonDocument) recommended for documents larger than 1KB
-
-      DeserializationError error = deserializeJson(doc, json);
       if (error) {
         Serial.print("deserializeJson() failed: ");
         Serial.println(error.c_str());
         gplaylist_enabled = false;
-        refresh_needed = false;
         return refresh_needed;
       }
+      JsonObject object = gpldoc.as<JsonObject>();
+      if (!object[F("pl")].isNull() && object[F("pl")].size() > 0) {
+        playlist = object[F("pl")];
+        gplaylist_enabled = true;
+        playlist_loaded  = true;
+        // instead of loading the playlist and then loading the first item
+        // just load the playlist on this call, then the next call can load the first item
+        // returning now means less time is spent in this function when a new playlist is loaded
+        return refresh_needed;
+      }
+    }
+  }
 
-      JsonObject object = doc.as<JsonObject>();
-      JsonArray playlist = object[F("pl")];
-      if (!playlist.isNull() && playlist.size() > 0) {
-        if(playlist[i].is<JsonVariant>()) {
-          JsonVariant item = playlist[i];
-          if(load_file(item[F("t")], item[F("id")])) {
-            if(item[F("d")].is<JsonInteger>()) {
-              item_duration = item[F("d")];
-            }
-            refresh_needed = true;
-          }
-          else {
-            item_duration = 0;
-          }
+  if (playlist_loaded && (millis()-pm) > item_duration) {
+    pm = millis();
+    item_duration = 1000; // set to a safe value which will be replaced below
+
+    if(playlist[i].is<JsonVariant>()) {
+      JsonVariant item = playlist[i];
+      if(load_file(item[F("t")], item[F("id")])) {
+        if(item[F("d")].is<JsonInteger>()) {
+          item_duration = item[F("d")];
         }
-        i = (i+1) % playlist.size();
+        refresh_needed = true;
       }
       else {
-        gplaylist_enabled = false;
-        refresh_needed = false;
+        item_duration = 0;
       }
+      if (playlist.size() > 0) {
+        i = (i+1) % playlist.size();
+      }
+    }
+    else {
+      gplaylist_enabled = false;
     }
   }
   return refresh_needed;
@@ -1113,6 +1162,7 @@ void show(void) {
   // otherwise changes we make could be undo once the interrupt hands back control which could be in the middle of code setting up a different animation
   if (gnextup.id) {
     if (gnextup.type == "pl") {
+      // initialize playlist
       load_from_playlist(gnextup.id);
     }
     else if (gnextup.type == "cm") {
@@ -1127,10 +1177,6 @@ void show(void) {
     gnextup.id = "";
   }
 
-  if (gplaylist_enabled) {
-    refresh_now = load_from_playlist();
-  }
-
   // draw layers. changes in layers are not displayed until they are copied to leds[] in the blend block
   for (uint8_t i = 0; i < NUM_LAYERS; i++) {
     if (layers[i] != nullptr) {
@@ -1139,15 +1185,17 @@ void show(void) {
   }
 
   // blend block
-  if ((millis()-pm) > 100 || refresh_now) {
+  uint32_t dt = millis()-pm;
+  if (dt > 100 || refresh_now) {
     pm = millis();
+    //if (dt > 120) {
+    //  DEBUG_PRINTLN(dt);
+    //}
     refresh_now = false;
     gdynamic_hue+=3;
     gdynamic_rgb = CHSV(gdynamic_hue, 255, 255);
     gdynamic_comp_rgb = CRGB::White - gdynamic_rgb;
     grandom_hue = random8();
-
-    bool DBG_printed = false;
 
     FastLED.clear(); // use clear instead of tracking background layer.
     CRGBA pixel;
@@ -1187,6 +1235,16 @@ void show(void) {
     FastLED.setBrightness(homogenized_brightness);
   }
 
+  // load_from_playlist both initializes a playlist and shows a playlist item
+  // initializing and showing the first playlist item takes some time, so it
+  // is better to initialize, refresh the leds, then show the first playlist item
+  // that is why load_from_playlist(gnextup.id) comes before the leds[] refresh code
+  // and load_from_playlist() comes after it.
+  if (gplaylist_enabled) {
+    // show playlist item
+    refresh_now = load_from_playlist();
+  }
+
   FastLED.show();
 }
 
@@ -1209,23 +1267,7 @@ void setup() {
   FastLED.clear();
   FastLED.show(); // clear the matrix on startup
 
-  // for taking current measurements at different brightness levels
-  // every LED white is the maximum amout of power that can be used
-  //for (uint16_t i = 0; i < NUM_LEDS; i++) {
-  //  leds[i] = 0xFFFFFF; // white
-  //}
-  //FastLED.setBrightness(255);
-  //homogenize_brightness();
-  //FastLED.setBrightness(homogenized_brightness);
-  //Serial.println(homogenized_brightness); // builtin: 87, custom: 112
-  //FastLED.show();
-  //delay(6000);
-
   homogenize_brightness();
-  FastLED.setBrightness(homogenized_brightness);
-  Serial.println(homogenized_brightness);
-
-  FastLED.clear();
   FastLED.setBrightness(homogenized_brightness);
 
   //random16_set_seed(analogRead(A0)); // use randomness ??? need to look up which pin for ESP32 ???
