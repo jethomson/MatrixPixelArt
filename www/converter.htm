@@ -937,7 +937,7 @@
           //For every commandString in the array
           for (let i = 0; i < commandArray.length; i++) {
             //let thisJSONledString = `{"on":true,"bri":${brgh.value},"seg":{"id":${segID},"i":[${commandArray[i]}]}}`;
-            let thisJSONledString = `{"t":"im",${(pxcolor.value && pxcolor.checkValidity())?'"pc":"'+pxcolor.value.replace("#", "0x")+'",':''}"i":[${commandArray[i]}]}}`;
+            let thisJSONledString = `{"t":"im",${(pxcolor.value && pxcolor.checkValidity())?'"pc":"'+pxcolor.value.replace("#", "0x")+'",':''}"i":[${commandArray[i]}]}`;
             httpArray.push(thisJSONledString);
       
             let thiscurlString = `curl -X POST "http://${gurl.value}/json/state" -d \'${thisJSONledString}\' -H "Content-Type: application/json"`;
@@ -1183,13 +1183,12 @@
           try {
             if (devMode) console.log(i);
             if (devMode) console.log(i.length);
-            const response = await fetch('http://'+gId('curlUrl').value+'/json/state', {
-              method: 'POST',
+            const response = await fetch('http://'+gId('curlUrl').value+'/save', {
+              method: "POST",
               headers: {
-                'Content-Type': 'application/json'
-                //'Content-Type': 'text/html; charset=UTF-8'
+                "Content-Type":"application/x-www-form-urlencoded"
               },
-              body: i
+              body:`t=im&id=${gId("imid").value}&json=`+i
             });
             const data = await response.json();
             if (devMode) console.log(data);
