@@ -23,10 +23,14 @@ AUTHOR: basicons
 
 
 converter.html is based on the WLED Pixel Art Converter
+MIT License, Copyright (c) 2023 Henrik Werkström
 https://github.com/werkstrom/WLED-PixelArtConverter/
-MIT License
 
-Copyright (c) 2023 Henrik Werkström
+The unminified version of WLED Pixel Art Converter was taken from the WLED repo.
+MIT License, Copyright (c) 2016 Christian Schwinne
+https://github.com/Aircoookie/WLED/tree/main/wled00/data/pixart
+
+MIT License
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -45,6 +49,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-
-
