@@ -118,48 +118,48 @@
         }
         
         * input[type=range] {
-        	appearance: none;
+          appearance: none;
           -moz-appearance: none;
           -webkit-appearance: none;
-        	flex-grow: 1;
-        	padding: 0;
-        	margin: 4px 8px 4px 0;
-        	background-color: transparent;
-        	cursor: pointer;
+          flex-grow: 1;
+          padding: 0;
+          margin: 4px 8px 4px 0;
+          background-color: transparent;
+          cursor: pointer;
           background: linear-gradient(to right, #bbb 50%, #333 50%);
           border-radius: 7px;
         }
         
         input[type=range]:focus {
-        	outline: none;
+          outline: none;
         }
         input[type=range]::-webkit-slider-runnable-track {
-        	height: 28px;
-        	cursor: pointer;
-        	background: transparent;
+          height: 28px;
+          cursor: pointer;
+          background: transparent;
           border-radius: 7px;
         }
         input[type=range]::-webkit-slider-thumb {
-        	height: 16px;
-        	width: 16px;
-        	border-radius: 50%;
-        	background: #fff;
-        	cursor: pointer;
-        	-webkit-appearance: none;
-        	margin-top: 4px;
+          height: 16px;
+          width: 16px;
+          border-radius: 50%;
+          background: #fff;
+          cursor: pointer;
+          -webkit-appearance: none;
+          margin-top: 4px;
           border-radius: 7px;
         }
         input[type=range]::-moz-range-track {
-        	height: 28px;
-        	background-color: rgba(0, 0, 0, 0);
+          height: 28px;
+          background-color: rgba(0, 0, 0, 0);
           border-radius: 7px;
         }
         input[type=range]::-moz-range-thumb {
-        	border: 0px solid rgba(0, 0, 0, 0);
-        	height: 16px;
-        	width: 16px;
-        	border-radius: 7px;
-        	background: #fff;
+          border: 0px solid rgba(0, 0, 0, 0);
+          height: 16px;
+          width: 16px;
+          border-radius: 7px;
+          background: #fff;
         }
         
         .rangeNumber{
@@ -226,11 +226,16 @@
           cursor: pointer;
         }
 
-        #showHideAdvDiv,
-        #scaleDiv {
+        .radio-SVG {
           display: flex;
           align-items: center;
-          vertical-align: middle;
+          cursor: pointer;
+        }
+        
+        #preview {
+          margin:0 auto;
+          max-width: 100%;
+          max-height: 100%;
         }
         
         textarea {
@@ -266,10 +271,12 @@
         .svg-icon {
           vertical-align: middle;
         }
+
         #image-container {
           display: grid;
           grid-template-rows: 1fr 1fr;
         }
+
         #button-container {
           display: flex;
           padding-bottom: 10px;
@@ -293,22 +300,7 @@
           width: 36px;
           height: 36px;
         }
-        
-        #sizeDiv * {
-          display: inline-block;
-        }
-        .sizeInputFields{
-          width: 50px;
-          background-color: #222;
-          border: 1px solid #333;
-          padding-inline-start: 5px;
-          margin-top: -5px;
-          height: 24px;
-          border-radius: 7px;
-          font-family: Arial, sans-serif;
-          font-size: 15px;
-          color: #ddd;
-        }
+
         a:link {
           color: rgba(221, 221, 221, 0.61);
           background-color: transparent;
@@ -332,10 +324,12 @@
           background-color: transparent;
           text-decoration: none;
         }
+
         .not-used,
         .adv-ui-hide {
           display:none !important
         }
+        
         .adv-ui-show {
           display:
         }
@@ -354,7 +348,7 @@
     </a>
     <h3>Image Converter</h3>
     <details>
-      <summary>Instructions</summary> For best results, use an image that matches the dimensions of the LED matrix, or when scaling use an image with dimensions that are an integer multiple of the matrix's dimensions. <br> Source images with an alpha channel are supported. If an image with transparency is used on the Combine Effects page the layer below it will visible. <br> Proxy Color is replaced by the dynamic color, or the color selected for the image on the Combine Effects page. Anti-fingerprinting measures for the canvas prevent the colors saved in the JSON file from exactly matching the colors in the source image, so colors that close to the Proxy Color will also be replaced.
+      <summary>Instructions</summary> For best results, use an image that matches the dimensions of the LED matrix, or if relying on autoscaling use an image with dimensions that are an integer multiple of the matrix's dimensions. <br> Source images with an alpha channel are supported. If an image with transparency is used on the Combine Effects page the layer below it will visible. <br> Proxy Color is replaced by the dynamic color, or the color selected for the image on the Combine Effects page. Anti-fingerprinting measures for the canvas prevent the colors saved in the JSON file from exactly matching the colors in the source image, so colors that close to the Proxy Color will also be replaced.
     </details>
     
     <div class="top-part">
@@ -364,12 +358,12 @@
             <label for="curlUrl">Device IP/host name:</label>
           </td>
           <td class="adaptiveTD">
-            <input class="fullTextField" type="text" id="curlUrl" value>
+            <input class="fullTextField" type="text" id="curlUrl" autocomplete="on" required value>
           </td>
         </tr>
         <tr>
           <td style="vertical-align:middle">
-            <div id="showHideAdvDiv" style="cursor:pointer" onclick="showHideAdv()">
+            <div id="showHideAdvDiv" class="radio-SVG" onclick="showHideAdv()">
               <svg id="showHideAdvDivSVG" style="width:36px;height:36px" viewBox="0 0 24 24">
                 <path fill="currentColor" d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5M7 15a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3z" />
               </svg> &nbsp;Show/Hide Advanced Options
@@ -378,7 +372,15 @@
         </tr>
         <tr class="adv-ui-hide">
           <td style="vertical-align:middle">
-            <label for="ledSetupSelector">Led setup: </label>
+            <label for="proxyColor">Proxy Color:</label>
+          </td>
+          <td class="adaptiveTD">
+            <input class="fullTextField" type="text" id="proxyColor" onfocusout="(function(e){e.reportValidity()})(this);if(this.checkValidity()){gen();}" autocomplete="off" pattern="^(?:[0-9a-fA-F]{3}){1,2}$" placeholder="RGB code (e.g. 4682B4) or leave blank" title="RGB color code (e.g. 4682B4) or leave blank." value>
+          </td>
+        </tr>
+        <tr class="adv-ui-hide">
+          <td style="vertical-align:middle">
+            <label for="ledSetupSelector">LED Matrix Type: </label>
           </td>
           <td class="adaptiveTD">
             <select id="ledSetupSelector" class="mainSelector">
@@ -390,46 +392,13 @@
         </tr>
         <tr class="adv-ui-hide">
           <td style="vertical-align:middle">
-            <label for="proxyColor">Proxy Color:</label>
           </td>
-          <td class="adaptiveTD">
-            <input class="fullTextField" type="text" id="proxyColor" onfocusout="(function(e){e.reportValidity()})(this);if(this.checkValidity()){gen();}" autocomplete="off" pattern="^#(?:[0-9a-fA-F]{3}){1,2}$" placeholder="RGB code (e.g. #123456) or leave blank" title="RGB color code (e.g. #123456) or leave blank." value>
-          </td>
-        </tr>
-        <!--start unused options-->
-        <tr class="not-used">
           <td style="vertical-align:middle">
-            <label for="formatSelector">Output format:</label>
-          </td>
-          <td class="adaptiveTD">
-            <select id="formatSelector" class="mainSelector">
-              <option value="wled" selected="selected">WLED JSON</option>
-              <option value="curl">CURL</option>
-              <option value="ha">Home Assistant YAML</option>
-            </select>
-          </td>
-        </tr>
-        <tr class="not-used">
-          <td style="vertical-align:middle">
-            <label for="colorFormatSelector"> Color code format:</label>
-          </td>
-          <td class="adaptiveTD">
-            <select id="colorFormatSelector" class="mainSelector">
-              <option value="hex" selected="selected">HEX (&quot;f4f4f4&quot;)</option>
-              <option value="dec"> DEC (244,244,244)</option>
-            </select>
-          </td>
-        </tr>
-        <tr class="not-used">
-          <td style="vertical-align:middle">
-            <label for="addressingSelector">Addressing: </label>
-          </td>
-          <td class="adaptiveTD">
-            <select id="addressingSelector" class="mainSelector">
-              <option value="hybrid" selected="selected"> Hybrid (&quot;f0f0f0&quot;,10, 17, &quot;f4f4f4&quot;)</option>
-              <option value="range">Range (10, 17, &quot;f4f4f4&quot;)</option>
-              <option value="single">Single (&quot;f4f4f4&quot;)</option>
-            </select>
+            <div id="setStretchOptionDiv" class="radio-SVG" onclick="setStretchOption()">
+              <svg id="setStretchOptionDivSVG" style="width:36px;height:36px" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5M7 15a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3z" />
+              </svg> &nbsp;Stretch Image To Fit
+            </div>
           </td>
         </tr>
         <tr class="not-used">
@@ -439,66 +408,6 @@
           <td style="vertical-align:middle;display:flex;align-items:center">
             <input type="range" id="brightnessNumber" min="1" max="255" value="128">
             <span id="brightnessValue">128</span>
-          </td>
-        </tr>
-        <tr class="not-used">
-          <td style="vertical-align:middle">
-            <label for="colorLimitNumber"> Max no of colors/JSON:</label>
-          </td>
-          <td style="vertical-align:middle;display:flex;align-items:center">
-            <input type="range" id="colorLimitNumber" min="1" max="512" value="256">
-            <span id="colorLimitValue">256</span>
-          </td>
-        </tr>
-        <!--end unused options-->
-        <tr class="ha-hide">
-          <td style="vertical-align:middle">
-            <label for="haID">HA Device ID:</label>
-          </td>
-          <td class="adaptiveTD">
-            <input class="fullTextField" type="text" id="haID" value="pixel_art_controller_001">
-          </td>
-        </tr>
-        <tr class="ha-hide">
-          <td style="vertical-align:middle">
-            <label for="haUID">HA Device Unique ID:</label>
-          </td>
-          <td class="adaptiveTD">
-            <input class="fullTextField" type="text" id="haUID" value="pixel_art_controller_001a">
-          </td>
-        </tr>
-        <tr class="ha-hide">
-          <td style="vertical-align:middle">
-            <label for="haName">HA Device Name:</label>
-          </td>
-          <td class="adaptiveTD">
-            <input class="fullTextField" type="text" id="haName" value="Pixel Art Kitchen">
-          </td>
-        </tr>
-        <tr class="not-used">
-          <td style="vertical-align:middle">
-            <label for="targetSegment">Target segment id:</label>
-          </td>
-          <td class="adaptiveTD">
-            <input class="flxTFld" type="number" id="segID" value="0" min="0" max="63">
-            <select id="targetSegment" class="adaptiveSelector"></select>
-            <div id="getSegmentsDiv" class="segmentsDiv"></div>
-          </td>
-        </tr>
-      </table>
-      <table class="scaleTableClass" id="scaleTable" style="width:100%;table-layout:fixed;align-content:center">
-        <tr>
-          <td style="vertical-align:middle">
-            <div id="scaleDiv" style="cursor:pointer" onclick="switchScale()">
-              <svg style="width:36px;height:36px" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5M7 15a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3z" />
-              </svg> &nbsp;Scale image
-            </div>
-          </td>
-          <td style="vertical-align:middle">
-            <div id="sizeDiv" style="display:none">
-              <label for="sizeX">W : </label> &nbsp; <input class="sizeInputFields" type="number" id="sizeX" min="1" value="16"> &nbsp;&nbsp;&nbsp; <label for="sizeY">H : </label> &nbsp; <input class="sizeInputFields" type="number" id="sizeY" min="1" value="16">
-            </div>
           </td>
         </tr>
       </table>
@@ -512,7 +421,7 @@
         <input type="file" id="file-picker" style="display:none">
       </p>
       <div style="width:100%;text-align:center">
-        <img id="preview" style="display:none;margin:0 auto" src="data:text/html;base64,">
+        <img id="preview" style="display:none" src="data:text/html;base64,">
       </div>
       <div id="raw-image-container" style="display:none">
         <img id="image" src="data:text/html;base64," alt="RawImage image">
@@ -523,8 +432,7 @@
         <textarea id="JSONled" readonly="readonly" class="adv-ui-hide"></textarea>
       </div>
       <div id="button-container" style="display:none">
-        <button id="copyJSONledbutton" class="buttonclass" style="display:none"></button>
-        <input type="text" id="imid" maxlength="26">
+        <input type="text" id="imid" maxlength="26" required>
         <div id="gap1" class="gap"></div>
         <button id="sendJSONledbutton" class="buttonclass"></button>
       </div>
@@ -536,41 +444,23 @@
     <script> 
       //elements
       var gurl = gId('curlUrl');
-      var szX = gId("sizeX"); 
-      var szY = gId("sizeY");
-      var szDiv = gId("sizeDiv"); 
       var prw = gId("preview");
-      var sID = gId('segID');
       var JLD = gId('JSONled');
-      var tSg = gId('targetSegment');
       var brgh = gId("brightnessNumber");
-      
-      var seDiv = gId("getSegmentsDiv")
-      var cjb = gId("copyJSONledbutton");
-      var frm = gId("formatSelector");
-      var cLN = gId("colorLimitNumber");
-      var haIDe = gId("haID");
-      var haUe = gId("haUID");
-      var haNe = gId("haName");
-      var aS = gId("addressingSelector");
-      var cFS = gId("colorFormatSelector");
       var lSS  = gId("ledSetupSelector");
       var imin = gId('image-info');
       var imcn = gId('image-container');
       var bcn = gId("button-container");
       var im = gId('image');
-      //var ss = gId("sendSvgP");
-      var scDiv = gId("scaleDiv");
+      var ss = gId("sendSvgP");
       var w = window;
       var canvas = gId('pixelCanvas');
       var brgV = gId("brightnessValue");
-      var cLV = gId("colorLimitValue")
-
       var shaDiv = gId("showHideAdvDiv");
+      var ssoDiv = gId("setStretchOptionDiv");
       var pxcolor = gId("proxyColor");
+      var imid = gId("imid");
 
-      //vars
-      var httpArray = [];
       var fileJSON = '';
       
       var hideableRows = d.querySelectorAll(".ha-hide");
@@ -586,70 +476,37 @@
       
       var toggleOffd = "M17,7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7M7,15A3,3 0 0,1 4,12A3,3 0 0,1 7,9A3,3 0 0,1 10,12A3,3 0 0,1 7,15Z";
       var toggleOnd = "M17,7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7M17,15A3,3 0 0,1 14,12A3,3 0 0,1 17,9A3,3 0 0,1 20,12A3,3 0 0,1 17,15Z";
-      
-      var sSg = gId("getSegmentsSVGpath");
     </script>
               
     <!--getPixelValues.js-->
     <script>
+
       function getPixelRGBValues(base64Image) {
-        httpArray = [];
-        //fileJSON = `{"on":true,"bri":${brgh.value},"seg":{"id":${tSg.value},"i":[`;
-        fileJSON = `{"t":"im",${(pxcolor.value && pxcolor.checkValidity())?'"pc":"'+pxcolor.value.replace("#", "0x")+'",':''}"i":[`;
-      
-        //Which object holds the secret to the segment ID
-      
         let segID = 0;
-        if(tSg.style.display == "flex"){
-          segID = tSg.value
-        } else {
-          segID = sID.value;
-        }
-        
       
-        //const copyJSONledbutton = gId('copyJSONledbutton');
-        const maxNoOfColorsInCommandSting = parseInt(cLN.value);
+        const formatSelection = "wled";
         
-        let hybridAddressing = false;
-        let selectedIndex = -1;
-      
-        selectedIndex = frm.selectedIndex;
-        const formatSelection = frm.options[selectedIndex].value;
-      
-        
-        selectedIndex = lSS.selectedIndex;
+        let selectedIndex = lSS.selectedIndex;
         const ledSetupSelection = lSS.options[selectedIndex].value;
       
-        selectedIndex = cFS.selectedIndex;
-        let hexValueCheck = true;
-        if (cFS.options[selectedIndex].value == 'dec'){
-          hexValueCheck = false
-        }
-      
-        selectedIndex = aS.selectedIndex;
-        let segmentValueCheck = true; //If Range or Hybrid
-        if (aS.options[selectedIndex].value == 'single'){
-          segmentValueCheck = false
-        } else if (aS.options[selectedIndex].value == 'hybrid'){
-          hybridAddressing = true;
-        }
-      
         let curlString = ''
-        let haString = ''
       
         let colorSeparatorStart = '"';
         let colorSeparatorEnd = '"';
-        if (!hexValueCheck){
-          colorSeparatorStart = '[';
-          colorSeparatorEnd = ']';
-        }
 
         let imageInfo = '';
         
-        // Create an off-screen canvas
+        // Create two off-screen canvases
+        // The image is scaled by drawing to canvas, then canvas is copied into the webgl texture.
+        // Using two canvases is much easier than scaling with webgl directly.
         var canvas = cE('canvas');
-        //var context = canvas.getContext('2d', { willReadFrequently: true });
-        var context = canvas.getContext("webgl2");
+        var glcanvas = cE('canvas');
+        var ctx = canvas.getContext('2d', { willReadFrequently: true });
+        var gl = glcanvas.getContext("webgl2");
+
+        //ctx.imageSmoothingEnabled = false; // should give a pixelated look, but does not look great
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
       
         // Create an image element and set its src to the base64 image
         var image = new Image();
@@ -657,62 +514,73 @@
       
         // Wait for the image to load before drawing it onto the canvas
         image.onload = function() {
-          let scalePath = scDiv.children[0].children[0];
-          let scaleColor = scalePath.getAttribute("fill");
-          let sizeX = szX.value;
-          let sizeY = szY.value;
-      
-          if (scaleColor != accentColor || sizeX < 1 || sizeY < 1){
-            //image will not be resized Set desired size to original size
-            sizeX = image.width;
-            sizeY = image.height;
-            //failsafe for not generating huge images automatically
-            if (image.width > 512 || image.height > 512)
-            {
-              sizeX = 16;
-              sizeY = 16;
-            }
-          }
-      
-          // Set the canvas size to the same as the desired image size
+          // LED matrix dimensions
+          let sizeX = 16;
+          let sizeY = 16;
           canvas.width = sizeX;
           canvas.height = sizeY;
           
-          imageInfo = '<p>Width: ' + sizeX + ', Height: ' + sizeY + ' (make sure this matches your led matrix setup)</p>'
-      
-          // Draw the image onto the canvas
-          //context.drawImage(image, 0, 0, sizeX, sizeY);
-      
-          // Get the pixel data from the canvas
-          //var pixelData = context.getImageData(0, 0, sizeX, sizeY).data;
+          imageInfo = '<p>Output Image Width: ' + sizeX + ', Height: ' + sizeY + '</p>'
 
+          const canvasAspectRatio = sizeX / sizeY;
+          const imageAspectRatio = this.naturalWidth / this.naturalHeight;
 
-          // using webgl and readPixels instead of getImageData is a work around for pixel errors caused
-          // by canvas anti-fingerprinting and possibly loss of precision caused by premultiplied alpha color values
-          // I believe the tiny noise added to pixels by firefox's canvas anti-fingerprinting method was causing
-          // values near 0 or 255 to underflow or overflow which completely changes the color
-          context.activeTexture(context.TEXTURE0);
-          let texture = context.createTexture();
-          context.bindTexture(context.TEXTURE_2D, texture);
-          const framebuffer = context.createFramebuffer();
-          context.bindFramebuffer(context.FRAMEBUFFER, framebuffer);
-          context.framebufferTexture2D(context.FRAMEBUFFER, context.COLOR_ATTACHMENT0, context.TEXTURE_2D, texture, 0);
-          context.texImage2D(context.TEXTURE_2D, 0, context.RGBA, context.RGBA, context.UNSIGNED_BYTE, this);
-          context.drawBuffers([context.COLOR_ATTACHMENT0]);
+          let ssoPath = ssoDiv.children[0].children[0];
+          let ssoColor = ssoPath.getAttribute("fill");
+          if (ssoColor === accentColor || imageAspectRatio === canvasAspectRatio) {
+            // scale image to fit canvas. if image does not have the same aspect ratio it will be stretched to fit.
+            ctx.drawImage(this, 0, 0, this.naturalWidth, this.naturalHeight, 0, 0, sizeX, sizeY);
+          }
+          else {
+            let scaledWidth, scaledHeight;
+            if (imageAspectRatio > 1) {
+                // letterbox
+                scaledWidth = canvas.width;
+                scaledHeight = canvas.width / imageAspectRatio;
+            }
+            else {
+                // pillarbox
+                scaledWidth = canvas.height * imageAspectRatio;
+                scaledHeight = canvas.height;
+            }
 
-          //let pixelData = new Uint8Array(this.width * this.height * 4);
-          //context.readPixels(0, 0, this.width, this.height, context.RGBA, context.UNSIGNED_BYTE, pixelData);
-          
-          let pixelData = new Uint8Array(sizeX * sizeY * 4);
-          context.readPixels(0, 0, sizeX, sizeY, context.RGBA, context.UNSIGNED_BYTE, pixelData);
+            // Calculate offsets to center the image
+            const xOffset = (canvas.width - scaledWidth) / 2;
+            const yOffset = (canvas.height - scaledHeight) / 2;
+
+            ctx.fillStyle = "#00000000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(image, xOffset, yOffset, scaledWidth, scaledHeight);
+          }
+
+          var pixelData;
+          if (gl) {
+            // using webgl and readPixels instead of getImageData is a work around for pixel errors caused
+            // by canvas anti-fingerprinting and possibly loss of precision caused by premultiplied alpha color values
+            // I believe the tiny noise added to pixels by firefox's canvas anti-fingerprinting method causes
+            // values near 0 or 255 to underflow or overflow which completely changes the color.
+            gl.activeTexture(gl.TEXTURE0);
+            let texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            const framebuffer = gl.createFramebuffer();
+            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, ctx.canvas);
+            gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
+            
+            pixelData = new Uint8Array(sizeX * sizeY * 4);
+            gl.readPixels(0, 0, sizeX, sizeY, gl.RGBA, gl.UNSIGNED_BYTE, pixelData);
+          }
+          else {
+            pixelData = ctx.getImageData(0, 0, sizeX, sizeY).data;
+          }
         
           // Create an array to hold the RGB values of each pixel
           var pixelRGBValues = [];
       
           // If the first row of the led matrix is right -> left
           let right2leftAdjust = 1;
-                
-          if (ledSetupSelection == 'l2r'){
+          if (ledSetupSelection == 'l2r') {
             right2leftAdjust = 0;
           }
 
@@ -726,7 +594,8 @@
             //console.log(`[${i/4}] color: ` + pixelData[i] + "," + pixelData[i + 1] + "," + pixelData[i + 2] + "," + pixelData[i + 3]);
             if (frequency[color]) {
               frequency[color] = frequency[color] + 1;
-            } else {
+            }
+            else {
               frequency[color] = 1;
             }
           }
@@ -786,7 +655,7 @@
             let pixel = i/4
             let row = Math.floor(pixel/sizeX);
             let led = pixel;
-            if (ledSetupSelection == 'matrix'){
+            if (ledSetupSelection == 'matrix') {
                 //Do nothing, the matrix is set upp like the index in the image
                 //Every row starts from the left, i.e. no zigzagging
             }
@@ -796,7 +665,8 @@
                 //Row is left to right
                 //Leave led index as pixel index
               
-            } else {
+            }
+            else {
                 //Setup is traditional zigzag
                 //Row is right to left
                 //Invert index of row for led
@@ -824,7 +694,6 @@
           //Set starting values for the segment check to something that is no color
           let segmentStart = -1;
           let maxi = ledRGBValues.length;
-          let curentColorIndex = 0
           let commandArray = [];
       
           //For every pixel in the LED array
@@ -837,93 +706,69 @@
             let segmentString = '';
             let segmentEnd = -1;
       
-            if(segmentValueCheck){
-              if (segmentStart < 0){
-                //This is the first led of a new segment
-                segmentStart = i;
-              } //Else we already have a start index
+            if (segmentStart < 0) {
+              //This is the first led of a new segment
+              segmentStart = i;
+            } //Else we already have a start index
+            
+            if (i < maxi - 1) { 
               
-              if (i < maxi - 1){ 
-                
-                let iNext = i + 1;
-                let nextPixel = ledRGBValues[iNext];
+              let iNext = i + 1;
+              let nextPixel = ledRGBValues[iNext];
       
-                if (nextPixel[0] != r || nextPixel[1] != g || nextPixel[2] != b ){
-                  //Next pixel has new color
-                  //The current segment ends with this pixel
-                  segmentEnd = i + 1 //WLED wants the NEXT LED as the stop led...
-                  if (segmentStart == i && hybridAddressing){
-                    //If only one led/pixel, no segment info needed
-                    if (JSONledString == ''){
-                      //If addressing is single, we need to start every command with a starting possition
-                      segmentString = '' + i + ',';
-                      //Fixed to b2
-                    } else{
-                      segmentString = '';
-                    }
-                  }
-                  else {
-                    segmentString = segmentStart + ',' + segmentEnd + ',';
-                  }
-                }
-      
-              } else {
-                //This is the last pixel, so the segment must end
-                segmentEnd = i + 1;
-      
-                if (segmentStart + 1 == segmentEnd && hybridAddressing){
+              if (nextPixel[0] != r || nextPixel[1] != g || nextPixel[2] != b ) {
+                //Next pixel has new color
+                //The current segment ends with this pixel
+                segmentEnd = i + 1 //WLED wants the NEXT LED as the stop led...
+                if (segmentStart == i) {
                   //If only one led/pixel, no segment info needed
-                  if (JSONledString == ''){
+                  if (JSONledString == '') {
                     //If addressing is single, we need to start every command with a starting possition
                     segmentString = '' + i + ',';
                     //Fixed to b2
-                  } else{
+                  }
+                  else{
                     segmentString = '';
                   }
                 }
                 else {
-                  segmentString = segmentStart + ',' + segmentEnd + ','; 
+                  segmentString = segmentStart + ',' + segmentEnd + ',';
                 }
               }
-            } else{
-              //Write every pixel
-              if (JSONledString == ''){
-                //If addressing is single, we need to start every command with a starting possition
-                JSONledString = i;
-                //Fixed to b2
-              }
       
-              segmentStart = i;
-              segmentEnd = i;
-              //Segment string should be empty for when addressing single. So no need to set it again.       
+            }
+            else {
+              //This is the last pixel, so the segment must end
+              segmentEnd = i + 1;
+      
+              if (segmentStart + 1 == segmentEnd) {
+                //If only one led/pixel, no segment info needed
+                if (JSONledString == '') {
+                  //If addressing is single, we need to start every command with a starting position
+                  segmentString = '' + i + ',';
+                  //Fixed to b2
+                }
+                else {
+                  segmentString = '';
+                }
+              }
+              else {
+                segmentString = segmentStart + ',' + segmentEnd + ','; 
+              }
             }
     
-            if (segmentEnd > -1){
+            if (segmentEnd > -1) {
               //This is the last pixel in the segment, write to the JSONledString
-              //Return color value in selected format
-              let colorValueString = r + ',' + g + ',' + b + ',' + a;
-      
-              if (hexValueCheck){
-                const [red, green, blue, alpha] = [r, g, b, a];
-                colorValueString = `${[red, green, blue, alpha].map(x => x.toString(16).padStart(2, '0')).join('')}`;
-              } else{
-                //do nothing, already set
-              }
-      
-              // Check if start and end is the same, in which case remove
-      
+              const [red, green, blue, alpha] = [r, g, b, a];
+              let colorValueString = `${[red, green, blue, alpha].map(x => x.toString(16).padStart(2, '0')).join('')}`;
+     
               JSONledString += segmentString + colorSeparatorStart + colorValueString + colorSeparatorEnd;
-              fileJSON = JSONledString + segmentString + colorSeparatorStart + colorValueString + colorSeparatorEnd;
-      
-              curentColorIndex = curentColorIndex + 1; // We've just added a new color to the string so up the count with one
-      
-              if (curentColorIndex % maxNoOfColorsInCommandSting === 0 || i == maxi - 1) { 
-      
-                //If we have accumulated the max number of colors to send in a single command or if this is the last pixel, we should write the current colorstring to the array
-                commandArray.push(JSONledString);
+     
+              if (i == maxi - 1) { 
+                fileJSON = JSONledString;
                 JSONledString = ''; //Start on an new command string
-              } else
-              {
+              }
+              else {
                 //Add a comma to continue the command string
                 JSONledString = JSONledString + ',';
               }
@@ -931,56 +776,15 @@
               segmentStart = - 1;
             }
           }
-          
-          JSONledString = '';
-      
-          //For every commandString in the array
-          for (let i = 0; i < commandArray.length; i++) {
-            //let thisJSONledString = `{"on":true,"bri":${brgh.value},"seg":{"id":${segID},"i":[${commandArray[i]}]}}`;
-            let thisJSONledString = `{"t":"im",${(pxcolor.value && pxcolor.checkValidity())?'"pc":"'+pxcolor.value.replace("#", "0x")+'",':''}"i":[${commandArray[i]}]}`;
-            httpArray.push(thisJSONledString);
-      
-            let thiscurlString = `curl -X POST "http://${gurl.value}/json/state" -d \'${thisJSONledString}\' -H "Content-Type: application/json"`;
-            
-            //Aggregated Strings That should be returned to the user
-            if (i > 0){
-              JSONledString = JSONledString + '\n<NEXT COMMAND (multiple commands not supported in API/preset setup)>\n';
-              curlString = curlString + ' && ';
-            }
-            JSONledString += thisJSONledString;
-            curlString += thiscurlString;
-          }
-      
-          
-          haString = `#Uncomment if you don\'t already have these defined in your switch section of your configuration.yaml
-      #- platform: command_line
-        #switches:
-          ${haIDe.value}
-            friendly_name: ${haNe.value}
-            unique_id: ${haUe.value}
-            command_on: >
-              ${curlString}
-            command_off: >
-              curl -X POST "http://${gurl.value}/json/state" -d \'{"on":false}\' -H "Content-Type: application/json"`;
-      
-          if (formatSelection == 'wled'){
-            JLD.value = JSONledString;
-          } else if (formatSelection == 'curl'){
-            JLD.value = curlString;
-          } else if (formatSelection == 'ha'){
-            JLD.value = haString;
-          } else {
-            JLD.value = 'ERROR!/n' + formatSelection + ' is an unknown format.'
-          }
-          
-          fileJSON += ']}}';
+
+          fileJSON = `{"t":"im",${(pxcolor.value && pxcolor.checkValidity())?'"pc":"0x'+pxcolor.value+'",':''}"i":[` + fileJSON + ']}';
+          JLD.value = fileJSON;
       
           let infoDiv = imin;
           let canvasDiv = imin;
           
           infoDiv.innerHTML = imageInfo;
           canvasDiv.style.display = "block"
-      
       
           //Drawing the image
           drawBoxes(pixelRGBValues, sizeX, sizeY);
@@ -1001,7 +805,7 @@
           if (w.innerHeight < w.innerWidth) {
               canvas.width = Math.floor(w.innerHeight * 0.98);
           }
-          else{
+          else {
               canvas.width = Math.floor(w.innerWidth * 0.98);
           }
           //canvas.height = w.innerWidth;
@@ -1043,7 +847,7 @@
                   ctx.fillStyle = textColor;
                   ctx.textAlign = "center";
                   ctx.textBaseline = 'middle';
-                  ctx.fillText((pixel[4] + 1), (x * pixelSize) + (pixelSize /2), (y * pixelSize) + (pixelSize /2));
+                  ctx.fillText((pixel[4]), (x * pixelSize) + (pixelSize /2), (y * pixelSize) + (pixelSize /2));
               }
           }
           var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1056,26 +860,20 @@
     <!--pixart.js-->
     <script>
       //Start up code
-      //if (window.location.protocol == "file:") {
-      //  let locip = prompt("File Mode. Please enter WLED IP!");
-      //  gId('curlUrl').value = locip;
-      //} else
-      //
-      //Start up code
       let devMode =  false; //Remove
-      gurl.value = location.host;
-      
-      const urlParams = new URLSearchParams(window.location.search);
-      if (gurl.value.length < 1){
-        gurl.value = "Missing_Host";
+
+      // autocomplete will fill in value after reload if protocol is file (i.e. running locally)
+      // so do not replace if protocol is file
+      if (window.location.protocol !== "file:") {
+        gurl.value = location.host;
       }
       
-      function gen(){
+      function gen() {
         //Generate image if enough info is in place
         //Is host non empty
         //Is image loaded
         //is scale > 0
-        if (((szX.value > 0 && szY.value > 0) || szDiv.style.display == 'none') && gurl.value.length > 0 && prw.style.display != 'none'){
+        if (prw.style.display != 'none') {
           //regenerate
           let base64Image = prw.src;
           if (isValidBase64Gif(base64Image)) {
@@ -1083,7 +881,8 @@
             getPixelRGBValues(base64Image);
             imcn.style.display = "block";
             bcn.style.display = "";
-          } else {
+          }
+          else {
             let imageInfo = '<p><b>WARNING!</b> File does not appear to be a valid image</p>';
             imin.innerHTML = imageInfo;
             imin.style.display = "block";
@@ -1092,63 +891,17 @@
             if (devMode) console.log("The string '" + base64Image + "' is not a valid base64 image.");
           }
         }
-        
-        if(gurl.value.length > 0){
-          gId("sSg").setAttribute("fill", accentColor);
-        } else{
-          gId("sSg").setAttribute("fill", accentTextColor);
-          let ts = tSg;
-          ts.style.display = "none";
-          ts.innerHTML = "";
-          sID.style.display = "flex";
-        }
       }
-      
-      
-      // Code for copying the generated string to clipboard
-      
-      cjb.addEventListener('click', async () => {
-        let JSONled = JLD;
-        JSONled.select();
-        try {
-          await navigator.clipboard.writeText(JSONled.value);
-        } catch (err) {
-          try {
-            await d.execCommand("copy");
-          } catch (err) {
-            console.error('Failed to copy text: ', err);
-          }
-        }
-      });
       
       // Event listeners =======================
       
       lSS.addEventListener("change", gen);
-      szY.addEventListener("change", gen);
-      szX.addEventListener("change", gen);
-      cFS.addEventListener("change", gen);
-      aS.addEventListener("change", gen);
       brgh.addEventListener("change", gen);
-      cLN.addEventListener("change", gen);
-      haIDe.addEventListener("change", gen);
-      haUe.addEventListener("change", gen);
-      haNe.addEventListener("change", gen);
       gurl.addEventListener("change", gen);
-      sID.addEventListener("change", gen);
       prw.addEventListener("load", gen);
-      //gId("convertbutton").addEventListener("click", gen);
-      
-      tSg.addEventListener("change", () => {
-        sop = tSg.options[tSg.selectedIndex];
-        szX.value = sop.dataset.x;
-        szY.value = sop.dataset.y;
-        gen();
-      });
       
       gId("sendJSONledbutton").addEventListener('click', async () => {
-        if (window.location.protocol === "https:") {
-          alert('Will only be available when served over http (or WLED is run over https)');
-        } else {
+        if (gurl.reportValidity() && imid.reportValidity()) {
           postPixels();
         }
       });
@@ -1160,53 +913,38 @@
         brgh.style.backgroundImage = val;
       }
       
-      cLN.oninput = () => {
-        let cln = cLN;
-        cLV.textContent = cln.value;
-        let perc = parseInt(cln.value)*100/512;
-        var val = `linear-gradient(90deg, #bbb ${perc}%, #333 ${perc}%)`;
-        cln.style.backgroundImage = val;
-      }
-      
-      frm.addEventListener("change", () => {
-        for (var i = 0; i < hideableRows.length; i++) {
-          hideableRows[i].classList.toggle("hide", frm.value !== "ha");
-          gen();
-        }
-      });
-      
       async function postPixels() {
         let ss = gId("sendSvgP");
         ss.setAttribute("fill", prsCol);
         let er = false;
-        for (let i of httpArray) {
-          try {
-            if (devMode) console.log(i);
-            if (devMode) console.log(i.length);
-            const response = await fetch('http://'+gId('curlUrl').value+'/save', {
-              method: "POST",
-              headers: {
-                "Content-Type":"application/x-www-form-urlencoded"
-              },
-              body:`t=im&id=${gId("imid").value}&json=`+i
-            });
-            const data = await response.json();
-            if (devMode) console.log(data);
-          } catch (error) {
-            console.error(error);
-            er = true;
-          }
+        try {
+          if (devMode) console.log(i);
+          if (devMode) console.log(i.length);
+          const response = await fetch('http://'+gurl.value+'/save', {
+            method: "POST",
+            headers: {
+              "Content-Type":"application/x-www-form-urlencoded"
+            },
+            body:`t=im&id=${imid.value}&json=`+fileJSON
+          });
+          const data = await response.json();
+          if (devMode) console.log(data);
         }
-        if(er){
+        catch (error) {
+          console.error(error);
+          er = true;
+        }
+        if (er) {
           //Something went wrong
           ss.setAttribute("fill", redColor);
-          setTimeout(function(){ 
+          setTimeout(function() { 
             ss.setAttribute("fill", accentTextColor);
           }, 1000);
-        } else {
+        }
+        else {
           // A, OK
           ss.setAttribute("fill", greenColor);
-          setTimeout(function(){ 
+          setTimeout(function() { 
             ss.setAttribute("fill", accentColor);
           }, 1000);
         }
@@ -1265,7 +1003,7 @@
       
       // Update the preview image
       function updatePreview(file) {
-        gId("imid").value = file.name.replace(/\.[^/.]+$/, "").substr(0, 26);
+        imid.value = file.name.replace(/\.[^/.]+$/, "").substr(0, 26);
         // Use FileReader to read the file
         const reader = new FileReader();
         reader.onload = () => {
@@ -1288,7 +1026,8 @@
         //REMOVED, Any image appear to work as long as it can be drawn to the canvas. Leaving code in for future use, possibly
         if (1==1 || base64gifPattern.test(string) || base64pngPattern.test(string) || base64jpgPattern.test(string) || base64webpPattern.test(string)) {
           return true;
-        } else {
+        }
+        else {
           //Not OK
           return false;
         }
@@ -1298,32 +1037,7 @@
       for (var i = 0; i < hideableRows.length; i++) {
         hideableRows[i].classList.add("hide");
       }
-      frm.addEventListener("change", () => {
-        for (var i = 0; i < hideableRows.length; i++) {
-          hideableRows[i].classList.toggle("hide", frm.value !== "ha");
-        }
-      });
-      
-      function switchScale() {
-        //let scalePath = gId("scaleDiv").children[1].children[0]
-        let scaleTogglePath = scDiv.children[0].children[0]
-        let color = scaleTogglePath.getAttribute("fill");
-        let d = '';
-        if (color === accentColor) {
-          color = accentTextColor;
-          d = toggleOffd;
-          szDiv.style.display = "none";
-          // Set values to actual XY of image, if possible
-        } else {
-          color = accentColor;
-          d = toggleOnd;
-          szDiv.style.display = "";
-        }
-        //scalePath.setAttribute("fill", color);
-        scaleTogglePath.setAttribute("fill", color);
-        scaleTogglePath.setAttribute("d", d);
-        gen();
-      }
+
 
       function showHideAdv() {
         let e = shaDiv.children[0].children[0];
@@ -1332,7 +1046,8 @@
         if (color === accentColor) {
           color = accentTextColor;
           d = toggleOffd;
-        } else {
+        }
+        else {
           color = accentColor;
           d = toggleOnd;
         }
@@ -1345,102 +1060,29 @@
         }
         gen();
       }
-      
-      function generateSegmentOptions(array) {
-        //This function is prepared for a name property on each segment for easier selection
-        //Currently the name is generated generically based on index
-        tSg.innerHTML = "";
-        for (var i = 0; i < array.length; i++) {
-          var option = cE("option");
-          option.value = array[i].value;
-          option.text = array[i].text;
-          option.dataset.x = array[i].x;
-          option.dataset.y = array[i].y;
-          tSg.appendChild(option);
-          if(i === 0) {
-            option.selected = true;
-            szX.value = option.dataset.x;
-            szY.value = option.dataset.y;
-          }
+
+      function setStretchOption() {
+        let e = ssoDiv.children[0].children[0];
+        let color = e.getAttribute("fill");
+        let d = '';
+        if (color === accentColor) {
+          color = accentTextColor;
+          d = toggleOffd;
         }
-      }
-      
-      // Get segments from device
-      async function getSegments() {
-        cv = gurl.value;
-        if (cv.length > 0 ){
-          try {
-            var arr = [];
-            const response = await fetch('http://'+cv+'/json/state');
-            const json = await response.json();
-            let ids = json.seg.map(sg => ({id: sg.id, n: sg.n, xs: sg.start, xe: sg.stop, ys: sg.startY, ye: sg.stopY}));
-            for (var i = 0; i < ids.length; i++) {
-              arr.push({
-                  value: ids[i]["id"],
-                  text: ids[i]["n"] + ' (index: ' + ids[i]["id"] + ')',
-                  x: ids[i]["xe"] - ids[i]["xs"],
-                  y: ids[i]["ye"] - ids[i]["ys"]
-              });
-            }
-            generateSegmentOptions(arr);
-            tSg.style.display = "flex";
-            sID.style.display = "none";
-            gId("sSg").setAttribute("fill", greenColor);
-            setTimeout(function(){ 
-              gId("sSg").setAttribute("fill", accentColor);
-            }, 1000);
-      
-          } catch (error) {
-            console.error(error);
-            gId("sSg").setAttribute("fill", redColor);
-            setTimeout(function(){ 
-              gId("sSg").setAttribute("fill", accentColor);
-            }, 1000);
-            tSg.style.display = "none";
-            sID.style.display = "flex";
-          }
-        } else{
-          gId("sSg").setAttribute("fill", redColor);
-          setTimeout(function(){ 
-            gId("sSg").setAttribute("fill", accentTextColor);
-          }, 1000);
-          tSg.style.display = "none";
-          sID.style.display = "flex";
+        else {
+          color = accentColor;
+          d = toggleOnd;
         }
+        e.setAttribute("fill", color);
+        e.setAttribute("d", d);
+        gen();
       }
-      
-      //Initial population of segment selection
-      function generateSegmentArray(noOfSegments) {
-        var arr = [];
-        for (var i = 0; i < noOfSegments; i++) {
-          arr.push({
-            value: i,
-            text: "Segment index " + i
-          });
-        }
-        return arr;
-      }
-      
-      var segmentData = generateSegmentArray(10);
-      
-      generateSegmentOptions(segmentData);
-      
-      seDiv.innerHTML =
-      '<svg id=getSegmentsSVG style="width:36px;height:36px;cursor:pointer" viewBox="0 0 24 24" onclick="getSegments()"><path id=sSg fill="currentColor" d="M6.5 20Q4.22 20 2.61 18.43 1 16.85 1 14.58 1 12.63 2.17 11.1 3.35 9.57 5.25 9.15 5.68 7.35 7.38 5.73 9.07 4.1 11 4.1 11.83 4.1 12.41 4.69 13 5.28 13 6.1V12.15L14.6 10.6L16 12L12 16L8 12L9.4 10.6L11 12.15V6.1Q9.1 6.45 8.05 7.94 7 9.43 7 11H6.5Q5.05 11 4.03 12.03 3 13.05 3 14.5 3 15.95 4.03 17 5.05 18 6.5 18H18.5Q19.55 18 20.27 17.27 21 16.55 21 15.5 21 14.45 20.27 13.73 19.55 13 18.5 13H17V11Q17 9.8 16.45 8.76 15.9 7.73 15 7V4.68Q16.85 5.55 17.93 7.26 19 9 19 11 20.73 11.2 21.86 12.5 23 13.78 23 15.5 23 17.38 21.69 18.69 20.38 20 18.5 20M12 11.05Z" /></svg>'
-      /*gId("convertbutton").innerHTML = 
-      '<svg style="width:36px;height:36px" viewBox="0 0 24 24"><path fill="currentColor" d="M12,6V9L16,5L12,1V4A8,8 0 0,0 4,12C4,13.57 4.46,15.03 5.24,16.26L6.7,14.8C6.25,13.97 6,13 6,12A6,6 0 0,1 12,6M18.76,7.74L17.3,9.2C17.74,10.04 18,11 18,12A6,6 0 0,1 12,18V15L8,19L12,23V20A8,8 0 0,0 20,12C20,10.43 19.54,8.97 18.76,7.74Z" /> </svg>&nbsp; Convert to WLED JSON '; 
-      */
-      cjb.innerHTML = 
-      '<svg class="svg-icon" style="width:36px;height:36px" viewBox="0 0 24 24"> <path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" /> </svg>&nbsp; Copy to clipboard'; 
+
       gId("sendJSONledbutton").innerHTML = 
       '<svg class="svg-icon" style="width:36px;height:36px" viewBox="0 0 24 24"> <path id=sendSvgP fill="currentColor" d="M6.5 20Q4.22 20 2.61 18.43 1 16.85 1 14.58 1 12.63 2.17 11.1 3.35 9.57 5.25 9.15 5.88 6.85 7.75 5.43 9.63 4 12 4 14.93 4 16.96 6.04 19 8.07 19 11 20.73 11.2 21.86 12.5 23 13.78 23 15.5 23 17.38 21.69 18.69 20.38 20 18.5 20H13Q12.18 20 11.59 19.41 11 18.83 11 18V12.85L9.4 14.4L8 13L12 9L16 13L14.6 14.4L13 12.85V18H18.5Q19.55 18 20.27 17.27 21 16.55 21 15.5 21 14.45 20.27 13.73 19.55 13 18.5 13H17V11Q17 8.93 15.54 7.46 14.08 6 12 6 9.93 6 8.46 7.46 7 8.93 7 11H6.5Q5.05 11 4.03 12.03 3 13.05 3 14.5 3 15.95 4.03 17 5.05 18 6.5 18H9V20M12 13Z" /> </svg>&nbsp; Send to device';
       
-      //After everything is loaded, check if we have a possible IP/host
-      
-      if(gurl.value.length > 0){
-        // Needs to be addressed directly here so the object actually exists
-        gId("sSg").setAttribute("fill", accentColor);
-      }
+      // set default value of "Stretch Image To Fit" to on 
+      window.addEventListener("load", setStretchOption); 
     </script>
   </body>
 </html>
