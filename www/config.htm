@@ -67,6 +67,10 @@
     margin: auto 0px;
   }
   
+  input[type=number] {
+    appearance: textfield;
+  }
+  
   #mdns_host {
     width: 150px;
   }
@@ -129,9 +133,9 @@
     
     <label class="item-a">Matrix Dim.</label>
     <section id="dimensions" style="text-align:left">
-    <input id="rows" form="saveconfig" name="rows" type="text" maxlength="4" value="16">
+    <input id="rows" form="saveconfig" name="rows" type="number" maxlength="4">
     <label> x </label>
-    <input id="columns" form="saveconfig" name="columns" type="text" maxlength="4" value="16">
+    <input id="columns" form="saveconfig" name="columns" type="number" maxlength="4">
     <label>(rows x columns)</label>
     </section>
 

@@ -1137,36 +1137,44 @@ void web_server_initiate(void) {
   web_server.on("/saveconfig", HTTP_POST, [](AsyncWebServerRequest *request) {
     preferences.begin("config", false);
 
-    if(request->hasParam("ssid", true)) {
+    if (request->hasParam("ssid", true)) {
       AsyncWebParameter* p = request->getParam("ssid", true);
-      Serial.print("ssid: ");
-      Serial.print(p->value().c_str());
-      Serial.print("123");
-      Serial.println("");
-      preferences.putString("ssid", p->value().c_str());
+      if (!p->value().isEmpty()) {
+        preferences.putString("ssid", p->value().c_str());
+      }
     }
 
-    if(request->hasParam("password", true)) {
+    if (request->hasParam("password", true)) {
       AsyncWebParameter* p = request->getParam("password", true);
-      preferences.putString("password", p->value().c_str());
+      if (!p->value().isEmpty()) {
+        preferences.putString("password", p->value().c_str());
+      }
     }
 
-    if(request->hasParam("mdns_host", true)) {
+    if (request->hasParam("mdns_host", true)) {
       AsyncWebParameter* p = request->getParam("mdns_host", true);
       String mdns = p->value();
       mdns.replace(" ", ""); // autocomplete will add space to end of a word if phone is used to enter mdns hostname. remove it.
       mdns.toLowerCase();
-      preferences.putString("mdns_host", mdns.c_str());
+      if (!mdns.isEmpty()) {
+        preferences.putString("mdns_host", mdns.c_str());
+      }
     }
 
-    if(request->hasParam("rows", true)) {
+    if (request->hasParam("rows", true)) {
       AsyncWebParameter* p = request->getParam("rows", true);
-      preferences.putUChar("rows", p->value().toInt());
+      uint8_t num_rows = p->value().toInt();
+      if (0 < num_rows && num_rows <= 32) {
+        preferences.putUChar("rows", num_rows);
+      }
     }
 
-    if(request->hasParam("columns", true)) {
+    if (request->hasParam("columns", true)) {
       AsyncWebParameter* p = request->getParam("columns", true);
-      preferences.putUChar("columns", p->value().toInt());
+      uint8_t num_cols = p->value().toInt();
+      if (0 < num_cols && num_cols <= 32) {
+        preferences.putUChar("columns", num_cols);
+      }
     }
 
     preferences.putBool("create_ap", false);
