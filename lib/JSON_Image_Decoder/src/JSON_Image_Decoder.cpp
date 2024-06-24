@@ -104,8 +104,14 @@ bool deserializeSegment(JsonObject root, CRGBA leds[], uint16_t leds_len)
           // can use FastLED gamma function?
           //uint32_t c = gamma32(RGBA32(rgba[0], rgba[1], rgba[2], rgba[3]));
           uint32_t c = RGBA32(rgba[0], rgba[1], rgba[2], rgba[3]);
-          //while (start < stop && start < leds_len) leds[start++] = c;
-          while (start < stop) leds[start++] = c;
+          while (start < stop && start < leds_len) leds[start++] = c;
+          if (start > leds_len) {
+            // image is bigger than matrix
+            // return to avoid processing the rest of iarr unnecessarily
+            // if return false image will not be shown
+            // if return true partial image will be shown
+            return true;
+          }
           set = 0;
         }
       }

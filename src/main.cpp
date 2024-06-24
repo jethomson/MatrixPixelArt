@@ -23,6 +23,11 @@
 #define SOFT_AP_SSID "PixelArt"
 #define MDNS_HOSTNAME "pixelart"
 
+// these values are used if the number of rows and columns of the LED matrix are not provided
+// on the configuration page of the frontend
+#define DEFAULT_NUM_ROWS 16
+#define DEFAULT_NUM_COLS 16
+
 #define DATA_PIN 16
 #define COLOR_ORDER GRB
 
@@ -48,7 +53,11 @@ bool gdns_up = false;
 IPAddress IP;
 String mdns_host;
 
-CRGB leds[NUM_LEDS] = {0}; // output
+uint8_t NUM_ROWS = 0;
+uint8_t NUM_COLS = 0;
+uint16_t NUM_LEDS = 0;
+CRGB* leds; // output
+
 
 ReAnimator* layers[NUM_LAYERS];
 uint8_t ghost_layers[NUM_LAYERS] = {0};
@@ -590,7 +599,7 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
   }
 
   if (layers[lnum] == nullptr) {
-    layers[lnum] = new ReAnimator();
+    layers[lnum] = new ReAnimator(NUM_ROWS, NUM_COLS);
   }
 
   // sane defaults in case data is missing.
@@ -698,7 +707,7 @@ bool load_image_solo(String id) {
   }
 
   if (layers[0] == nullptr) {
-    layers[0] = new ReAnimator();
+    layers[0] = new ReAnimator(NUM_ROWS, NUM_COLS);
     layers[0]->setup(Image_t, -2);
     layers[0]->set_color(&gdynamic_rgb);
     retval = layers[0]->set_image(id);
@@ -774,7 +783,7 @@ bool load_file(String type, String id) {
   else if (type == "pl") {
     retval = load_from_playlist(id);
   }
-  return true;
+  return retval;
 }
 
 
@@ -880,7 +889,7 @@ public:
   void handleRequest(AsyncWebServerRequest *request) {
     String url = "http://";
     url += get_ip();
-    url += "/network.htm";
+    url += "/config.htm";
     request->redirect(url);
   }
 };
@@ -893,7 +902,7 @@ void espDelay(uint32_t ms) {
 
 bool attempt_connect(void) {
   bool attempt;
-  preferences.begin("netinfo", false);
+  preferences.begin("config", false);
   attempt = !preferences.getBool("create_ap", true);
   preferences.end();
   return attempt;
@@ -910,8 +919,19 @@ String get_mdns_addr(void) {
 }
 
 String processor(const String& var) {
+  preferences.begin("config", false);
   if (var == "NUM_LAYERS")
     return String(NUM_LAYERS);
+
+  if (var == "SSID")
+    return preferences.getString("ssid", "");
+  if (var == "MDNS_HOST")
+    return preferences.getString("mdns_host", "");
+  if (var == "NUM_ROWS")
+    return String(NUM_ROWS);
+  if (var == "NUM_COLS")
+    return String(NUM_COLS);
+  preferences.end();    
   return String();
 }
 
@@ -933,7 +953,7 @@ bool wifi_connect(void) {
   //  DEBUG_PRINTLN(F("WiFi config failed."));
   //}
 
-  preferences.begin("netinfo", false);
+  preferences.begin("config", false);
 
   String ssid;
   String password;
@@ -967,7 +987,7 @@ bool wifi_connect(void) {
 }
 
 void mdns_setup(void) {
-  preferences.begin("netinfo", false);
+  preferences.begin("config", false);
   mdns_host = preferences.getString("mdns_host", "");
 
   if (mdns_host == "") {
@@ -1087,7 +1107,7 @@ void web_server_station_setup(void) {
 }
 
 void web_server_ap_setup(void) {
-  // create a captive portal that catches every attempt to access data besides what the ESP serves to network.htm
+  // create a captive portal that catches every attempt to access data besides what the ESP serves to config.htm
   // requests to the ESP are handled normally
   // a captive portal makes it easier for a user to save their WiFi credentials to the ESP because they do not
   // need to know the ESP's IP address.
@@ -1096,7 +1116,7 @@ void web_server_ap_setup(void) {
 
   // want limited access when in AP mode. AP mode is just for WiFi setup.
   web_server.onNotFound([](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/www/network.htm");
+    request->send(LittleFS, "/www/config.htm");
   });
 }
 
@@ -1114,11 +1134,15 @@ void web_server_initiate(void) {
     request->send(LittleFS, "/www/restart.htm");
   });
 
-  web_server.on("/savenetinfo", HTTP_POST, [](AsyncWebServerRequest *request) {
-    preferences.begin("netinfo", false);
+  web_server.on("/saveconfig", HTTP_POST, [](AsyncWebServerRequest *request) {
+    preferences.begin("config", false);
 
     if(request->hasParam("ssid", true)) {
       AsyncWebParameter* p = request->getParam("ssid", true);
+      Serial.print("ssid: ");
+      Serial.print(p->value().c_str());
+      Serial.print("123");
+      Serial.println("");
       preferences.putString("ssid", p->value().c_str());
     }
 
@@ -1133,6 +1157,16 @@ void web_server_initiate(void) {
       mdns.replace(" ", ""); // autocomplete will add space to end of a word if phone is used to enter mdns hostname. remove it.
       mdns.toLowerCase();
       preferences.putString("mdns_host", mdns.c_str());
+    }
+
+    if(request->hasParam("rows", true)) {
+      AsyncWebParameter* p = request->getParam("rows", true);
+      preferences.putUChar("rows", p->value().toInt());
+    }
+
+    if(request->hasParam("columns", true)) {
+      AsyncWebParameter* p = request->getParam("columns", true);
+      preferences.putUChar("columns", p->value().toInt());
     }
 
     preferences.putBool("create_ap", false);
@@ -1250,12 +1284,20 @@ void show(void) {
 
 
 void setup() {
+  Serial.begin(115200);
+
+  preferences.begin("config", false);
+  NUM_ROWS = preferences.getUChar("rows", DEFAULT_NUM_ROWS);
+  NUM_COLS = preferences.getUChar("columns", DEFAULT_NUM_COLS);
+  //NUM_ROWS = 12; //testing
+  //NUM_COLS = 12;
+  preferences.end();
+  NUM_LEDS = NUM_ROWS*NUM_COLS;
+  leds = (CRGB*)malloc(NUM_ROWS*NUM_COLS*sizeof(CRGB));
 
   for (uint8_t i = 0; i < NUM_LAYERS; i++) {
     layers[i] = nullptr;
   }
-
-  Serial.begin(115200);
 
   // setMaxPowerInVoltsAndMilliamps() should not be used if homogenize_brightness_custom() is used
   // since setMaxPowerInVoltsAndMilliamps() uses the builtin LED power usage constants 

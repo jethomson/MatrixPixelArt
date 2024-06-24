@@ -52,7 +52,12 @@ extern lv_font_t seven_segment;
 const char* timezone = "EST5EDT,M3.2.0,M11.1.0";
 
 
-ReAnimator::ReAnimator() : freezer(*this) {
+ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
+
+    MTX_NUM_ROWS = num_rows,
+    MTX_NUM_COLS = num_cols;
+    MTX_NUM_LEDS = num_rows*num_cols;
+    leds = (CRGBA*)malloc(MTX_NUM_LEDS*sizeof(CRGBA));
 
     _ltype = static_cast<LayerType>(-1);
     _id = -1;
@@ -97,10 +102,10 @@ ReAnimator::ReAnimator() : freezer(*this) {
     // puck-man variables
     pm_puck_man_pos = 0;
     pm_puck_man_delta = 1;
-    pm_blinky_pos = (-2 + NUM_LEDS) % NUM_LEDS;
-    pm_pinky_pos  = (-3 + NUM_LEDS) % NUM_LEDS;
-    pm_inky_pos   = (-4 + NUM_LEDS) % NUM_LEDS;
-    pm_clyde_pos  = (-5 + NUM_LEDS) % NUM_LEDS;
+    pm_blinky_pos = (-2 + MTX_NUM_LEDS) % MTX_NUM_LEDS;
+    pm_pinky_pos  = (-3 + MTX_NUM_LEDS) % MTX_NUM_LEDS;
+    pm_inky_pos   = (-4 + MTX_NUM_LEDS) % MTX_NUM_LEDS;
+    pm_clyde_pos  = (-5 + MTX_NUM_LEDS) % MTX_NUM_LEDS;
     pm_blinky_visible = 1;
     pm_pinky_visible = 1;
     pm_inky_visible = 1;
@@ -108,7 +113,11 @@ ReAnimator::ReAnimator() : freezer(*this) {
     pm_ghost_delta = 1;
     pm_power_pellet_pos = 0;
     pm_power_pellet_flash_state = 1;
-    pm_puck_dots[NUM_LEDS] = {};
+    pm_puck_dots = (uint8_t*)malloc(MTX_NUM_LEDS*sizeof(uint8_t));
+    for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) {
+      pm_puck_dots[i] = 0;
+    }
+
     pm_speed_jump_cnt = 0;
 
     dr_delta = 0;
@@ -454,7 +463,7 @@ void ReAnimator::set_text(String s) {
     shift_char_column = 0; // start at the beginning of a glyph
 
     ftext.s = s;
-    ftext.vmargin = MD/2 - get_text_center(ftext.s);
+    ftext.vmargin = MTX_NUM_COLS/2 - get_text_center(ftext.s);
 }
 
 
@@ -518,7 +527,7 @@ void ReAnimator::set_heading(uint8_t h) {
 
 
 void ReAnimator::clear() {
-    for (uint16_t i = 0; i < NUM_LEDS; i++) {
+    for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) {
         leds[i] = CRGBA::Transparent;
     }
 }
@@ -568,7 +577,7 @@ CRGBA ReAnimator::get_pixel(uint16_t i) {
     //CRGBA pixel_out = 0xFF000000; // if black with no transparency is used it creates a sort of spotlight effect
     CRGBA pixel_out = 0xDA000000;
     uint16_t ti = mover(i);
-    if (0 <= ti && ti < NUM_LEDS) {
+    if (0 <= ti && ti < MTX_NUM_LEDS) {
         pixel_out = leds[ti];
 
         // color substitution
@@ -647,10 +656,10 @@ int8_t ReAnimator::run_pattern(Pattern pattern) {
             break;
         case SHOOTING_STAR:
             //if one star traverses all the LEDs (worst case) and the star moves one LED ever draw_interval
-            //then it takes NUM_LEDS*draw_interval for one star sequence to be completely drawn in milliseconds
-            //draw_time = NUM_LEDS*draw_interval [ms]
+            //then it takes MTX_NUM_LEDS*draw_interval for one star sequence to be completely drawn in milliseconds
+            //draw_time = MTX_NUM_LEDS*draw_interval [ms]
             //if we want to draw N stars per minute [spm] then N * draw_time must be less than 60000 [ms]
-            // if NUM_LEDS is higher that means the draw_time is longer and so the spm must be lower to fit all
+            // if MTX_NUM_LEDS is higher that means the draw_time is longer and so the spm must be lower to fit all
             // those stars in the 60000 [ms] window
 
             //50[spm]*52[LEDs]*5[ms] = 13000[ms]
@@ -708,7 +717,7 @@ int8_t ReAnimator::run_pattern(Pattern pattern) {
             halloween_colors_orbit(20, orbit_delta);
             break;
         case NO_PATTERN:
-            //fill_solid(leds, NUM_LEDS, CRGBA::Transparent);
+            //fill_solid(leds, MTX_NUM_LEDS, CRGBA::Transparent);
             break;
         //case SOUND_RIBBONS:
         //    sound_ribbons(30);
@@ -804,23 +813,23 @@ void ReAnimator::refresh_info(uint16_t draw_interval) {
 // ++++++++++++++++++++++++++++++
 
 void ReAnimator::orbit(uint16_t draw_interval, int8_t delta) {
-    static uint16_t pos = NUM_LEDS;
+    static uint16_t pos = MTX_NUM_LEDS;
     static uint8_t loop_num = 0;
 
     if (pattern != last_pattern_ran) {
-        pos = NUM_LEDS;
+        pos = MTX_NUM_LEDS;
     }
 
     if (is_wait_over(draw_interval)) {
-        fadeToBlackBy(leds, NUM_LEDS, 20);
+        fadeToBlackBy(leds, MTX_NUM_LEDS, 20);
 
         if (delta > 0) {
-            pos = pos % NUM_LEDS;
+            pos = pos % MTX_NUM_LEDS;
         }
         else {
             // pos underflows after it goes below zero
-            if (pos > NUM_LEDS-1) {
-                pos = NUM_LEDS-1;
+            if (pos > MTX_NUM_LEDS-1) {
+                pos = MTX_NUM_LEDS-1;
             }
         }
 
@@ -828,7 +837,7 @@ void ReAnimator::orbit(uint16_t draw_interval, int8_t delta) {
         leds[pos] = *rgb;
         pos = pos + delta;
 
-        loop_num = (pos == NUM_LEDS) ? loop_num+1 : loop_num; 
+        loop_num = (pos == MTX_NUM_LEDS) ? loop_num+1 : loop_num; 
     }
 }
 
@@ -837,9 +846,9 @@ void ReAnimator::theater_chase_old(uint16_t draw_interval, uint16_t(ReAnimator::
     static uint16_t delta = 0;
 
     if (is_wait_over(draw_interval)) {
-        fadeToBlackBy(leds, NUM_LEDS, 230);
+        fadeToBlackBy(leds, MTX_NUM_LEDS, 230);
 
-        for (uint16_t i = 0; i+delta < NUM_LEDS; i=i+3) {
+        for (uint16_t i = 0; i+delta < MTX_NUM_LEDS; i=i+3) {
             leds[(this->*dfp)(i+delta)] = CHSV(hue, 255, 255);
         }
 
@@ -857,9 +866,9 @@ void ReAnimator::theater_chase(uint16_t draw_interval, uint16_t(ReAnimator::*dfp
     static uint16_t delta = 0;
 
     if (is_wait_over(draw_interval)) {
-        fadeToBlackBy(leds, NUM_LEDS, 128);
+        fadeToBlackBy(leds, MTX_NUM_LEDS, 128);
 
-        for (uint16_t i = 0; i+delta < NUM_LEDS; i=i+16) {
+        for (uint16_t i = 0; i+delta < MTX_NUM_LEDS; i=i+16) {
             //leds[(this->*dfp)(i+delta)] = CHSV(*hue, 255, 255);
             leds[(this->*dfp)(i+delta)] = *rgb;
         }
@@ -874,9 +883,9 @@ void ReAnimator::general_chase(uint16_t draw_interval, uint16_t genparam, uint16
     static uint16_t delta = 0;
 
     if (is_wait_over(draw_interval)) {
-        fadeToBlackBy(leds, NUM_LEDS, (255-(genparam*8)));
+        fadeToBlackBy(leds, MTX_NUM_LEDS, (255-(genparam*8)));
 
-        for (uint16_t i = 0; i+delta < NUM_LEDS; i=i+genparam) {
+        for (uint16_t i = 0; i+delta < MTX_NUM_LEDS; i=i+genparam) {
             //leds[(this->*dfp)(i+delta)] = CHSV(*hue, 255, 255);
             leds[(this->*dfp)(i+delta)] = *rgb;
         }
@@ -891,17 +900,17 @@ void ReAnimator::running_lights(uint16_t draw_interval, uint16_t genparam, uint1
     static uint16_t delta = 0;
 
     if (is_wait_over(draw_interval)) {
-        for (uint16_t i = 0; i < NUM_LEDS; i++) {
-            uint16_t a = genparam*(i+delta)*255/(NUM_LEDS-1);
+        for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) {
+            uint16_t a = genparam*(i+delta)*255/(MTX_NUM_LEDS-1);
             // this pattern normally runs from right-to-left, so flip it by using negative indexing
-            uint16_t ni = (NUM_LEDS-1) - i;
+            uint16_t ni = (MTX_NUM_LEDS-1) - i;
             //leds[(this->*dfp)(ni)] = CHSV(*hue, 255, sin8(a));
             CRGBA light = *rgb;
             nscale8x3(light.r, light.g, light.b, 255-sin8(a));
             leds[(this->*dfp)(ni)] = light;
         }
 
-        delta = (delta + 1) % (NUM_LEDS/genparam);
+        delta = (delta + 1) % (MTX_NUM_LEDS/genparam);
     }
 }
 
@@ -910,17 +919,17 @@ void ReAnimator::running_lights(uint16_t draw_interval, uint16_t genparam, uint1
 //star_trail_decay - how fast the star trail decays. A larger number makes the tail short and/or disappear faster.
 //spm - stars per minute
 void ReAnimator::shooting_star(uint16_t draw_interval, uint8_t star_size, uint8_t star_trail_decay, uint8_t spm, uint16_t(ReAnimator::*dfp)(uint16_t)) {  
-    static uint16_t start_pos = random16(0, NUM_LEDS/4);
-    static uint16_t stop_pos = random16(star_size+(NUM_LEDS/2), NUM_LEDS);
+    static uint16_t start_pos = random16(0, MTX_NUM_LEDS/4);
+    static uint16_t stop_pos = random16(star_size+(MTX_NUM_LEDS/2), MTX_NUM_LEDS);
 
-    const uint16_t cool_down_interval = (60000-(spm*NUM_LEDS*draw_interval))/spm; // adds a delay between creation of new shooting stars
+    const uint16_t cool_down_interval = (60000-(spm*MTX_NUM_LEDS*draw_interval))/spm; // adds a delay between creation of new shooting stars
     static uint32_t cdi_pm = 0; // cool_down_interval_previous_millis
 
     static uint16_t pos = start_pos;
 
     if (pattern != last_pattern_ran) {
-        start_pos = random16(0, NUM_LEDS/4);
-        stop_pos = random16(star_size+(NUM_LEDS/2), NUM_LEDS);
+        start_pos = random16(0, MTX_NUM_LEDS/4);
+        stop_pos = random16(star_size+(MTX_NUM_LEDS/2), MTX_NUM_LEDS);
         pos = start_pos;
         //cdi_pm doesn't need to be reset here because it's a cool down timer
     }
@@ -938,8 +947,8 @@ void ReAnimator::shooting_star(uint16_t draw_interval, uint8_t star_size, uint8_
             }
             pos++;
             if (pos+(star_size-1) >= stop_pos+1) {
-                start_pos = random16(0, NUM_LEDS/4);
-                stop_pos = random16(star_size+(NUM_LEDS/2), NUM_LEDS);
+                start_pos = random16(0, MTX_NUM_LEDS/4);
+                stop_pos = random16(star_size+(MTX_NUM_LEDS/2), MTX_NUM_LEDS);
                 pos = start_pos;
                 cdi_pm = millis();
             }
@@ -958,13 +967,13 @@ void ReAnimator::cylon(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16
     }
 
     if (is_wait_over(draw_interval)) {
-        fadeToBlackBy(leds, NUM_LEDS, 20);
+        fadeToBlackBy(leds, MTX_NUM_LEDS, 20);
 
         //leds[(this->*dfp)(pos)] += CHSV(*hue, 255, 192);
         leds[(this->*dfp)(pos)] += *rgb;
 
         pos = pos + delta;
-        if (pos == 0 || pos == NUM_LEDS-1) {
+        if (pos == 0 || pos == MTX_NUM_LEDS-1) {
             delta = -delta;
         }
     }
@@ -973,13 +982,13 @@ void ReAnimator::cylon(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16
 
 void ReAnimator::solid(uint16_t draw_interval) {
     if (is_wait_over(draw_interval)) {
-        //fill_solid(leds, NUM_LEDS, CHSV(hue, 255, 255));
-        fill_solid(leds, NUM_LEDS, *rgb);
+        //fill_solid(leds, MTX_NUM_LEDS, CHSV(hue, 255, 255));
+        fill_solid(leds, MTX_NUM_LEDS, *rgb);
         
         
         //CHSV chsv = rgb2hsv_approximate(*rgb);
         //chsv.h += 128;
-        //fill_solid(leds, NUM_LEDS, chsv);
+        //fill_solid(leds, MTX_NUM_LEDS, chsv);
     }
 }
 
@@ -988,19 +997,19 @@ void ReAnimator::solid(uint16_t draw_interval) {
 void ReAnimator::pendulum() {
     static uint32_t t = 0;
     const uint8_t bpm_offset = 56;
-    const uint8_t num_columns = MD;
-    fadeToBlackBy(leds, NUM_LEDS, 15);
+    const uint8_t num_columns = MTX_NUM_COLS;
+    fadeToBlackBy(leds, MTX_NUM_LEDS, 15);
     byte ball_hue = hue;
-    const uint8_t num_balls = MD;
+    const uint8_t num_balls = MTX_NUM_COLS;
     for (uint8_t i = 0; i < num_columns; i++) {
         Point p;
-        p.x = i*(MD/num_columns);
+        p.x = i*(MTX_NUM_COLS/num_columns);
         // normally beatsin16() is based on millis(), but since this effect is called irregularly
         // in time use a different timebase that does increase with calls to this effect in a regular way.
         // beatsin16() effectively uses this: uint16_t beat = ((millis() - timebase) * beats_per_minute_88 * 280) >> 16;
         // so to cancel out the effect of millis() use this: timebase = millis()-t
         // redefining the timebase prevents the effect from skipping
-        p.y = beatsin16(i+7, 0, MD-1, millis()-t);
+        p.y = beatsin16(i+7, 0, MTX_NUM_COLS-1, millis()-t);
         uint16_t j = cart2serp(p);
         leds[j] |= CHSV(ball_hue, 200, 255);
         ball_hue += 255/num_columns;
@@ -1013,15 +1022,15 @@ void ReAnimator::pendulum() {
 void ReAnimator::funky() {
     static uint32_t t = 0;
     const uint8_t bpm_offset = 14;
-    const uint8_t num_columns = MD;
+    const uint8_t num_columns = MTX_NUM_COLS;
     byte ball_hue = hue;
-    fadeToBlackBy(leds, NUM_LEDS, 1);
+    fadeToBlackBy(leds, MTX_NUM_LEDS, 1);
     for (uint8_t i = 0; i < num_columns; i++) {
         Point p;
-        p.x = i*(MD/num_columns);
-        p.y = beatsin16(i+bpm_offset, 0, MD-1, millis()-t);
+        p.x = i*(MTX_NUM_COLS/num_columns);
+        p.y = beatsin16(i+bpm_offset, 0, MTX_NUM_COLS-1, millis()-t);
         uint16_t j = cart2serp(p);
-        p.y = MD-1 - beatsin16(i+bpm_offset, 0, MD-1, millis()-t);
+        p.y = MTX_NUM_COLS-1 - beatsin16(i+bpm_offset, 0, MTX_NUM_COLS-1, millis()-t);
         uint16_t k = cart2serp(p);
         leds[j] |= CHSV(ball_hue, 200, 255);
         leds[k] |= CHSV(255-ball_hue, 200, 255);
@@ -1035,16 +1044,16 @@ void ReAnimator::riffle() {
     static uint32_t t = 0;
     uint8_t ball_hue = hue;
     uint8_t i = 0;
-    fadeToBlackBy(leds, NUM_LEDS, 5);
+    fadeToBlackBy(leds, MTX_NUM_LEDS, 5);
     while (true) {
         uint16_t high = ((i+1)*16)-1;
-        if (high >= NUM_LEDS/2) {
+        if (high >= MTX_NUM_LEDS/2) {
             break;
         }
         uint16_t p = beatsin16(3, 0, high, millis()-t);
-        leds[NUM_LEDS-1-p] |= CHSV(ball_hue, 200, 255);
+        leds[MTX_NUM_LEDS-1-p] |= CHSV(ball_hue, 200, 255);
 
-        uint16_t q = (MD*(p/MD)+MD)-1 - p%MD;
+        uint16_t q = (MTX_NUM_COLS*(p/MTX_NUM_COLS)+MTX_NUM_COLS)-1 - p%MTX_NUM_COLS;
         leds[q] |= CHSV(ball_hue, 200, 255);
 
         i++;
@@ -1055,7 +1064,7 @@ void ReAnimator::riffle() {
 
 
 void ReAnimator::mitosis(uint16_t draw_interval, uint8_t cell_size) {
-    const uint16_t start_pos = NUM_LEDS/2;
+    const uint16_t start_pos = MTX_NUM_LEDS/2;
     static uint16_t pos = start_pos;
 
     if (pattern != last_pattern_ran) {
@@ -1063,18 +1072,18 @@ void ReAnimator::mitosis(uint16_t draw_interval, uint8_t cell_size) {
     }
 
     if (is_wait_over(draw_interval)) {
-        fadeToBlackBy(leds, NUM_LEDS, 30);
+        fadeToBlackBy(leds, MTX_NUM_LEDS, 30);
 
         for (uint8_t i = 0; i < cell_size; i++) {
             uint16_t pi = pos+(cell_size-1)-i;
-            uint16_t ni = (NUM_LEDS-1) - pi;
+            uint16_t ni = (MTX_NUM_LEDS-1) - pi;
             //leds[pi] = CHSV(*hue, 255, 255);
             //leds[ni] = CHSV(*hue, 255, 255);
             leds[pi] = *rgb;
             leds[ni] = *rgb;
         }
         pos++;
-        if (pos+(cell_size-1) >= NUM_LEDS) {
+        if (pos+(cell_size-1) >= MTX_NUM_LEDS) {
             pos = start_pos;
         }
     }
@@ -1096,7 +1105,7 @@ void ReAnimator::bubbles(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint
 
         for (uint8_t i = 0; i < num_bubbles; i++) {
             if (bubble_time[i] == 0 && random8(33) == 0) {
-                bubble_time[i] = random8(1, sqrt16(UINT16_MAX/NUM_LEDS));
+                bubble_time[i] = random8(1, sqrt16(UINT16_MAX/MTX_NUM_LEDS));
             }
 
             if (bubble_time[i] > 0) {
@@ -1108,9 +1117,9 @@ void ReAnimator::bubbles(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint
                     d = UINT16_MAX;
                 }
 
-                uint16_t pos = lerp16by16(0, NUM_LEDS-1, d);
+                uint16_t pos = lerp16by16(0, MTX_NUM_LEDS-1, d);
                 leds[(this->*dfp)(pos)] += CHSV(i*(256/num_bubbles) + hue, 255, 192);
-                motion_blur((3*pos)/NUM_LEDS, pos, dfp);
+                motion_blur((3*pos)/MTX_NUM_LEDS, pos, dfp);
 
                 if (t < UINT8_MAX) {
                     t+=10;
@@ -1136,8 +1145,8 @@ void ReAnimator::sparkle(uint16_t draw_interval, bool random_color, uint8_t fade
     // it's necessary to use finished_waiting() here instead of is_wait_over()
     // because sparkle can be an overlay
     if (finished_waiting(draw_interval)) {
-        fadeToBlackBy(leds, NUM_LEDS, fade);
-        leds[random16(NUM_LEDS)] = c;
+        fadeToBlackBy(leds, MTX_NUM_LEDS, fade);
+        leds[random16(MTX_NUM_LEDS)] = c;
     }
 }
 
@@ -1145,7 +1154,7 @@ void ReAnimator::sparkle(uint16_t draw_interval, bool random_color, uint8_t fade
 // resembles the green code from The Matrix
 void ReAnimator::matrix(uint16_t draw_interval) {
     if (is_wait_over(draw_interval)) {
-        memmove(&leds[1], &leds[0], (NUM_LEDS-1)*sizeof(CRGB));
+        memmove(&leds[1], &leds[0], (MTX_NUM_LEDS-1)*sizeof(CRGB));
 
         if (random8() > 205) {
             leds[0] = CHSV(HUE_GREEN, 255, 255);
@@ -1167,13 +1176,13 @@ void ReAnimator::weave(uint16_t draw_interval) {
     }
 
     if (is_wait_over(draw_interval)) {
-        fadeToBlackBy(leds, NUM_LEDS, 20);
+        fadeToBlackBy(leds, MTX_NUM_LEDS, 20);
 
         //leds[pos] += CHSV(*hue, 255, 128);
-        //leds[NUM_LEDS-1-pos] += CHSV(*hue+(HUE_PURPLE-HUE_ALIEN_GREEN), 255, 128);
+        //leds[MTX_NUM_LEDS-1-pos] += CHSV(*hue+(HUE_PURPLE-HUE_ALIEN_GREEN), 255, 128);
         leds[pos] += *rgb;
-        leds[NUM_LEDS-1-pos] += (CRGBA::White - *rgb);
-        pos = (pos + 2) % NUM_LEDS;
+        leds[MTX_NUM_LEDS-1-pos] += (CRGBA::White - *rgb);
+        pos = (pos + 2) % MTX_NUM_LEDS;
     }
 }
 
@@ -1181,8 +1190,8 @@ void ReAnimator::weave(uint16_t draw_interval) {
 void ReAnimator::starship_race(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
     const uint16_t race_distance = (11*UINT8_MAX)/2; // 7/2 -> 3.5 laps
     const uint8_t total_starships = 5;
-    // UINT8_MAX/NUM_LEDS is the speed required for a starship to move one LED per redraw
-    const uint8_t range = ceil(static_cast<float>(UINT8_MAX)/NUM_LEDS);
+    // UINT8_MAX/MTX_NUM_LEDS is the speed required for a starship to move one LED per redraw
+    const uint8_t range = ceil(static_cast<float>(UINT8_MAX)/MTX_NUM_LEDS);
     const uint8_t speed_boost_period = 4; // every N redraws speed_boost is increased
 
     static Starship starships[total_starships];
@@ -1215,7 +1224,7 @@ void ReAnimator::starship_race(uint16_t draw_interval, uint16_t(ReAnimator::*dfp
             qsort(starships, total_starships, sizeof(Starship), compare);
 
             for (uint8_t i = 0; i < total_starships; i++) {
-                uint16_t pos = lerp16by8(0, NUM_LEDS-1, starships[i].distance);
+                uint16_t pos = lerp16by8(0, MTX_NUM_LEDS-1, starships[i].distance);
 
                 // we don't want multiple starships' position to be on the same LED
                 // if an LED is already lit then a starship is already there so
@@ -1242,7 +1251,7 @@ void ReAnimator::starship_race(uint16_t draw_interval, uint16_t(ReAnimator::*dfp
 
         if (starships[0].distance >= race_distance) {
             // race is finished
-            fill_solid(leds, NUM_LEDS, CHSV(starships[0].color, 255, 255));
+            fill_solid(leds, MTX_NUM_LEDS, CHSV(starships[0].color, 255, 255));
 
             for (uint8_t i = 0; i < total_starships; i++) {
                 starships[i].distance = 0;
@@ -1268,10 +1277,10 @@ void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uin
 
         if (pm_puck_man_pos == 0) {
             (*_cb)(0);
-            pm_blinky_pos = (-2 + NUM_LEDS) % NUM_LEDS;
-            pm_pinky_pos  = (-3 + NUM_LEDS) % NUM_LEDS;
-            pm_inky_pos   = (-4 + NUM_LEDS) % NUM_LEDS;
-            pm_clyde_pos  = (-5 + NUM_LEDS) % NUM_LEDS;
+            pm_blinky_pos = (-2 + MTX_NUM_LEDS) % MTX_NUM_LEDS;
+            pm_pinky_pos  = (-3 + MTX_NUM_LEDS) % MTX_NUM_LEDS;
+            pm_inky_pos   = (-4 + MTX_NUM_LEDS) % MTX_NUM_LEDS;
+            pm_clyde_pos  = (-5 + MTX_NUM_LEDS) % MTX_NUM_LEDS;
             pm_blinky_visible = 1;
             pm_pinky_visible = 1;
             pm_inky_visible = 1;
@@ -1287,15 +1296,15 @@ void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uin
             //pm_power_pellet_pos = 48;
             // the power pellet must be at an even led so multiply by 2.
             // power pellet falls between 60% and 80% of the length of LEDs
-            pm_power_pellet_pos = 2*random16((3*NUM_LEDS)/10, (4*NUM_LEDS)/10 + 1);
+            pm_power_pellet_pos = 2*random16((3*MTX_NUM_LEDS)/10, (4*MTX_NUM_LEDS)/10 + 1);
 
-            for (uint16_t i = 0; i < NUM_LEDS; i+=2) {
+            for (uint16_t i = 0; i < MTX_NUM_LEDS; i+=2) {
                 pm_puck_dots[i] = 1;
             }
             pm_puck_dots[pm_power_pellet_pos] = 2;
         }
 
-        for (uint16_t i = 0; i < NUM_LEDS; i+=2) {
+        for (uint16_t i = 0; i < MTX_NUM_LEDS; i+=2) {
             leds[(this->*dfp)(i)] = (pm_puck_dots[i] == 1) ? CRGBA::White : CRGBA::Transparent;
         }
 
@@ -1357,29 +1366,29 @@ void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uin
         }
 
         pm_blinky_pos = pm_blinky_pos + pm_ghost_delta;
-        pm_blinky_pos = (NUM_LEDS+pm_blinky_pos) % NUM_LEDS;
+        pm_blinky_pos = (MTX_NUM_LEDS+pm_blinky_pos) % MTX_NUM_LEDS;
         pm_pinky_pos = pm_pinky_pos + pm_ghost_delta;
-        pm_pinky_pos = (NUM_LEDS+pm_pinky_pos) % NUM_LEDS;
+        pm_pinky_pos = (MTX_NUM_LEDS+pm_pinky_pos) % MTX_NUM_LEDS;
         pm_inky_pos = pm_inky_pos + pm_ghost_delta;
-        pm_inky_pos = (NUM_LEDS+pm_inky_pos) % NUM_LEDS;
+        pm_inky_pos = (MTX_NUM_LEDS+pm_inky_pos) % MTX_NUM_LEDS;
         pm_clyde_pos = pm_clyde_pos + pm_ghost_delta;
-        pm_clyde_pos = (NUM_LEDS+pm_clyde_pos) % NUM_LEDS;
+        pm_clyde_pos = (MTX_NUM_LEDS+pm_clyde_pos) % MTX_NUM_LEDS;
 
         leds[(this->*dfp)(pm_puck_man_pos)] = CHSV(HUE_YELLOW, 255, 255);
         pm_puck_dots[pm_puck_man_pos] = 0;
 
         pm_puck_man_pos = pm_puck_man_pos + pm_puck_man_delta;
-        pm_puck_man_pos = (NUM_LEDS+pm_puck_man_pos) % NUM_LEDS;
+        pm_puck_man_pos = (MTX_NUM_LEDS+pm_puck_man_pos) % MTX_NUM_LEDS;
     }
 
 }
 
 
-// a ball will move one LED when its height changes by (2^16)/NUM_LEDS
+// a ball will move one LED when its height changes by (2^16)/MTX_NUM_LEDS
 // the fastest movement will be from led[0] to led[1] and t=0 to t=ball_time_delta
 // we want the fastest movement to take one draw interval so the function isn't called unnecessarily fast
-// therefore we want ball_time_delta to result in h increasing by (2^16)/NUM_LEDS
-// for 52 LEDS (2^16)/NUM_LEDS = 1260 and if ball_vi = vi_max = 510
+// therefore we want ball_time_delta to result in h increasing by (2^16)/MTX_NUM_LEDS
+// for 52 LEDS (2^16)/MTX_NUM_LEDS = 1260 and if ball_vi = vi_max = 510
 // -1*t^2 + 510*t - 1260 = 0
 // minimum ball_time_delta = (-510 + sqrt(510^2 - 4*(-1*-1260))/(2*-1) = 2.48
 // increasing ball_time_delta lets you increase the draw_interval therefore decreasing the frequency of redraws
@@ -1415,7 +1424,7 @@ void ReAnimator::bouncing_balls(uint16_t draw_interval, uint16_t(ReAnimator::*df
                 ball_vi[i] = random16(vi_max/3, vi_max+1); // vi_max+1 for up to and including vi_max
             }
 
-            uint16_t pos = lerp16by16(0, NUM_LEDS-1, h);
+            uint16_t pos = lerp16by16(0, MTX_NUM_LEDS-1, h);
             leds[(this->*dfp)(pos)] += CHSV(i*(256/num_balls), 255, 192);
             motion_blur((blur_length*(int32_t)v)/(int32_t)vi_max, pos, dfp);
 
@@ -1435,8 +1444,8 @@ void ReAnimator::halloween_colors_fade(uint16_t draw_interval) {
     static uint8_t delta = 0;
 
     if (is_wait_over(draw_interval)) {
-        //fill_palette(leds, NUM_LEDS, delta, 6, halloween_colors, 255, LINEARBLEND);
-        for(uint16_t i = 0; i < NUM_LEDS; i++) {
+        //fill_palette(leds, MTX_NUM_LEDS, delta, 6, halloween_colors, 255, LINEARBLEND);
+        for(uint16_t i = 0; i < MTX_NUM_LEDS; i++) {
             leds[i] = ColorFromPalette(halloween_colors, delta, 255);
         }
         delta++;
@@ -1449,7 +1458,7 @@ void ReAnimator::halloween_colors_orbit(uint16_t draw_interval, int8_t delta) {
     static uint8_t hi = 0;
     uint8_t hues[num_hues] = {HUE_ORANGE, HUE_PURPLE, HUE_ORANGE, HUE_RED, HUE_ORANGE, HUE_ALIEN_GREEN};
 
-    static uint16_t pos = NUM_LEDS;
+    static uint16_t pos = MTX_NUM_LEDS;
 
     if (pattern != last_pattern_ran) {
         pos = 0;
@@ -1457,18 +1466,18 @@ void ReAnimator::halloween_colors_orbit(uint16_t draw_interval, int8_t delta) {
 
     if (is_wait_over(draw_interval)) {
         if (delta > 0) {
-            pos = pos % NUM_LEDS;
+            pos = pos % MTX_NUM_LEDS;
         }
         else {
             // pos underflows after it goes below zero
-            if (pos > NUM_LEDS-1) {
-                pos = NUM_LEDS-1;
+            if (pos > MTX_NUM_LEDS-1) {
+                pos = MTX_NUM_LEDS-1;
             }
         }
 
         leds[pos] = CHSV(hues[hi], 255, 255);
         pos = pos + delta;
-        if (pos == NUM_LEDS) {
+        if (pos == MTX_NUM_LEDS) {
             hi = (hi+1) % num_hues;
         }
     }
@@ -1477,10 +1486,10 @@ void ReAnimator::halloween_colors_orbit(uint16_t draw_interval, int8_t delta) {
 
 //void ReAnimator::sound_ribbons(uint16_t draw_interval) {
 //    if (is_wait_over(draw_interval)) {
-//        fadeToBlackBy(leds, NUM_LEDS, 20);
+//        fadeToBlackBy(leds, MTX_NUM_LEDS, 20);
 //
-//        leds[NUM_LEDS/2] = CHSV(hue, 255, sound_value);
-//        leds[(NUM_LEDS/2)-1] = CHSV(hue, 255, sound_value);
+//        leds[MTX_NUM_LEDS/2] = CHSV(hue, 255, sound_value);
+//        leds[(MTX_NUM_LEDS/2)-1] = CHSV(hue, 255, sound_value);
 //
 //        fission();
 //    }                                                                                
@@ -1492,12 +1501,12 @@ void ReAnimator::halloween_colors_orbit(uint16_t draw_interval, int8_t delta) {
 //    static bool enabled = true;
 //    const uint16_t max_delta = 16;
 //    static uint16_t delta = 0;
-//    static uint16_t center = NUM_LEDS/2;
+//    static uint16_t center = MTX_NUM_LEDS/2;
 //
 //    if (pattern != last_pattern_ran) {
 //        enabled = true;
 //        delta = 0;
-//        center = NUM_LEDS/2;
+//        center = MTX_NUM_LEDS/2;
 //    }
 //
 //    if (trigger) {
@@ -1505,23 +1514,23 @@ void ReAnimator::halloween_colors_orbit(uint16_t draw_interval, int8_t delta) {
 //    }
 //
 //    if (is_wait_over(draw_interval)) {
-//        fadeToBlackBy(leds, NUM_LEDS, 170);
+//        fadeToBlackBy(leds, MTX_NUM_LEDS, 170);
 //
 //        if (enabled) {
 //            // waves created by primary droplet
-//            leds[(NUM_LEDS+center+delta) % NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta)*255);
-//            leds[(NUM_LEDS+center-delta) % NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta)*255);
+//            leds[(MTX_NUM_LEDS+center+delta) % MTX_NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta)*255);
+//            leds[(MTX_NUM_LEDS+center-delta) % MTX_NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta)*255);
 //
 //            if (delta > 3) {
 //                // waves created by rebounded droplet
-//                leds[(NUM_LEDS+center+(delta-3)) % NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta - 2)*255);
-//                leds[(NUM_LEDS+center-(delta-3)) % NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta - 2)*255);
+//                leds[(MTX_NUM_LEDS+center+(delta-3)) % MTX_NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta - 2)*255);
+//                leds[(MTX_NUM_LEDS+center-(delta-3)) % MTX_NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta - 2)*255);
 //            }
 //
 //            delta++;
 //            if (delta == max_delta) {
 //                delta = 0;
-//                center = random16(NUM_LEDS);
+//                center = random16(MTX_NUM_LEDS);
 //                enabled = false;
 //            }
 //        }
@@ -1531,7 +1540,7 @@ void ReAnimator::halloween_colors_orbit(uint16_t draw_interval, int8_t delta) {
 
 //void ReAnimator::sound_orbit(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
 //    if (is_wait_over(draw_interval)) {
-//        for(uint16_t i = NUM_LEDS-1; i > 0; i--) {
+//        for(uint16_t i = MTX_NUM_LEDS-1; i > 0; i--) {
 //            leds[(this->*dfp)(i)] = leds[(this->*dfp)(i-1)];
 //        }
 //
@@ -1550,13 +1559,13 @@ void ReAnimator::halloween_colors_orbit(uint16_t draw_interval, int8_t delta) {
 //    }
 //
 //    if (is_wait_over(draw_interval)) {
-//        fadeToBlackBy(leds, NUM_LEDS, 5);
+//        fadeToBlackBy(leds, MTX_NUM_LEDS, 5);
 //
 //        if (enabled) {
-//            uint16_t block_start = random16(NUM_LEDS);
+//            uint16_t block_start = random16(MTX_NUM_LEDS);
 //            uint8_t block_size = random8(3,8);
 //            for (uint8_t i = 0; i < block_size; i++) {
-//                uint16_t pos = (NUM_LEDS+block_start+i) % NUM_LEDS;
+//                uint16_t pos = (MTX_NUM_LEDS+block_start+i) % MTX_NUM_LEDS;
 //                leds[pos] = CHSV(hue, 255, 255);
 //            }
 //            enabled = false;
@@ -1569,13 +1578,13 @@ void ReAnimator::dynamic_rainbow(uint16_t draw_interval, uint16_t(ReAnimator::*d
     uint16_t dr_delta = 0;
 
     if (is_wait_over(draw_interval)) {
-        for(uint16_t i = NUM_LEDS-1; i > 0; i--) {
+        for(uint16_t i = MTX_NUM_LEDS-1; i > 0; i--) {
             leds[(this->*dfp)(i)] = leds[(this->*dfp)(i-1)];
         }
 
-        leds[(this->*dfp)(0)] = CHSV(((NUM_LEDS-1-dr_delta)*255/NUM_LEDS), 255, 255);
+        leds[(this->*dfp)(0)] = CHSV(((MTX_NUM_LEDS-1-dr_delta)*255/MTX_NUM_LEDS), 255, 255);
 
-        dr_delta = (dr_delta + 1) % NUM_LEDS;
+        dr_delta = (dr_delta + 1) % MTX_NUM_LEDS;
     }
 }
 
@@ -1590,7 +1599,7 @@ void ReAnimator::breathing(uint16_t interval) {
     if (finished_waiting(interval)) {
         // since FastLED is managing the maximum power delivered use the following function to find the _actual_ maximum brightness allowed for
         // these power consumption settings. setting brightness to a value higher that max_brightness will not actually increase the brightness.
-        //uint8_t max_brightness = calculate_max_brightness_for_power_vmA(leds, NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, selected_led_strip_milliamps);
+        //uint8_t max_brightness = calculate_max_brightness_for_power_vmA(leds, MTX_NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, selected_led_strip_milliamps);
         //uint8_t max_brightness = 128;
         extern uint8_t homogenized_brightness;
         uint8_t max_brightness = homogenized_brightness;
@@ -1618,13 +1627,13 @@ void ReAnimator::flicker(uint16_t interval) {
 
 void ReAnimator::glitter(uint16_t chance_of_glitter) {
     if (chance_of_glitter > random16()) {
-        leds[random16(NUM_LEDS)] += CRGBA::White;
+        leds[random16(MTX_NUM_LEDS)] += CRGBA::White;
     }
 }
 
 
 void ReAnimator::fade_randomly(uint8_t chance_of_fade, uint8_t decay) {
-    for (uint16_t i = 0; i < NUM_LEDS; i++) {
+    for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) {
         if (chance_of_fade > random8()) {
             leds[i].fadeToBlackBy(decay);
         }
@@ -1653,8 +1662,8 @@ void ReAnimator::fade_randomly(uint8_t chance_of_fade, uint8_t decay) {
 //
 //  JsonObject object = doc.as<JsonObject>();
 //
-//  for (uint16_t i = 0; i < NUM_LEDS; i++) leds[i] = 0;
-//  retval = deserializeSegment(object, leds, NUM_LEDS);
+//  for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) leds[i] = 0;
+//  retval = deserializeSegment(object, leds, MTX_NUM_LEDS);
 //
 //  return retval;
 //}
@@ -1681,17 +1690,12 @@ bool ReAnimator::load_image_from_file(String fs_path, String* message) {
             //Serial.print("deserializeJson() failed: ");
             //Serial.println(error.c_str());
             if (message) {
-                *message = F("set_image: deserializeJson() failed.");
+                *message = F("set_image(): deserializeJson() failed.");
             }
             return false;
         }
 
         JsonObject object = doc.as<JsonObject>();
-
-        // for unknown reasons initializing the leds[] to all black
-        // makes the code slightly faster
-        for (uint16_t i = 0; i < NUM_LEDS; i++) leds[i] = 0xFFFFFF00;
-        retval = deserializeSegment(object, leds, NUM_LEDS);
 
         proxy_color_set = false;
         if (!object[F("pc")].isNull()) {
@@ -1700,6 +1704,14 @@ bool ReAnimator::load_image_from_file(String fs_path, String* message) {
                 proxy_color = std::stoul(pc, nullptr, 16);
                 proxy_color_set = true;
             }
+        }
+
+        // for unknown reasons initializing the leds[] to all black
+        // makes the code slightly faster
+        for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) leds[i] = 0xFFFFFF00;
+        retval = deserializeSegment(object, leds, MTX_NUM_LEDS);
+        if (message) {
+            *message = F("set_image(): deserializeSegment() had error.");
         }
     }
     file.close();
@@ -1716,14 +1728,14 @@ bool ReAnimator::load_image_from_file(String fs_path, String* message) {
 // ++++++++++++ TEXT ++++++++++++
 // ++++++++++++++++++++++++++++++
 uint8_t ReAnimator::get_text_center(String s) {
-    uint8_t min_row = MD;
+    uint8_t min_row = MTX_NUM_COLS;
     uint8_t max_row = 0;
     for (uint8_t i = 0; i < s.length(); i++) {
         char c = s[i];
         const uint8_t* glyph = font->get_bitmap(font, c);
         if (glyph) {
             uint8_t width = font->get_width(font, c);
-            for (uint8_t j = 0; j < MD; j++) {
+            for (uint8_t j = 0; j < MTX_NUM_COLS; j++) {
                 for (uint8_t k = 0; k < width; k++) {
                     uint16_t n = j*width + k;
                     if(glyph[n]) {
@@ -1748,15 +1760,15 @@ uint8_t ReAnimator::get_text_center(String s) {
 void ReAnimator::matrix_char(char c) {
     const uint8_t* glyph = font->get_bitmap(font, c);
     if (glyph) {
-        for (uint16_t q = 0; q < NUM_LEDS; q++) {
+        for (uint16_t q = 0; q < MTX_NUM_LEDS; q++) {
             leds[q] = CHSV(0, 0, 0);
         }
         uint8_t width = font->get_width(font, c);
         uint16_t n = 0;
-        uint8_t pad = (MD-width)/2;
-        for (uint8_t i = 0; i < MD; i++) {
+        uint8_t pad = (MTX_NUM_COLS-width)/2;
+        for (uint8_t i = 0; i < MTX_NUM_COLS; i++) {
             for (uint8_t j = 0; j < width; j++) {
-                uint8_t k = (MD-1)-pad-j;
+                uint8_t k = (MTX_NUM_COLS-1)-pad-j;
                 Point p;
                 p.x = k;
                 p.y = i;
@@ -1781,9 +1793,9 @@ void ReAnimator::matrix_text(String s) {
 
 bool ReAnimator::shift_char(char c, int8_t vmargin) {
     if (shift_char_tracking) {
-        for (uint8_t i = 0; i < MD; i++) {
-            for (uint8_t j = 0; j < MD-1; j++) {
-                uint8_t k = (MD-1)-j;
+        for (uint8_t i = 0; i < MTX_NUM_COLS; i++) {
+            for (uint8_t j = 0; j < MTX_NUM_COLS-1; j++) {
+                uint8_t k = (MTX_NUM_COLS-1)-j;
                 Point p1;
                 Point p2;
                 p1.x = k;
@@ -1808,9 +1820,9 @@ bool ReAnimator::shift_char(char c, int8_t vmargin) {
     const uint8_t* glyph = font->get_bitmap(font, c);
     if (glyph != nullptr) {
         width = font->get_width(font, c);
-        for (uint8_t i = 0; i < MD; i++) {
-            for (uint8_t j = 0; j < MD-1; j++) {
-                uint8_t k = (MD-1)-j;
+        for (uint8_t i = 0; i < MTX_NUM_COLS; i++) {
+            for (uint8_t j = 0; j < MTX_NUM_COLS-1; j++) {
+                uint8_t k = (MTX_NUM_COLS-1)-j;
                 Point p1;
                 Point p2;
                 p1.x = k;
@@ -1858,7 +1870,7 @@ void ReAnimator::setup_clock() {
 
 void ReAnimator::refresh_date_time(uint16_t draw_interval) {
     const uint8_t nd = 4;
-    const Point corners[nd] = {{.x = MD-1-3, .y = 0}, {.x = MD-1-9, .y = 0}, {.x = MD-1-3, .y = 8}, {.x = MD-1-9, .y = 8}};
+    const Point corners[nd] = {{.x = MTX_NUM_COLS-1-3, .y = 0}, {.x = MTX_NUM_COLS-1-9, .y = 0}, {.x = MTX_NUM_COLS-1-3, .y = 8}, {.x = MTX_NUM_COLS-1-9, .y = 8}};
 
     if (is_wait_over(draw_interval)) {
         struct tm local_now = {0};
@@ -1977,7 +1989,8 @@ int16_t ReAnimator::cart2serp(Point p) {
 }
 
 
-void ReAnimator::flip(CRGB sm[NUM_LEDS], bool dim) {
+//void ReAnimator::flip(CRGB sm[MTX_NUM_LEDS], bool dim) {
+void ReAnimator::flip(CRGB* sm, bool dim) {
     Point p1;
     Point p2;
     const uint8_t rl = 16;
@@ -2008,11 +2021,11 @@ uint16_t ReAnimator::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8
 
     if (t_initial) {
         t_initial = false;
-        dx = (xi >= MD) ? -abs(xi) : xi;
-        dy = (yi >= MD) ? -abs(yi) : yi;
+        dx = (xi >= MTX_NUM_COLS) ? -abs(xi) : xi;
+        dy = (yi >= MTX_NUM_COLS) ? -abs(yi) : yi;
     }
 
-    uint16_t ti = NUM_LEDS; // used to indicate pixel is not in bounds and should not be drawn.
+    uint16_t ti = MTX_NUM_LEDS; // used to indicate pixel is not in bounds and should not be drawn.
 
     Point p1 = serp2cart(i);
     Point p2;
@@ -2023,31 +2036,31 @@ uint16_t ReAnimator::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8
     }
 
     t_visible = false;
-    gap = (gap == -1) ? MD : gap; // if gap is -1 set gap to MD so that the input only appears in one place but will still loop around
+    gap = (gap == -1) ? MTX_NUM_COLS : gap; // if gap is -1 set gap to MTX_NUM_COLS so that the input only appears in one place but will still loop around
 
-    uint8_t ux = (sx > 0) ? MD-1-p1.x: p1.x; // flip heading output travels
-    uint8_t uy = (sy > 0) ? MD-1-p1.y: p1.y;
+    uint8_t ux = (sx > 0) ? MTX_NUM_COLS-1-p1.x: p1.x; // flip heading output travels
+    uint8_t uy = (sy > 0) ? MTX_NUM_COLS-1-p1.y: p1.y;
 
     int8_t vx = ux+dx; // shift input over into output by dx
     int8_t vy = uy+dy;
 
     if (t_has_entered && wrap) {
-        vx = vx % (MD+gap);
-        vy = vy % (MD+gap);
+        vx = vx % (MTX_NUM_COLS+gap);
+        vy = vy % (MTX_NUM_COLS+gap);
     }
 
-    if ( 0 <= vx && vx < MD && 0 <= vy && vy < MD ) {
+    if ( 0 <= vx && vx < MTX_NUM_COLS && 0 <= vy && vy < MTX_NUM_COLS ) {
         t_visible = true;
-        vx = (sx > 0) ? MD-1-vx : vx; // flip image
-        vy = (sy > 0) ? MD-1-vy : vy;
+        vx = (sx > 0) ? MTX_NUM_COLS-1-vx : vx; // flip image
+        vy = (sy > 0) ? MTX_NUM_COLS-1-vy : vy;
         p2.x = vx;
         p2.y = vy;
         ti = cart2serp(p2);
     }
 
-    if (i == NUM_LEDS-1 && !freezer.is_frozen()) {
-        dx += abs(sx%MD);
-        dy += abs(sy%MD);
+    if (i == MTX_NUM_LEDS-1 && !freezer.is_frozen()) {
+        dx += abs(sx%MTX_NUM_COLS);
+        dy += abs(sy%MTX_NUM_COLS);
         // need to track when input has entered into view for the first time
         // to prevent wrapping until the transient period has ended
         // this allows controlling how long it takes the input to enter the matrix
@@ -2057,22 +2070,23 @@ uint16_t ReAnimator::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8
         }
 
         if (t_has_entered && wrap) {
-                dx = dx % (MD+gap);
-                dy = dy % (MD+gap);
+                dx = dx % (MTX_NUM_COLS+gap);
+                dy = dy % (MTX_NUM_COLS+gap);
         }
     }
     return ti;
 }
 
 
-void ReAnimator::ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi, int8_t yi, int8_t sx, int8_t sy, bool wrap, int8_t gap) {
+//void ReAnimator::ntranslate(CRGBA in[MTX_NUM_LEDS], CRGBA out[MTX_NUM_LEDS], int8_t xi, int8_t yi, int8_t sx, int8_t sy, bool wrap, int8_t gap) {
+void ReAnimator::ntranslate(CRGBA in[], CRGBA out[], int8_t xi, int8_t yi, int8_t sx, int8_t sy, bool wrap, int8_t gap) {
 // an output array is required to use this function. out[] should be what is displayed on the matrix.
     if (t_initial) {
         t_initial = false;
         t_visible = false;
         t_has_entered = false;
-        dx = (xi >= MD) ? -abs(xi) : xi;
-        dy = (yi >= MD) ? -abs(yi) : yi;
+        dx = (xi >= MTX_NUM_COLS) ? -abs(xi) : xi;
+        dy = (yi >= MTX_NUM_COLS) ? -abs(yi) : yi;
     }
 
     Point p1;
@@ -2084,12 +2098,12 @@ void ReAnimator::ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi, 
     }
 
     t_visible = false;
-    gap = (gap == -1) ? MD : gap; // if gap is -1 set gap to MD so that the input only appears in one place but will still loop around
+    gap = (gap == -1) ? MTX_NUM_COLS : gap; // if gap is -1 set gap to MTX_NUM_COLS so that the input only appears in one place but will still loop around
 
-    for (uint8_t j = 0; j < MD; j++) {
-        for (uint8_t k = 0; k < MD; k++) {
-            uint8_t ux = (sx > 0) ? MD-1-k: k; // flip heading output travels
-            uint8_t uy = (sy > 0) ? MD-1-j: j;
+    for (uint8_t j = 0; j < MTX_NUM_COLS; j++) {
+        for (uint8_t k = 0; k < MTX_NUM_COLS; k++) {
+            uint8_t ux = (sx > 0) ? MTX_NUM_COLS-1-k: k; // flip heading output travels
+            uint8_t uy = (sy > 0) ? MTX_NUM_COLS-1-j: j;
 
             p1.x = ux;
             p1.y = uy;
@@ -2098,14 +2112,14 @@ void ReAnimator::ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi, 
             int8_t vx = k+dx; // shift input over into output by d
             int8_t vy = j+dy;
             if (t_has_entered && wrap) {
-                vx = vx % (MD+gap);
-                vy = vy % (MD+gap);
+                vx = vx % (MTX_NUM_COLS+gap);
+                vy = vy % (MTX_NUM_COLS+gap);
             }
 
-            if ( 0 <= vx && vx < MD && 0 <= vy && vy < MD ) {
+            if ( 0 <= vx && vx < MTX_NUM_COLS && 0 <= vy && vy < MTX_NUM_COLS ) {
                 t_visible = true;
-                vx = (sx > 0) ? MD-1-vx : vx; // flip image
-                vy = (sy > 0) ? MD-1-vy : vy;
+                vx = (sx > 0) ? MTX_NUM_COLS-1-vx : vx; // flip image
+                vy = (sy > 0) ? MTX_NUM_COLS-1-vy : vy;
                 p2.x = vx;
                 p2.y = vy;
                 out[cart2serp(p1)] = in[cart2serp(p2)];
@@ -2116,8 +2130,8 @@ void ReAnimator::ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi, 
         }
     }
 
-    dx += abs(sx%MD);
-    dy += abs(sy%MD);
+    dx += abs(sx%MTX_NUM_COLS);
+    dy += abs(sy%MTX_NUM_COLS);
     // need to track when input has entered into view for the first time
     // to prevent wrapping until the transient period has ended
     // this allows controlling how long it takes the input to enter the matrix
@@ -2127,8 +2141,8 @@ void ReAnimator::ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi, 
     }
 
     if (t_has_entered && wrap) {
-        dx = dx % (MD+gap);
-        dy = dy % (MD+gap);
+        dx = dx % (MTX_NUM_COLS+gap);
+        dy = dy % (MTX_NUM_COLS+gap);
     }
 }
 
@@ -2143,28 +2157,28 @@ uint16_t ReAnimator::mover(uint16_t i) {
             ti = i;
             break;
         case 1:
-            ti = translate(i, 0, MD, 0, -s, true, -1);
+            ti = translate(i, 0, MTX_NUM_COLS, 0, -s, true, -1);
             break;
         case 2:
-            ti = translate(i, MD, MD, -s, -s, true, -1);
+            ti = translate(i, MTX_NUM_COLS, MTX_NUM_COLS, -s, -s, true, -1);
             break;
         case 3:
-            ti = translate(i, MD, 0, -s, 0, true, -1);
+            ti = translate(i, MTX_NUM_COLS, 0, -s, 0, true, -1);
             break;
         case 4:
-            ti = translate(i, MD, -MD, -s, s, true, -1);
+            ti = translate(i, MTX_NUM_COLS, -MTX_NUM_COLS, -s, s, true, -1);
             break;
         case 5:
-            ti = translate(i, 0, -MD, 0, s, true, -1);
+            ti = translate(i, 0, -MTX_NUM_COLS, 0, s, true, -1);
             break;
         case 6:
-            ti = translate(i, -MD, -MD, s, s, true, -1);
+            ti = translate(i, -MTX_NUM_COLS, -MTX_NUM_COLS, s, s, true, -1);
             break;
         case 7:
-            ti = translate(i, -MD, 0, s, 0, true, -1);
+            ti = translate(i, -MTX_NUM_COLS, 0, s, 0, true, -1);
             break;
         case 8:
-            ti = translate(i, -MD, MD, s, -s, true, -1);
+            ti = translate(i, -MTX_NUM_COLS, MTX_NUM_COLS, s, -s, true, -1);
             break;
     }
     return ti;
@@ -2179,13 +2193,13 @@ uint16_t ReAnimator::mover(uint16_t i) {
 //    pixel_rgb = pixel_rgb.scale8(255-fadeBy);
 //}
 
-void ReAnimator::fadeToBlackBy(CRGBA* leds, uint16_t num_leds, uint8_t fadeBy) {
+void ReAnimator::fadeToBlackBy(CRGBA leds[], uint16_t num_leds, uint8_t fadeBy) {
     for (uint16_t i = 0; i < num_leds; i++) {
         leds[i].fadeToBlackBy(fadeBy);
     }
 }
 
-void ReAnimator::fill_solid( struct CRGBA * targetArray, int numToFill, const struct CRGB& color) {
+void ReAnimator::fill_solid(struct CRGBA* targetArray, int numToFill, const struct CRGB& color) {
     for( int i = 0; i < numToFill; ++i) {
         targetArray[i] = color;
     }
@@ -2198,7 +2212,7 @@ uint16_t ReAnimator::forwards(uint16_t index) {
 
 
 uint16_t ReAnimator::backwards(uint16_t index) {
-    return (NUM_LEDS-1)-index;
+    return (MTX_NUM_LEDS-1)-index;
 }
 
 
@@ -2298,7 +2312,7 @@ void ReAnimator::motion_blur(int8_t blur_num, uint16_t pos, uint16_t(ReAnimator:
     }
     else if (blur_num < 0) {
         for (uint8_t i = 1; i < abs(blur_num)+1; i++) {
-            if (pos+i < NUM_LEDS) {
+            if (pos+i < MTX_NUM_LEDS) {
                 leds[(this->*dfp)(pos+i)] += leds[(this->*dfp)(pos)];
                 leds[(this->*dfp)(pos+i)].fadeToBlackBy(120+(i*120/abs(blur_num)));
             }
@@ -2308,11 +2322,11 @@ void ReAnimator::motion_blur(int8_t blur_num, uint16_t pos, uint16_t(ReAnimator:
 
 
 void ReAnimator::fission() {
-    for (uint16_t i = NUM_LEDS-1; i > NUM_LEDS/2; i--) {
+    for (uint16_t i = MTX_NUM_LEDS-1; i > MTX_NUM_LEDS/2; i--) {
         leds[i] = leds[i-1];
     }
 
-    for (uint16_t i = 0; i < NUM_LEDS/2; i++) {
+    for (uint16_t i = 0; i < MTX_NUM_LEDS/2; i++) {
         leds[i] = leds[i+1];
     }
 }
@@ -2335,7 +2349,7 @@ bool ReAnimator::Freezer::is_frozen() {
         m_frozen_duration = m_failsafe_timeout;
     }
     else if (!m_all_black) {
-        for (uint16_t i = 0; i < NUM_LEDS; i++) {
+        for (uint16_t i = 0; i < parent.MTX_NUM_LEDS; i++) {
             m_all_black = true;
             if (parent.leds[i] != CRGBA::Transparent) {
                 m_all_black = false;

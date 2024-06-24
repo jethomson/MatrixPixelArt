@@ -439,7 +439,9 @@
     </div>
     <div id="bottom-part" style="display:none" class="bottom-part"></div>
     <canvas id="pixelCanvas"></canvas>
-      
+
+
+    <script src="js/template_variables.js"></script>
     <!--static.js-->
     <script> 
       //elements
@@ -515,8 +517,15 @@
         // Wait for the image to load before drawing it onto the canvas
         image.onload = function() {
           // LED matrix dimensions
-          let sizeX = 16;
-          let sizeY = 16;
+          if (t_num_rows.replaceAll("~", "") === "NUM_ROWS") {
+            t_num_rows = "16";
+          }
+          if (t_num_cols.replaceAll("~", "") === "NUM_COLS") {
+            t_num_cols = "16";
+
+          }
+          let sizeY = parseInt(t_num_rows);
+          let sizeX = parseInt(t_num_cols);
           canvas.width = sizeX;
           canvas.height = sizeY;
           

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
   <meta http-equiv="Cache-Control" content="private, no-store" />
-  <title>Network Info</title>
+  <title>Configuration</title>
   <style>
   html {
     touch-action: manipulation
@@ -27,7 +27,7 @@
 
   .grid-container {
     display: grid;
-    grid-template-columns: repeat(5, auto);
+    grid-template-columns: repeat(6, auto);
     grid-row-gap: 5px;
     grid-column-gap: 5px;
     width: 1000px;
@@ -43,13 +43,14 @@
   }
 
   .item-e {
-    grid-column-start: 5;
+    grid-column-start: 6;
     text-align: left;
   }
   
+  #dimensions,
   .wide-input {
     grid-column-start: 2;
-    grid-column: span 3;
+    grid-column: span 4;
   }
  
   .svg-icon {
@@ -68,6 +69,11 @@
   
   #mdns_host {
     width: 150px;
+  }
+
+  #rows,
+  #columns {
+    width: 30px;
   }
 
   button {
@@ -92,15 +98,16 @@
 <body>
   <a id="return_main_menu" href="./index.htm"><svg height="24px" width="24px" viewBox="0 0 16 16" id="Layer_1" version="1.1" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path fill="white" d="M15.45,7L14,5.551V2c0-0.55-0.45-1-1-1h-1c-0.55,0-1,0.45-1,1v0.553L9,0.555C8.727,0.297,8.477,0,8,0S7.273,0.297,7,0.555  L0.55,7C0.238,7.325,0,7.562,0,8c0,0.563,0.432,1,1,1h1v6c0,0.55,0.45,1,1,1h3v-5c0-0.55,0.45-1,1-1h2c0.55,0,1,0.45,1,1v5h3  c0.55,0,1-0.45,1-1V9h1c0.568,0,1-0.437,1-1C16,7.562,15.762,7.325,15.45,7z"/></svg></a>
 
-  <h3>Enter your network info here.</h3>
+  <h3>Enter your configuration data here.</h3>
+  <h5>If a field is left blank the previously saved value for that field will not be overwritten.</h5>
 
-  <form id="savenetinfo" action="/savenetinfo" method="post"></form>
+  <form id="saveconfig" action="/saveconfig" method="post"></form>
   <div class="grid-container">
     <label class="item-a">SSID</label>
-    <input  class="wide-input" form="savenetinfo" name="ssid" maxlength="32" >
+    <input id="ssid" class="wide-input" form="saveconfig" placeholder="type WiFi network name here" name="ssid" maxlength="32" >
 
     <label class="item-a">Password</label>
-    <input id="password" class="wide-input" form="savenetinfo" name="password" value="type password here" type="password" maxlength="63">
+    <input id="password" class="wide-input" form="saveconfig" name="password" placeholder="type WiFi password here" type="password" maxlength="63">
     <input id="show" type="checkbox" onclick="sp()" name="" style="position: absolute; opacity: 0; width: 0; height: 0;">
     <label class="item-e" id="show_lbl" for="show">
       <svg id="pwd_visible" class="svg-icon" width="20px" height="20px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -117,13 +124,42 @@
 
     <label class="item-a">mDNS address</label>
     <label>http://</label>
-    <input id="mdns_host" form="savenetinfo" name="mdns_host" type="text" autocapitalize="none" maxlength="30">
+    <input id="mdns_host" form="saveconfig" name="mdns_host" type="text" autocapitalize="none" maxlength="30">
     <label>.local</label>
+    
+    <label class="item-a">Matrix Dim.</label>
+    <section id="dimensions" style="text-align:left">
+    <input id="rows" form="saveconfig" name="rows" type="text" maxlength="4" value="16">
+    <label> x </label>
+    <input id="columns" form="saveconfig" name="columns" type="text" maxlength="4" value="16">
+    <label>(rows x columns)</label>
+    </section>
 
-    <button form="savenetinfo" type="submit" value="Save">Save</button>
+    <button form="saveconfig" type="submit" value="Save">Save</button>
   </div>
 
+  <script src="js/template_variables.js"></script>
   <script>
+    // t_ssid is defined in a separate file so it can be run through the webserver's template processor
+    // gzipped html cannot be run through the template processor, so it is necessary for t_ssid to be separate
+    if (t_ssid.replaceAll("~", "") === "SSID") {
+      t_ssid = "";
+    }
+    if (t_mdns_host.replaceAll("~", "") === "MDNS_HOST") {
+      t_mdns_host = "";
+    }
+    if (t_num_rows.replaceAll("~", "") === "NUM_ROWS") {
+      t_num_rows = "16";
+    }
+    if (t_num_cols.replaceAll("~", "") === "NUM_COLS") {
+      t_num_cols = "16";
+    }
+
+    document.getElementById("ssid").value = t_ssid;
+    document.getElementById("mdns_host").value = t_mdns_host;
+    document.getElementById("rows").value = parseInt(t_num_rows);
+    document.getElementById("columns").value = parseInt(t_num_cols);
+  
     function sp(){
       let pf = document.getElementById("password");
       if (pf.type === "password") {

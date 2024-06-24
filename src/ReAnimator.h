@@ -58,7 +58,12 @@ class ReAnimator {
 
     String image_path;
 
-    CRGBA leds[NUM_LEDS];
+    uint8_t MTX_NUM_ROWS = 0;
+    uint8_t MTX_NUM_COLS = 0;
+    uint16_t MTX_NUM_LEDS = 0;
+
+    CRGBA* leds;
+    //CRGBA leds[NUM_LEDS];
     //CRGBA tleds[NUM_LEDS]; // for use with ntranslate()
 
     uint8_t brightness;
@@ -125,7 +130,7 @@ class ReAnimator {
     int8_t pm_ghost_delta;
     uint16_t pm_power_pellet_pos;
     bool pm_power_pellet_flash_state;
-    uint8_t pm_puck_dots[NUM_LEDS];
+    uint8_t* pm_puck_dots;
     uint8_t pm_speed_jump_cnt;
 
     struct Starship {
@@ -175,7 +180,8 @@ class ReAnimator {
     uint32_t fwpm ; // previous millis for finished_waiting()
 
   public:
-    ReAnimator();
+    ReAnimator(uint8_t num_rows, uint8_t num_cols);
+    ~ReAnimator() { free(leds); free(pm_puck_dots); }
 
     void setup(LayerType ltype, int8_t id);
 
@@ -294,7 +300,7 @@ class ReAnimator {
 // ++++++++++ HELPERS +++++++++++
 // ++++++++++++++++++++++++++++++
     void fadeToBlackBy(CRGBA* leds, uint16_t num_leds, uint8_t fadeBy);
-    void fill_solid(struct CRGBA * targetArray, int numToFill, const struct CRGB& color);
+    void fill_solid(struct CRGBA* targetArray, int numToFill, const struct CRGB& color);
 
     uint16_t forwards(uint16_t index);
     uint16_t backwards(uint16_t index);
@@ -314,9 +320,9 @@ class ReAnimator {
 
     Point serp2cart(uint8_t i);
     int16_t cart2serp(Point p);
-    void flip(CRGB sm[NUM_LEDS], bool dim);
+    void flip(CRGB sm[], bool dim);
     uint16_t translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8_t sy, bool wrap, int8_t gap);
-    void ntranslate(CRGBA in[NUM_LEDS], CRGBA out[NUM_LEDS], int8_t xi = 0, int8_t yi = 0, int8_t sx = 1, int8_t sy = 1, bool wrap = true, int8_t gap = 0);
+    void ntranslate(CRGBA in[], CRGBA out[], int8_t xi = 0, int8_t yi = 0, int8_t sx = 1, int8_t sy = 1, bool wrap = true, int8_t gap = 0);
     uint16_t mover(uint16_t i);
 
     //void print_dt();

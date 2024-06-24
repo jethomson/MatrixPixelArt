@@ -72,6 +72,7 @@ The device will create a WiFi access point with the SSID: PixelArt.
 Connect to PixelArt.
 Enter the SSID and password for your WiFi router.
 Chose a hostname for multicast DNS (e.g. pixelart).
+Enter the number of rows and columns for your LED matrix.
 Click Save.
 The device should restart and connect to your wireless network.
 In your web browser go to the mDNS address you set (e.g. http://pixelart.local).
