@@ -8,8 +8,7 @@
  * --most of the operators I added are modifications of operators found in FastLEDs pixeltypes.h
 */
 
-#ifndef FastLED_RGBA_h
-#define FastLED_RGBA_h
+#pragma once
 
 struct CRGBA  {
   union {
@@ -332,5 +331,3 @@ inline __attribute__((always_inline)) bool operator== (const CRGBA& lhs, const C
 inline __attribute__((always_inline)) bool operator!= (const CRGBA& lhs, const CRGB& rhs) {
     return !(lhs == rhs);
 }
-
-#endif

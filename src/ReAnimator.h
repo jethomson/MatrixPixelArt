@@ -20,8 +20,7 @@
   this software.
 */
 
-#ifndef REANIMATOR_H
-#define REANIMATOR_H
+#pragma once
 
 #include "project.h"
 #include "lv_font.h"
@@ -333,5 +332,3 @@ class ReAnimator {
 inline void noop_cb(uint8_t event) {
   __asm__ __volatile__ ("nop");
 }
-
-#endif

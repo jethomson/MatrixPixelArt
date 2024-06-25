@@ -20,8 +20,7 @@
   this software.
 */
 
-#ifndef PROJECT_H
-#define PROJECT_H
+#pragma once
 
 //#include <FastLED.h>
 //#include "FastLED_RGBA.h"
@@ -96,6 +95,4 @@ inline String form_path(String root, String id) {
   return fs_path;
 }
 */
-
-#endif
 
