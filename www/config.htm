@@ -133,9 +133,9 @@
     
     <label class="item-a">Matrix Size</label>
     <section id="dimensions" style="text-align:left">
-    <input id="rows" form="saveconfig" name="rows" type="number" maxlength="4">
+    <input id="rows" form="saveconfig" name="rows" type="number" pattern="[0-9]*" min=1 maxlength="4" title="Number of rows or height of matrix">
     <label> x </label>
-    <input id="columns" form="saveconfig" name="columns" type="number" maxlength="4">
+    <input id="columns" form="saveconfig" name="columns" type="number" pattern="[0-9]*" min=1 maxlength="4" title="Number of columns or width of matrix">
     <label>(rows x columns)</label>
     </section>
 
