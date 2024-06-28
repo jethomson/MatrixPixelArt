@@ -575,7 +575,7 @@ CRGBA ReAnimator::get_pixel(uint16_t i) {
     static uint8_t b1 = 0;
     static uint8_t b2 = 0;
     //CRGBA pixel_out = 0xFF000000; // if black with no transparency is used it creates a sort of spotlight effect
-    CRGBA pixel_out = 0xDA000000;
+    CRGBA pixel_out = 0x00000000;
     uint16_t ti = mover(i);
     if (0 <= ti && ti < MTX_NUM_LEDS) {
         pixel_out = leds[ti];
@@ -2107,7 +2107,7 @@ void ReAnimator::ntranslate(CRGBA in[], CRGBA out[], int8_t xi, int8_t yi, int8_
 
             p1.x = ux;
             p1.y = uy;
-            out[cart2serp(p1)] = CRGB::Black; // ??? TRANSPARENT 0x424242
+            out[cart2serp(p1)] = 0x00000000;
 
             int8_t vx = k+dx; // shift input over into output by d
             int8_t vy = j+dy;
@@ -2124,9 +2124,6 @@ void ReAnimator::ntranslate(CRGBA in[], CRGBA out[], int8_t xi, int8_t yi, int8_
                 p2.y = vy;
                 out[cart2serp(p1)] = in[cart2serp(p2)];
             }
-            //else {
-            //    out[cart2serp(p1)] = CRGB::Black; // ??? TRANSPARENT 0x424242
-            //}
         }
     }
 
@@ -2150,7 +2147,7 @@ void ReAnimator::ntranslate(CRGBA in[], CRGBA out[], int8_t xi, int8_t yi, int8_
 uint16_t ReAnimator::mover(uint16_t i) {
     uint16_t ti;
     const int8_t s = 1; // to be replaced by speed option in the future.
-    //int8_t s = random8(1, 4); // testing out variable speed. 
+    //int8_t s = random8(1, 4); // testing out variable speed.
     switch (heading) {
         default:
         case 0:
