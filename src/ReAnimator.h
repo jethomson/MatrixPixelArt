@@ -65,7 +65,7 @@ class ReAnimator {
     //CRGBA leds[NUM_LEDS];
     //CRGBA tleds[NUM_LEDS]; // for use with ntranslate()
 
-    uint8_t brightness;
+    uint8_t layer_brightness;
 
     bool autocycle_enabled;
     uint32_t autocycle_previous_millis;

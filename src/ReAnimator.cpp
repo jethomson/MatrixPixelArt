@@ -66,7 +66,7 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
 
     clear(); // initialize leds[]
 
-    brightness = 255;
+    layer_brightness = 255;
 
     autocycle_previous_millis = 0;
     autocycle_interval = 10000;
@@ -151,7 +151,9 @@ ReAnimator::Freezer::Freezer(ReAnimator &r) : parent(r) {
 
 
 void ReAnimator::setup(LayerType ltype, int8_t id) {
-    // we want patterns (and accents) to persist from one composite to another if they are on the same layer.
+    layer_brightness = 255;
+
+    // we want patterns to persist from one composite to another if they are on the same layer.
     // this allows for a pattern to play continuously (i.e without restarting) when the next item in a playlist is loaded.
     //
     // scrolling text uses an id of -1 because we always want to clear() when new text is set.
@@ -165,8 +167,6 @@ void ReAnimator::setup(LayerType ltype, int8_t id) {
         // since layers are reused the remnants of the old effect may still be in leds[]
         // these leftovers may not be overwritten by the new effect, so it is best to clear leds[]
         clear();
-
-        brightness = 255;
 
         set_autocycle_interval(10000);
         set_autocycle_enabled(false);
@@ -570,7 +570,6 @@ void ReAnimator::reanimate() {
     //print_dt();
 }
 
-#define DIM_METHOD 3
 CRGBA ReAnimator::get_pixel(uint16_t i) {
     static uint8_t b1 = 0;
     static uint8_t b2 = 0;
@@ -585,37 +584,21 @@ CRGBA ReAnimator::get_pixel(uint16_t i) {
         // this means the values sent from the converter page do not have the exact same RGB values as the source image.
         // this if condition accepts values that are similar to the proxy_color.
         //if ( _ltype == Image_t && proxy_color_set && (abs(pixel_out.r - proxy_color.r) + abs(pixel_out.g - proxy_color.g) + abs(pixel_out.b - proxy_color.b) < 7) ) {
+        // a workaround was found for the converter page such that the data does not get farbled.
         if ( _ltype == Image_t && proxy_color_set && pixel_out == proxy_color ) {
           pixel_out = *rgb;
         }
-#if DIM_METHOD == 1
-        pixel_out.fadeToBlackBy(255-brightness);
-#elif DIM_METHOD == 2
-        nscale8x3(pixel_out.r, pixel_out.g, pixel_out.b, brightness);
-        pixel_out.a = scale8(pixel_out.a, (brightness > 10) ? 255 : brightness);
-#elif DIM_METHOD == 3
-        nscale8x3(pixel_out.r, pixel_out.g, pixel_out.b, brightness);
-        uint8_t asf = 255;
-        if (brightness < 64) {
-            asf = 4*brightness;
-        }
-        //if (brightness < 32) {
-        //    asf = 8*brightness;
-        //}
-        //if (brightness < 16) {
-        //    asf = 16*brightness;
-        //}
-        pixel_out.a = scale8(pixel_out.a, asf);
 
-        //if (pattern == DYNAMIC_RAINBOW && (b1 != brightness || b2 != asf)) {
-        //    b1 = brightness;
-        //    b2 = asf;
-        //    Serial.print("brightness: ");
-        //    Serial.println(brightness);
-        //    Serial.print("asf: ");
-        //    Serial.println(asf);
-        //}
-#endif
+        // because setBrightness() will effect the brightness of every led in every layer nscale8x3 is used instead.
+        // setBrightness() should only be used in the main code
+        nscale8x3(pixel_out.r, pixel_out.g, pixel_out.b, layer_brightness);
+
+        // as layer_brightness level gets dimmer lower the alpha/increase the transparency
+        uint8_t alpha_scaling_factor = 255;
+        if (layer_brightness < 64) {
+            alpha_scaling_factor = 4*layer_brightness;
+        }
+        pixel_out.a = scale8(pixel_out.a, alpha_scaling_factor);
     }
 
     return pixel_out;
@@ -1597,17 +1580,9 @@ void ReAnimator::breathing(uint16_t interval) {
     static uint8_t delta = 0; // goes up to 255 then overflows back to 0
 
     if (finished_waiting(interval)) {
-        // since FastLED is managing the maximum power delivered use the following function to find the _actual_ maximum brightness allowed for
-        // these power consumption settings. setting brightness to a value higher that max_brightness will not actually increase the brightness.
-        //uint8_t max_brightness = calculate_max_brightness_for_power_vmA(leds, MTX_NUM_LEDS, homogenized_brightness, LED_STRIP_VOLTAGE, selected_led_strip_milliamps);
-        //uint8_t max_brightness = 128;
         extern uint8_t homogenized_brightness;
         uint8_t max_brightness = homogenized_brightness;
-        brightness = scale8(triwave8(delta), max_brightness-min_brightness)+min_brightness;
-
-        //DEBUG_PRINTLN(brightness);
-        //FastLED.setBrightness(brightness);
-
+        layer_brightness = scale8(triwave8(delta), max_brightness-min_brightness)+min_brightness;
         delta++;
     }
 }
@@ -1618,9 +1593,9 @@ void ReAnimator::flicker(uint16_t interval) {
 
     // an on or off period less than 16 ms probably can't be perceived
     if (finished_waiting(interval)) {
-        // since FastLED is managing the brightness, flicker is simply on or off, we are not transitioning up to the max it is OK to use 255 to mean show at highest brightness allowed
-        brightness = (random8(1,11) > 4)*255;
-        //FastLED.setBrightness((random8(1,11) > 4)*255);
+        // because FastLED is managing the brightness, flicker is simply on or off, since we are not transitioning up to the max it is OK to use 255 to mean show at highest brightness allowed
+        // instead of using the actual max brightness allowed
+        layer_brightness = (random8(1,11) > 4)*255;
     }
 }
 
