@@ -16,6 +16,8 @@
 #include "ArduinoJson-v6.h"
 #include <StreamUtils.h>
 
+#include <unordered_set>
+
 #include "project.h"
 #include "ReAnimator.h"
 
@@ -235,6 +237,8 @@ String gfile_list_tmp;
 String gfile_list;
 String gfile_list_json_tmp;
 String gfile_list_json;
+std::unordered_set<std::string> image_list_tmp;
+std::unordered_set<std::string> image_list;
 // NOTE: An empty folder will not be added when building a littlefs image.
 // Empty folders will not be created when uploaded either.
 void list_files(File dir, String parent) {
@@ -277,6 +281,7 @@ void list_files(File dir, String parent) {
         gfile_list_json_tmp += "\"id\":\"";
         gfile_list_json_tmp += id;
         gfile_list_json_tmp += "\"},";
+        image_list_tmp.insert(id.c_str());
       }
       else if (type == "pl") {
         gfile_list_json_tmp += "{\"t\":\"";
@@ -304,6 +309,9 @@ void handle_file_list(void) {
   if (gfile_list_needs_refresh) {
     gfile_list_needs_refresh = false;
     gfile_list_tmp = "";
+    gfile_list_json_tmp = "";
+    image_list_tmp.clear();
+    
     // cannot prevent "open(): /littlefs/images does not exist, no permits for creation" message
     // the abscense of FILE_ROOT is not an error.
     // tried using exists() before open to prevent message but exists() calls open()
@@ -319,6 +327,9 @@ void handle_file_list(void) {
     gfile_list_json_tmp.setCharAt(gfile_list_json_tmp.length()-1, ']');
     gfile_list_json = "[" + gfile_list_json_tmp;
     gfile_list_json_tmp = "";
+
+    image_list = image_list_tmp;
+    image_list_tmp.clear();
   }
 }
 
@@ -651,7 +662,6 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
       ghost_layers[lnum] = 4;
     }
     layers[lnum]->setup(Image_t, -2);
-    //layers[lnum]->set_image(id);
     load_image_to_layer(lnum, id);
     layers[lnum]->set_overlay(static_cast<Overlay>(accent_id), true);
     layers[lnum]->set_heading(movement);
@@ -683,15 +693,20 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
   return true;
 }
 
-// this checks the layer exists before loading an image to it.
+// this checks the layer and image exists before loading an image to it.
 // the idea is that the layer exists and we want to preserve all
 // its other attributes but replace its image.
-// this helps streamline code from having the same repeative layer
-// existence check.
+// this helps streamline code from having the same repeative layer and image
+// existence checks.
 bool load_image_to_layer(uint8_t lnum, String id) {
-  //if (layers[lnum] != nullptr && gfile_list.indexOf(id) > 0) {
-  if (layers[lnum] != nullptr) {
+  // the set image_list is used instead of LittleFS.exists() because exists() is much slower
+  if ( layers[lnum] != nullptr && image_list.find(id.c_str()) != image_list.end() ) {
     layers[lnum]->set_image(id);
+    // since the image is loaded asynchronously using another core to prevent lag
+    // waiting to determine if the image was loaded successfully would defeat the purpose.
+    // so the best we can do is check if the image exists for indicating success.
+    // this file existence check helps playlist handling perform better because it means
+    // non-existent images can be skipped.
     return true;
   }
   return false;
@@ -712,7 +727,6 @@ bool load_image_solo(String id) {
     layers[0] = new ReAnimator(NUM_ROWS, NUM_COLS);
     layers[0]->setup(Image_t, -2);
     layers[0]->set_color(&gdynamic_rgb);
-    //retval = layers[0]->set_image(id);
     retval = load_image_to_layer(0, id);
     layers[0]->set_heading(0);
   }

@@ -453,18 +453,11 @@ void ReAnimator::increment_overlay(bool is_persistent) {
 }
 
 
-bool ReAnimator::set_image(String id, String* message) {
+void ReAnimator::set_image(String id, String* message) {
   image_path = form_path(F("im"), id);
   //fresh_image = load_image_from_file(image_path, message);
-  qimages.push({image_path, MTX_NUM_LEDS, leds, proxy_color_set, proxy_color});
-  // since the image is queued for loading we cannot be sure if it was successfully loaded here
-  // so fresh_image represents more that we tried.
-  // the unfortunate downside is that if the image fails to load the full delay for a playlist item
-  // will be used instead of that item being skipped.
+  qimages.push({image_path, MTX_NUM_LEDS, leds, proxy_color_set, proxy_color, fresh_image});
   fresh_image = true;
-  //fresh_image = LittleFS.exists(image_path); // too slow
-
-  return fresh_image;
 }
 
 
@@ -562,8 +555,7 @@ void ReAnimator::reanimate() {
     if (!freezer.is_frozen()) {
         if (_ltype == Image_t && !fresh_image) {
             //fresh_image = load_image_from_file(image_path);
-            qimages.push({image_path, MTX_NUM_LEDS, leds, proxy_color_set, proxy_color});
-            fresh_image = true;
+            qimages.push({image_path, MTX_NUM_LEDS, leds, proxy_color_set, proxy_color, fresh_image});
         }
         else if (_ltype == Pattern_t) {
             run_pattern(pattern);
@@ -1715,53 +1707,57 @@ bool ReAnimator::load_image_from_file(String fs_path, String* message) {
 // loading an image takes a while can make the animation laggy if ran on the same core as the main code
 void ReAnimator::load_image_from_queue(void* parameter) {
     for (;;) {
-      // calling vTaskDelay() prevents watchdog error, but I'm not sure why and if this is a good way to handle it  
-      //vTaskDelay(1); // how long ???
-      vTaskDelay(pdMS_TO_TICKS(1)); // 1 ms
-      if (!qimages.empty()) {
-        struct Image image = qimages.front();
-        qimages.pop();
+        // calling vTaskDelay() prevents watchdog error, but I'm not sure why and if this is a good way to handle it  
+        //vTaskDelay(1); // how long ???
+        vTaskDelay(pdMS_TO_TICKS(1)); // 1 ms
+        if (!qimages.empty()) {
+            struct Image image = qimages.front();
+            qimages.pop();
 
-        // make sure we are not referencing leds in a layer that was destroyed
-        if (image.leds == nullptr) {
-            continue;
-        }
-
-        if (image.image_path == "") {
-            continue;
-        }
-
-        File file = LittleFS.open(image.image_path, "r");
-        if (!file) {
-            continue;
-        }
-
-        if (file.available()) {
-            DynamicJsonDocument doc(8192);
-            ReadBufferingStream bufferedFile(file, 64);
-            DeserializationError error = deserializeJson(doc, bufferedFile);
-            if (error) {
+            // make sure we are not referencing leds in a layer that was destroyed
+            if (image.leds == nullptr) {
+                image.fresh_image = false;
                 continue;
             }
 
-            JsonObject object = doc.as<JsonObject>();
-
-            image.proxy_color_set = false;
-            if (!object[F("pc")].isNull()) {
-                std::string pc = object[F("pc")].as<std::string>();
-                if (!pc.empty()) {
-                    image.proxy_color = std::stoul(pc, nullptr, 16);
-                    image.proxy_color_set = true;
-                }
+            if (image.image_path == "") {
+                image.fresh_image = false;
+                continue;
             }
 
-            // for unknown reasons initializing the leds[] to all black
-            // makes the code slightly faster
-            for (uint16_t i = 0; i < image.MTX_NUM_LEDS; i++) image.leds[i] = 0xFFFFFF00;
-            deserializeSegment(object, image.leds, image.MTX_NUM_LEDS);
+            File file = LittleFS.open(image.image_path, "r");
+            if (!file) {
+                image.fresh_image = false;
+                continue;
+            }
+
+            if (file.available()) {
+                DynamicJsonDocument doc(8192);
+                ReadBufferingStream bufferedFile(file, 64);
+                DeserializationError error = deserializeJson(doc, bufferedFile);
+                if (error) {
+                    image.fresh_image = false;
+                    continue;
+                }
+
+                JsonObject object = doc.as<JsonObject>();
+
+                image.proxy_color_set = false;
+                if (!object[F("pc")].isNull()) {
+                    std::string pc = object[F("pc")].as<std::string>();
+                    if (!pc.empty()) {
+                        image.proxy_color = std::stoul(pc, nullptr, 16);
+                        image.proxy_color_set = true;
+                    }
+                }
+
+                // for unknown reasons initializing the leds[] to all black
+                // makes the code slightly faster
+                for (uint16_t i = 0; i < image.MTX_NUM_LEDS; i++) image.leds[i] = 0xFFFFFF00;
+                image.fresh_image = deserializeSegment(object, image.leds, image.MTX_NUM_LEDS);
+            }
+            file.close();
         }
-        file.close();
-      }
     }
 }
 

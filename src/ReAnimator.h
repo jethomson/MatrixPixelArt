@@ -121,6 +121,7 @@ class ReAnimator {
       CRGBA* leds;
       bool& proxy_color_set;
       CRGB& proxy_color;
+      bool& fresh_image;
     };
 
     static std::queue<Image> qimages;
@@ -215,7 +216,7 @@ class ReAnimator {
     int8_t set_overlay(Overlay overlay, bool is_persistent);
     void increment_overlay(bool is_persistent);
 
-    bool set_image(String fs_path, String* message = nullptr);
+    void set_image(String fs_path, String* message = nullptr);
     void set_text(String s);
     void set_info(Info id);
 
