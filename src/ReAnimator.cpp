@@ -51,9 +51,11 @@ extern lv_font_t seven_segment;
 
 const char* timezone = "EST5EDT,M3.2.0,M11.1.0";
 
+std::queue<ReAnimator::Image> ReAnimator::qimages;
 
 ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
-
+    // it should be able to use possible to use ReAnimator with matrices of different sizes in the same project
+    // so store matrix size in the object instead of making it static to the class
     MTX_NUM_ROWS = num_rows,
     MTX_NUM_COLS = num_cols;
     MTX_NUM_LEDS = num_rows*num_cols;
@@ -91,10 +93,9 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
 #endif
     reverse = false;
 
-    CRGB internal_rgb = CHSV(HUE_YELLOW, 255, 255);
-    CRGB* rgb = &internal_rgb;
-    uint8_t hue = HUE_YELLOW;
-    CRGB proxy_color = internal_rgb;
+    internal_rgb = CHSV(HUE_YELLOW, 255, 255);
+    rgb = &internal_rgb;
+    hue = HUE_YELLOW;
     proxy_color_set = false;
 
     _cb = noop_cb;
@@ -152,6 +153,8 @@ ReAnimator::Freezer::Freezer(ReAnimator &r) : parent(r) {
 
 void ReAnimator::setup(LayerType ltype, int8_t id) {
     layer_brightness = 255;
+    proxy_color_set = false;
+
 
     // we want patterns to persist from one composite to another if they are on the same layer.
     // this allows for a pattern to play continuously (i.e without restarting) when the next item in a playlist is loaded.
@@ -452,7 +455,15 @@ void ReAnimator::increment_overlay(bool is_persistent) {
 
 bool ReAnimator::set_image(String id, String* message) {
   image_path = form_path(F("im"), id);
-  fresh_image = load_image_from_file(image_path, message);
+  //fresh_image = load_image_from_file(image_path, message);
+  qimages.push({image_path, MTX_NUM_LEDS, leds, proxy_color_set, proxy_color});
+  // since the image is queued for loading we cannot be sure if it was successfully loaded here
+  // so fresh_image represents more that we tried.
+  // the unfortunate downside is that if the image fails to load the full delay for a playlist item
+  // will be used instead of that item being skipped.
+  fresh_image = true;
+  //fresh_image = LittleFS.exists(image_path); // too slow
+
   return fresh_image;
 }
 
@@ -550,7 +561,9 @@ void ReAnimator::reanimate() {
 
     if (!freezer.is_frozen()) {
         if (_ltype == Image_t && !fresh_image) {
-            fresh_image = load_image_from_file(image_path);
+            //fresh_image = load_image_from_file(image_path);
+            qimages.push({image_path, MTX_NUM_LEDS, leds, proxy_color_set, proxy_color});
+            fresh_image = true;
         }
         else if (_ltype == Pattern_t) {
             run_pattern(pattern);
@@ -988,7 +1001,7 @@ void ReAnimator::pendulum() {
         Point p;
         p.x = i*(MTX_NUM_COLS/num_columns);
         // normally beatsin16() is based on millis(), but since this effect is called irregularly
-        // in time use a different timebase that does increase with calls to this effect in a regular way.
+        // in time, use a different timebase that does increase with calls to this effect in a regular way.
         // beatsin16() effectively uses this: uint16_t beat = ((millis() - timebase) * beats_per_minute_88 * 280) >> 16;
         // so to cancel out the effect of millis() use this: timebase = millis()-t
         // redefining the timebase prevents the effect from skipping
@@ -1683,7 +1696,7 @@ bool ReAnimator::load_image_from_file(String fs_path, String* message) {
 
         // for unknown reasons initializing the leds[] to all black
         // makes the code slightly faster
-        for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) leds[i] = 0xFFFFFF00;
+        for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) leds[i] = 0x00FFFFFF;
         retval = deserializeSegment(object, leds, MTX_NUM_LEDS);
         if (message) {
             *message = F("set_image(): deserializeSegment() had error.");
@@ -1697,6 +1710,60 @@ bool ReAnimator::load_image_from_file(String fs_path, String* message) {
     return retval;
 }
 
+
+// this runs on core 0
+// loading an image takes a while can make the animation laggy if ran on the same core as the main code
+void ReAnimator::load_image_from_queue(void* parameter) {
+    for (;;) {
+      // calling vTaskDelay() prevents watchdog error, but I'm not sure why and if this is a good way to handle it  
+      //vTaskDelay(1); // how long ???
+      vTaskDelay(pdMS_TO_TICKS(1)); // 1 ms
+      if (!qimages.empty()) {
+        struct Image image = qimages.front();
+        qimages.pop();
+
+        // make sure we are not referencing leds in a layer that was destroyed
+        if (image.leds == nullptr) {
+            continue;
+        }
+
+        if (image.image_path == "") {
+            continue;
+        }
+
+        File file = LittleFS.open(image.image_path, "r");
+        if (!file) {
+            continue;
+        }
+
+        if (file.available()) {
+            DynamicJsonDocument doc(8192);
+            ReadBufferingStream bufferedFile(file, 64);
+            DeserializationError error = deserializeJson(doc, bufferedFile);
+            if (error) {
+                continue;
+            }
+
+            JsonObject object = doc.as<JsonObject>();
+
+            image.proxy_color_set = false;
+            if (!object[F("pc")].isNull()) {
+                std::string pc = object[F("pc")].as<std::string>();
+                if (!pc.empty()) {
+                    image.proxy_color = std::stoul(pc, nullptr, 16);
+                    image.proxy_color_set = true;
+                }
+            }
+
+            // for unknown reasons initializing the leds[] to all black
+            // makes the code slightly faster
+            for (uint16_t i = 0; i < image.MTX_NUM_LEDS; i++) image.leds[i] = 0xFFFFFF00;
+            deserializeSegment(object, image.leds, image.MTX_NUM_LEDS);
+        }
+        file.close();
+      }
+    }
+}
 
 
 // ++++++++++++++++++++++++++++++
@@ -1845,7 +1912,7 @@ void ReAnimator::setup_clock() {
 
 void ReAnimator::refresh_date_time(uint16_t draw_interval) {
     const uint8_t nd = 4;
-    const Point corners[nd] = {{.x = MTX_NUM_COLS-1-3, .y = 0}, {.x = MTX_NUM_COLS-1-9, .y = 0}, {.x = MTX_NUM_COLS-1-3, .y = 8}, {.x = MTX_NUM_COLS-1-9, .y = 8}};
+    const Point corners[nd] = {{.x = (uint8_t)(MTX_NUM_COLS-1-3), .y = 0}, {.x = (uint8_t)(MTX_NUM_COLS-1-9), .y = 0}, {.x = (uint8_t)(MTX_NUM_COLS-1-3), .y = 8}, {.x = (uint8_t)(MTX_NUM_COLS-1-9), .y = 8}};
 
     if (is_wait_over(draw_interval)) {
         struct tm local_now = {0};

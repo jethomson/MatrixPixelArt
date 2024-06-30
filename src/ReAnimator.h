@@ -24,6 +24,7 @@
 
 #include "project.h"
 #include "lv_font.h"
+#include <queue>
 
 
 enum LayerType {Pattern_t = 0, Accent_t = 1, Image_t = 2, Text_t = 3, Info_t = 4};
@@ -52,18 +53,16 @@ enum Info {TIME_12HR = 0, TIME_24HR = 1, DATE_MMDD = 2, DATE_DDMM = 3, TIME_12HR
 class ReAnimator {
     //enum Direction {STILL = 0, N = 1, NE = 2, E = 3, SE = 4, S = 5, SW = 6, W = 7, NW = 8};
 
-    LayerType _ltype;
-    int8_t _id ;
-
-    String image_path;
-
     uint8_t MTX_NUM_ROWS = 0;
     uint8_t MTX_NUM_COLS = 0;
     uint16_t MTX_NUM_LEDS = 0;
 
     CRGBA* leds;
-    //CRGBA leds[NUM_LEDS];
-    //CRGBA tleds[NUM_LEDS]; // for use with ntranslate()
+
+    LayerType _ltype;
+    int8_t _id ;
+
+    String image_path;
 
     uint8_t layer_brightness;
 
@@ -92,6 +91,7 @@ class ReAnimator {
     CRGB internal_rgb;
     CRGB* rgb;
     uint8_t hue;
+
     CRGB proxy_color;
     bool proxy_color_set;
 
@@ -114,6 +114,16 @@ class ReAnimator {
     };
 
     Freezer freezer;
+
+    struct Image {
+      String& image_path;
+      uint16_t& MTX_NUM_LEDS;
+      CRGBA* leds;
+      bool& proxy_color_set;
+      CRGB& proxy_color;
+    };
+
+    static std::queue<Image> qimages;
 
     // puck-man variables
     uint16_t pm_puck_man_pos;
@@ -180,7 +190,7 @@ class ReAnimator {
 
   public:
     ReAnimator(uint8_t num_rows, uint8_t num_cols);
-    ~ReAnimator() { free(leds); free(pm_puck_dots); }
+    ~ReAnimator() { free(leds); leds = nullptr; free(pm_puck_dots); pm_puck_dots = nullptr;}
 
     void setup(LayerType ltype, int8_t id);
 
@@ -216,6 +226,8 @@ class ReAnimator {
     void set_heading(uint8_t h);
 
     //void set_sound_value_gain(uint8_t gain);
+
+    static void load_image_from_queue(void* parameter);
 
     void clear();
     void reanimate();

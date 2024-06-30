@@ -651,7 +651,8 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
       ghost_layers[lnum] = 4;
     }
     layers[lnum]->setup(Image_t, -2);
-    layers[lnum]->set_image(id);
+    //layers[lnum]->set_image(id);
+    load_image_to_layer(lnum, id);
     layers[lnum]->set_overlay(static_cast<Overlay>(accent_id), true);
     layers[lnum]->set_heading(movement);
   }
@@ -688,11 +689,12 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
 // this helps streamline code from having the same repeative layer
 // existence check.
 bool load_image_to_layer(uint8_t lnum, String id) {
-  bool retval = false;
+  //if (layers[lnum] != nullptr && gfile_list.indexOf(id) > 0) {
   if (layers[lnum] != nullptr) {
-    retval = layers[lnum]->set_image(id);
+    layers[lnum]->set_image(id);
+    return true;
   }
-  return retval;
+  return false;
 }
 
 
@@ -710,7 +712,8 @@ bool load_image_solo(String id) {
     layers[0] = new ReAnimator(NUM_ROWS, NUM_COLS);
     layers[0]->setup(Image_t, -2);
     layers[0]->set_color(&gdynamic_rgb);
-    retval = layers[0]->set_image(id);
+    //retval = layers[0]->set_image(id);
+    retval = load_image_to_layer(0, id);
     layers[0]->set_heading(0);
   }
 
@@ -1230,9 +1233,9 @@ void show(void) {
   uint32_t dt = millis()-pm;
   if (dt > 100 || refresh_now) {
     pm = millis();
-    //if (dt > 120) {
-    //  DEBUG_PRINTLN(dt);
-    //}
+    if (dt > 120) {
+      DEBUG_PRINTLN(dt);
+    }
     refresh_now = false;
     gdynamic_hue+=3;
     gdynamic_rgb = CHSV(gdynamic_hue, 255, 255);
@@ -1349,6 +1352,17 @@ void setup() {
   // initialzie dynamic colors because otherwise they won't be set until after layer.refresh() has been called which can lead to partially black text
   gdynamic_rgb = CHSV(gdynamic_hue, 255, 255);
   gdynamic_comp_rgb = CRGB::White - gdynamic_rgb;
+
+  TaskHandle_t Task1;
+
+  xTaskCreatePinnedToCore(
+    ReAnimator::load_image_from_queue,
+    "Task1",
+    10000,
+    NULL,
+    1,
+    &Task1,
+    0);
 
   load_file(F("pl"), "startup");
 }
