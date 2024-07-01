@@ -22,10 +22,7 @@
 
 #pragma once
 
-//#include <FastLED.h>
-//#include "FastLED_RGBA.h"
-//#include <stdint.h>
-//#include "Arduino.h"
+#define NUM_LAYERS 6  // changes to NUM_LAYERS will be reflected in compositor.htm
 
 // storage locations for animated matrices and playlists.
 // note the pathes are hardcoded in the HTML files, so changing these defines is not enough.

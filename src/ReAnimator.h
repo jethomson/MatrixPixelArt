@@ -62,8 +62,6 @@ class ReAnimator {
     LayerType _ltype;
     int8_t _id ;
 
-    String image_path;
-
     uint8_t layer_brightness;
 
     bool autocycle_enabled;
@@ -92,9 +90,6 @@ class ReAnimator {
     CRGB* rgb;
     uint8_t hue;
 
-    CRGB proxy_color;
-    bool proxy_color_set;
-
     void(*_cb)(uint8_t);
 
     class Freezer {
@@ -114,17 +109,6 @@ class ReAnimator {
     };
 
     Freezer freezer;
-
-    struct Image {
-      String& image_path;
-      uint16_t& MTX_NUM_LEDS;
-      CRGBA* leds;
-      bool& proxy_color_set;
-      CRGB& proxy_color;
-      bool& fresh_image;
-    };
-
-    static std::queue<Image> qimages;
 
     // puck-man variables
     uint16_t pm_puck_man_pos;
@@ -157,7 +141,22 @@ class ReAnimator {
     //uint16_t sound_value;
     //uint8_t sound_value_gain;
 
+
+    String image_path;
+    CRGB proxy_color;
+    bool proxy_color_set;
     bool fresh_image;
+
+    typedef struct Image {
+      String* image_path;
+      uint16_t* MTX_NUM_LEDS;
+      CRGBA* leds;
+      bool* proxy_color_set;
+      CRGB* proxy_color;
+      bool* fresh_image;
+    } Image;
+
+    static QueueHandle_t qimages;
 
     struct Point {
       uint8_t x;
@@ -191,7 +190,8 @@ class ReAnimator {
 
   public:
     ReAnimator(uint8_t num_rows, uint8_t num_cols);
-    ~ReAnimator() { free(leds); leds = nullptr; free(pm_puck_dots); pm_puck_dots = nullptr;}
+    //~ReAnimator() { free(leds); leds = nullptr; free(pm_puck_dots); pm_puck_dots = nullptr;}
+    ~ReAnimator() { delete[] leds; leds = nullptr; delete[] pm_puck_dots; pm_puck_dots = nullptr;}
 
     void setup(LayerType ltype, int8_t id);
 

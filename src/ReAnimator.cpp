@@ -51,7 +51,9 @@ extern lv_font_t seven_segment;
 
 const char* timezone = "EST5EDT,M3.2.0,M11.1.0";
 
-std::queue<ReAnimator::Image> ReAnimator::qimages;
+// set queue size to NUM_LAYERS+1 because every layer of a composite could be an image, with the +1 for a little safety margin
+// since xQueueSend has xTicksToWait set to 0 (i.e. do not wait for empty queue slot if queue is full).
+QueueHandle_t ReAnimator::qimages = xQueueCreate(NUM_LAYERS+1, sizeof(Image));
 
 ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
     // it should be able to use possible to use ReAnimator with matrices of different sizes in the same project
@@ -59,7 +61,9 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
     MTX_NUM_ROWS = num_rows,
     MTX_NUM_COLS = num_cols;
     MTX_NUM_LEDS = num_rows*num_cols;
-    leds = (CRGBA*)malloc(MTX_NUM_LEDS*sizeof(CRGBA));
+    //leds = (CRGBA*)malloc(MTX_NUM_LEDS*sizeof(CRGBA));
+    // abort() is called if out of memory so no point in trying to check?
+    leds = new CRGBA[MTX_NUM_LEDS];
 
     _ltype = static_cast<LayerType>(-1);
     _id = -1;
@@ -93,6 +97,7 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
 #endif
     reverse = false;
 
+    // using yellow can help spot errors
     internal_rgb = CHSV(HUE_YELLOW, 255, 255);
     rgb = &internal_rgb;
     hue = HUE_YELLOW;
@@ -114,7 +119,8 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
     pm_ghost_delta = 1;
     pm_power_pellet_pos = 0;
     pm_power_pellet_flash_state = 1;
-    pm_puck_dots = (uint8_t*)malloc(MTX_NUM_LEDS*sizeof(uint8_t));
+    //pm_puck_dots = (uint8_t*)malloc(MTX_NUM_LEDS*sizeof(uint8_t));
+    pm_puck_dots = new uint8_t[MTX_NUM_LEDS];
     for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) {
       pm_puck_dots[i] = 0;
     }
@@ -456,7 +462,8 @@ void ReAnimator::increment_overlay(bool is_persistent) {
 void ReAnimator::set_image(String id, String* message) {
   image_path = form_path(F("im"), id);
   //fresh_image = load_image_from_file(image_path, message);
-  qimages.push({image_path, MTX_NUM_LEDS, leds, proxy_color_set, proxy_color, fresh_image});
+  Image image = {&image_path, &MTX_NUM_LEDS, leds, &proxy_color_set, &proxy_color, &fresh_image};
+  xQueueSend(qimages, (void *)&image, 0);
   fresh_image = true;
 }
 
@@ -555,7 +562,8 @@ void ReAnimator::reanimate() {
     if (!freezer.is_frozen()) {
         if (_ltype == Image_t && !fresh_image) {
             //fresh_image = load_image_from_file(image_path);
-            qimages.push({image_path, MTX_NUM_LEDS, leds, proxy_color_set, proxy_color, fresh_image});
+            Image image = {&image_path, &MTX_NUM_LEDS, leds, &proxy_color_set, &proxy_color, &fresh_image};
+            xQueueSend(qimages, (void *)&image, 0);
         }
         else if (_ltype == Pattern_t) {
             run_pattern(pattern);
@@ -1710,24 +1718,22 @@ void ReAnimator::load_image_from_queue(void* parameter) {
         // calling vTaskDelay() prevents watchdog error, but I'm not sure why and if this is a good way to handle it  
         //vTaskDelay(1); // how long ???
         vTaskDelay(pdMS_TO_TICKS(1)); // 1 ms
-        if (!qimages.empty()) {
-            struct Image image = qimages.front();
-            qimages.pop();
-
+        Image image;
+        if (xQueueReceive(qimages, (void *)&image, 0) == pdTRUE) {
             // make sure we are not referencing leds in a layer that was destroyed
             if (image.leds == nullptr) {
-                image.fresh_image = false;
+                *(image.fresh_image) = false;
                 continue;
             }
 
-            if (image.image_path == "") {
-                image.fresh_image = false;
+            if (*(image.image_path) == "") {
+               *(image.fresh_image) = false;
                 continue;
             }
 
-            File file = LittleFS.open(image.image_path, "r");
+            File file = LittleFS.open(*(image.image_path), "r");
             if (!file) {
-                image.fresh_image = false;
+                *(image.fresh_image) = false;
                 continue;
             }
 
@@ -1736,29 +1742,30 @@ void ReAnimator::load_image_from_queue(void* parameter) {
                 ReadBufferingStream bufferedFile(file, 64);
                 DeserializationError error = deserializeJson(doc, bufferedFile);
                 if (error) {
-                    image.fresh_image = false;
+                    *(image.fresh_image) = false;
                     continue;
                 }
 
                 JsonObject object = doc.as<JsonObject>();
 
-                image.proxy_color_set = false;
+                *(image.proxy_color_set) = false;
                 if (!object[F("pc")].isNull()) {
                     std::string pc = object[F("pc")].as<std::string>();
                     if (!pc.empty()) {
-                        image.proxy_color = std::stoul(pc, nullptr, 16);
-                        image.proxy_color_set = true;
+                        *(image.proxy_color) = std::stoul(pc, nullptr, 16);
+                        *(image.proxy_color_set) = true;
                     }
                 }
 
                 // for unknown reasons initializing the leds[] to all black
                 // makes the code slightly faster
-                for (uint16_t i = 0; i < image.MTX_NUM_LEDS; i++) image.leds[i] = 0xFFFFFF00;
-                image.fresh_image = deserializeSegment(object, image.leds, image.MTX_NUM_LEDS);
+                for (uint16_t i = 0; i < *(image.MTX_NUM_LEDS); i++) image.leds[i] = 0x00FFFFFF;
+                *(image.fresh_image) = deserializeSegment(object, image.leds, *(image.MTX_NUM_LEDS));
             }
             file.close();
         }
     }
+    vTaskDelete(NULL);
 }
 
 

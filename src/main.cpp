@@ -33,8 +33,6 @@
 #define DATA_PIN 16
 #define COLOR_ORDER GRB
 
-#define NUM_LAYERS 6  // changes to NUM_LAYERS will be reflected in compositor.htm
-
 #define LED_STRIP_VOLTAGE 5
 //#define LED_STRIP_MILLIAMPS 1300  // USB power supply.
 // the highest current I can measure at full brightness with every pixel white is 2.150 A.
@@ -1247,7 +1245,7 @@ void show(void) {
   uint32_t dt = millis()-pm;
   if (dt > 100 || refresh_now) {
     pm = millis();
-    if (dt > 120) {
+    if (dt > 100) {
       DEBUG_PRINTLN(dt);
     }
     refresh_now = false;
@@ -1369,14 +1367,8 @@ void setup() {
 
   TaskHandle_t Task1;
 
-  xTaskCreatePinnedToCore(
-    ReAnimator::load_image_from_queue,
-    "Task1",
-    10000,
-    NULL,
-    1,
-    &Task1,
-    0);
+  // use core 0 to load images to prevent lag
+  xTaskCreatePinnedToCore(ReAnimator::load_image_from_queue, "Task1", 10000, NULL, 1, &Task1, 0);
 
   load_file(F("pl"), "startup");
 }
