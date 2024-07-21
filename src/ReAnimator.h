@@ -23,7 +23,7 @@
 #pragma once
 
 #include "project.h"
-#include "lv_font.h"
+#include "lvgl_fonts/lvgl/lvgl.h"
 #include <queue>
 
 
@@ -163,8 +163,8 @@ class ReAnimator {
       uint8_t y;
     };
 
-    lv_font_t* font;
-    lv_font_t* clkfont;
+    const lv_font_t* font;
+    //const lv_font_t* clkfont;
 
     struct fstring {
       String s;
@@ -295,6 +295,7 @@ class ReAnimator {
 // ++++++++++++++++++++++++++++++
 // ++++++++++++ TEXT ++++++++++++
 // ++++++++++++++++++++++++++++++
+    const uint8_t* get_bitmap(const lv_font_t* f, char c, uint8_t* width = nullptr, uint8_t* height = nullptr);
     uint8_t get_text_center(String s);
     bool shift_char(char c, int8_t vmargin = 0);
     //void matrix_char(char c);

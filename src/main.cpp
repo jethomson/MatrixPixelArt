@@ -1245,9 +1245,9 @@ void show(void) {
   uint32_t dt = millis()-pm;
   if (dt > 100 || refresh_now) {
     pm = millis();
-    if (dt > 100) {
-      DEBUG_PRINTLN(dt);
-    }
+    //if (dt > 100) {
+    //  DEBUG_PRINTLN(dt);
+    //}
     refresh_now = false;
     gdynamic_hue+=3;
     gdynamic_rgb = CHSV(gdynamic_hue, 255, 255);
@@ -1370,7 +1370,8 @@ void setup() {
   // use core 0 to load images to prevent lag
   xTaskCreatePinnedToCore(ReAnimator::load_image_from_queue, "Task1", 10000, NULL, 1, &Task1, 0);
 
-  load_file(F("pl"), "startup");
+  //load_file(F("pl"), "startup");
+  load_file(F("im"), "bottle_magic");
 }
 
 
