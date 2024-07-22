@@ -481,10 +481,9 @@ void ReAnimator::set_text(String s) {
     shift_char_column = 0; // start at the beginning of a glyph
 
     ftext.s = s;
-    Serial.println("set_text()");
     ftext.vmargin = MTX_NUM_COLS/2 - get_text_center(ftext.s);
+    Serial.print("vmargin: ");
     Serial.println(ftext.vmargin);
-    Serial.println("set_text() end");
 }
 
 
@@ -1807,7 +1806,7 @@ void ReAnimator::load_image_from_queue(void* parameter) {
 // ++++++++++++++++++++++++++++++
 // ++++++++++++ TEXT ++++++++++++
 // ++++++++++++++++++++++++++++++
-const uint8_t* ReAnimator::get_bitmap(const lv_font_t* f, char c, uint8_t* width, uint8_t* height) {
+const uint8_t* ReAnimator::get_bitmap(const lv_font_t* f, char c, uint8_t* width, uint8_t* height, int8_t* offset_y) {
     lv_font_glyph_dsc_t g;
     bool g_ret = lv_font_get_glyph_dsc(f, &g, c, '\0');
     if (g_ret && g.gid.index) {
@@ -1816,12 +1815,16 @@ const uint8_t* ReAnimator::get_bitmap(const lv_font_t* f, char c, uint8_t* width
         const uint8_t* glyph = &fdsc->glyph_bitmap[gdsc->bitmap_index];
         uint8_t w = gdsc->box_w;
         uint8_t h = gdsc->box_h;
+        uint8_t ofs_y = gdsc->ofs_y;
         if (glyph != nullptr && w > 0 && h > 0) {
             if (width != nullptr) {
                 (*width) = w;
             }
             if (height != nullptr) {
                 (*height) = h;
+            }
+            if (offset_y != nullptr) {
+                (*offset_y) = ofs_y;
             }
             return glyph;
         }
@@ -1836,18 +1839,29 @@ uint8_t ReAnimator::get_text_center(String s) {
         char c = s[i];
         uint8_t width = 0;
         uint8_t height = 0;
-        const uint8_t* glyph = get_bitmap(font, s[i], &width, &height);
+        int8_t offset_y = 0;
+        /*
+    g :: {.bitmap_index = 10608, .adv_w = 256, .box_w = 14, .box_h = 12, .ofs_x = 0, .ofs_y = -2},
+    j :: {.bitmap_index = 11084, .adv_w = 256, .box_w = 10, .box_h = 16, .ofs_x = 0, .ofs_y = -2},
+    */
+        const uint8_t* glyph = get_bitmap(font, s[i], &width, &height, &offset_y);
         if (glyph != nullptr && width > 0 && height > 0) {
-            for (uint8_t j = 0; j < MTX_NUM_COLS; j++) {
+            min_row = min((uint8_t)(MTX_NUM_ROWS-height-offset_y), min_row);
+            max_row = max((uint8_t)(height-offset_y), max_row);
+            /*
+            for (uint8_t j = 0; j < height; j++) {
                 for (uint8_t k = 0; k < width; k++) {
                     uint16_t n = j*width + k;
                     if(glyph[n]) {
-                        min_row = min(j, min_row);
-                        max_row = max(j, max_row);
+                        //min_row = min(j, min_row);
+                        //max_row = max(j, max_row);
+                        min_row = min((uint8_t)(j+offset_y), min_row);
+                        max_row = max((uint8_t)(j+offset_y), max_row);
                         break;
                     }
                 }
             }
+            */
         }
     }
 
@@ -1924,7 +1938,7 @@ void ReAnimator::matrix_text(String s) {
 
 bool ReAnimator::shift_char(char c, int8_t vmargin) {
     if (shift_char_tracking) {
-        for (uint8_t i = 0; i < MTX_NUM_COLS; i++) {
+        for (uint8_t i = 0; i < MTX_NUM_ROWS; i++) {
             for (uint8_t j = 0; j < MTX_NUM_COLS-1; j++) {
                 uint8_t k = (MTX_NUM_COLS-1)-j;
                 Point p1;
@@ -1948,10 +1962,11 @@ bool ReAnimator::shift_char(char c, int8_t vmargin) {
     bool finished_shifting = false;
     uint8_t width = 0;
     uint8_t height = 0;
+    int8_t offset_y = 0;
 
-    const uint8_t* glyph = get_bitmap(font, c, &width, &height);
+    const uint8_t* glyph = get_bitmap(font, c, &width, &height, &offset_y);
     if (glyph != nullptr) {
-        for (uint8_t i = 0; i < MTX_NUM_COLS; i++) {
+        for (uint8_t i = 0; i < MTX_NUM_ROWS; i++) {
             for (uint8_t j = 0; j < MTX_NUM_COLS-1; j++) {
                 uint8_t k = (MTX_NUM_COLS-1)-j;
                 Point p1;
@@ -1966,7 +1981,9 @@ bool ReAnimator::shift_char(char c, int8_t vmargin) {
             p.x = 0;
             p.y = i;
 
-            uint16_t n = (i-vmargin)*width + shift_char_column;
+            uint16_t n = (i-vmargin-(MTX_NUM_ROWS-height-offset_y))*width + shift_char_column;
+            //uint16_t n = (i-vmargin-offset_y-(MTX_NUM_ROWS-1-height))*width + shift_char_column;
+            //uint16_t n = (i-vmargin-(MTX_NUM_ROWS-1-height))*width + shift_char_column;
             if (0 <= n && n < width*height) {
                 CRGB pixel = *rgb;
                 //pixel = pixel.scale8(glyph[n]); // not all glyph pixels are completely off or on, so dim for those in between.
@@ -2000,6 +2017,8 @@ void ReAnimator::setup_clock() {
 
 
 void ReAnimator::refresh_date_time(uint16_t draw_interval) {
+    static uint32_t last_time = millis();
+
     const uint8_t nd = 4;
     const Point corners[nd] = {{.x = (uint8_t)(MTX_NUM_COLS-1-3), .y = 0}, {.x = (uint8_t)(MTX_NUM_COLS-1-9), .y = 0}, {.x = (uint8_t)(MTX_NUM_COLS-1-3), .y = 8}, {.x = (uint8_t)(MTX_NUM_COLS-1-9), .y = 8}};
     extern lv_font_t seven_segment;
@@ -2008,13 +2027,11 @@ void ReAnimator::refresh_date_time(uint16_t draw_interval) {
     if (is_wait_over(draw_interval)) {
         struct tm local_now = {0};
         // the second argument of getLocalTime indicates how long it should loop waiting for the time to be received from ntp
-        // since getLocalTime() is already being called around every 200 ms (by the if above) there is no need for getLocalTime()
+        // since getLocalTime() is already being called around every 200 ms (via the if above) there is no need for getLocalTime()
         // to loop, so set the second argument to 0. using 0 also keeps the other animations from being getLocalTime() looping.
         // calling it like this does not spam the ntp server.
+        char ts[nd+1] = {'0', '0', '0', '0', '\0'};
         if (getLocalTime(&local_now, 0)) {
-
-            char ts[nd+1];
-            //char ts[nd+1] = {'2', '2', '2', '2', '\0'};
             if (_id == 0 || _id == 1 || ((_id == 4 || _id == 5) && local_now.tm_sec % 7 != 0)) {
                 uint8_t hour = ((_id == 0 || _id == 4) && local_now.tm_hour > 12) ? local_now.tm_hour-12 : local_now.tm_hour;
                 snprintf(ts, sizeof ts, "%02d%02d", hour, local_now.tm_min);
@@ -2027,56 +2044,56 @@ void ReAnimator::refresh_date_time(uint16_t draw_interval) {
                     snprintf(ts, sizeof ts, "%02d%02d", local_now.tm_mday, local_now.tm_mon+1);
                 }
             }
+        }
 
-            for (uint8_t i = 0; i < nd; i++) {
-                char c = ts[i];
+        for (uint8_t i = 0; i < nd; i++) {
+            char c = ts[i];
 
-                uint8_t max_width = 0;
-                get_bitmap(clkfont, '0', &max_width);
-                uint8_t width = 0;
-                uint8_t height = 0;
-                const uint8_t* glyph = get_bitmap(clkfont, c, &width, &height);
+            uint8_t max_width = 0;
+            get_bitmap(clkfont, '0', &max_width);
+            uint8_t width = 0;
+            uint8_t height = 0;
+            const uint8_t* glyph = get_bitmap(clkfont, c, &width, &height);
 
-                if (glyph != nullptr) {
-                    uint8_t n = 0;
-                    Point p0 = corners[i];
-                    for (uint8_t j = 0; j < height; j++) {
-                        // not all characters are max_width so we cannot count on their negative space overwriting the previous character
-                        // therefore we have to loop across max_width so the previous character can be overwritten with alpha = 0 if the
-                        // even if the bitmap is not specified for that area.
-                        for (uint8_t k = 0; k < max_width; k++) {
-                            uint8_t kk = p0.x-k;
-                            Point p;
-                            p.x = kk;
-                            p.y = p0.y+j;
+            if (glyph != nullptr) {
+                uint8_t n = 0;
+                Point p0 = corners[i];
+                for (uint8_t j = 0; j < height; j++) {
+                    // not all characters are max_width so we cannot count on their negative space overwriting the previous character
+                    // therefore we have to loop across max_width so the previous character can be overwritten with alpha = 0 if the
+                    // even if the bitmap is not specified for that area.
+                    for (uint8_t k = 0; k < max_width; k++) {
+                        uint8_t kk = p0.x-k;
+                        Point p;
+                        p.x = kk;
+                        p.y = p0.y+j;
 
-                            // there are a couple of different ways you can show a glyph
-                            // 1) you can use scale8 to dim the pixel's color such that the negative space becomes black.
-                            //    without being combined with transparency this will result in blocky characters, and black text is not possible.
-                            //    CRGB pixel = *rgb;
-                            //    pixel = pixel.scale8(glyph[n]);
-                            //    leds[cart2serp(p)] = pixel;
-                            // 2) you can set the alpha such that negative space is completely transparent
-                            //    characters are not blocky because negative space is invisible, and black text is possible
-                            //    CRGB pixel = *rgb;
-                            //    leds[cart2serp(p)] = pixel;
-                            //    leds[cart2serp(p)].a = glyph[n];
+                        // there are a couple of different ways you can show a glyph
+                        // 1) you can use scale8 to dim the pixel's color such that the negative space becomes black.
+                        //    without being combined with transparency this will result in blocky characters, and black text is not possible.
+                        //    CRGB pixel = *rgb;
+                        //    pixel = pixel.scale8(glyph[n]);
+                        //    leds[cart2serp(p)] = pixel;
+                        // 2) you can set the alpha such that negative space is completely transparent
+                        //    characters are not blocky because negative space is invisible, and black text is possible
+                        //    CRGB pixel = *rgb;
+                        //    leds[cart2serp(p)] = pixel;
+                        //    leds[cart2serp(p)].a = glyph[n];
 
-                            CRGB pixel = *rgb;
-                            // setting color to black is not necessary when transparency is used but it may be advantageous in a yet
-                            // unknown way, so keeping this line but commenting it out.
-                            //pixel = pixel.scale8(glyph[n]); // not all glyph pixels are completely off or on, so dim for those in between.
-                            leds[cart2serp(p)] = pixel;
+                        CRGB pixel = *rgb;
+                        // setting color to black is not necessary when transparency is used but it may be advantageous in a yet
+                        // unknown way, so keeping this line but commenting it out.
+                        //pixel = pixel.scale8(glyph[n]); // not all glyph pixels are completely off or on, so dim for those in between.
+                        leds[cart2serp(p)] = pixel;
 
-                            uint8_t alpha = 0;
-                            // k >= max_width - width aligns characters to the right 
-                            if (k >= max_width - width) {
-                                //alpha = (glyph[n] == 0) ? 0 : 255; // remove partial transparency
-                                alpha = glyph[n];
-                                n++;
-                            }
-                            leds[cart2serp(p)].a = alpha;
+                        uint8_t alpha = 0;
+                        // k >= max_width - width aligns characters to the right 
+                        if (k >= max_width - width) {
+                            //alpha = (glyph[n] == 0) ? 0 : 255; // remove partial transparency
+                            alpha = glyph[n];
+                            n++;
                         }
+                        leds[cart2serp(p)].a = alpha;
                     }
                 }
             }

@@ -295,7 +295,7 @@ class ReAnimator {
 // ++++++++++++++++++++++++++++++
 // ++++++++++++ TEXT ++++++++++++
 // ++++++++++++++++++++++++++++++
-    const uint8_t* get_bitmap(const lv_font_t* f, char c, uint8_t* width = nullptr, uint8_t* height = nullptr);
+    const uint8_t* get_bitmap(const lv_font_t* f, char c, uint8_t* width = nullptr, uint8_t* height = nullptr, int8_t* offset_y = nullptr);
     uint8_t get_text_center(String s);
     bool shift_char(char c, int8_t vmargin = 0);
     //void matrix_char(char c);
