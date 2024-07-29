@@ -46,8 +46,8 @@
 //#define MIC_PIN    A1  // sound reactive is not implemented yet
 
 
-//LV_FONT_DECLARE(ascii_sector); //OR use extern lv_font_t ascii_sector;
-extern lv_font_t ascii_sector;
+//LV_FONT_DECLARE(ascii_sector_12); //OR use extern lv_font_t ascii_sector_12;
+extern lv_font_t ascii_sector_12;
 //extern lv_font_t seven_segment;
 
 const char* timezone = "EST5EDT,M3.2.0,M11.1.0";
@@ -138,7 +138,7 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
 
     fresh_image = false;
 
-    font = &ascii_sector;
+    font = &ascii_sector_12;
     //clkfont = &seven_segment;
 
     refresh_text_index = 0;
@@ -783,7 +783,9 @@ int8_t ReAnimator::apply_overlay(Overlay overlay) {
 //void ReAnimator::shift_text(struct fstring ftext) {
 void ReAnimator::refresh_text(uint16_t draw_interval) {
     if (is_wait_over(draw_interval)) {
-        if(shift_char(ftext.s[refresh_text_index], ftext.vmargin)) {
+        uint32_t c = ftext.s[refresh_text_index];
+        uint32_t nc = ftext.s[(refresh_text_index+1) % ftext.s.length()];
+        if(shift_char(c, nc, ftext.vmargin)) {
             refresh_text_index = (refresh_text_index+1) % ftext.s.length();
         }
     }
@@ -1799,37 +1801,49 @@ void ReAnimator::load_image_from_queue(void* parameter) {
     Serial.print(" height: ");
     Serial.println(height);
 
-    if (glyph != nullptr && height > 0 && width > 0) {
+    if (glyph && height > 0 && width > 0) {
 */
 
 
 // ++++++++++++++++++++++++++++++
 // ++++++++++++ TEXT ++++++++++++
 // ++++++++++++++++++++++++++++++
-const uint8_t* ReAnimator::get_bitmap(const lv_font_t* f, char c, uint8_t* width, uint8_t* height, int8_t* offset_y) {
+const uint8_t* ReAnimator::get_bitmap(const lv_font_t* f, uint32_t c, uint32_t nc, uint32_t* full_width, uint16_t* box_w, uint16_t* box_h, int16_t* offset_y) {
+    // comments from lv_font_fmt_txt.h
+    //uint32_t bitmap_index;          //< Start index of the bitmap. A font can be max 4 GB.
+    //uint32_t adv_w;                 //< Draw the next glyph after this width. 28.4 format (real_value * 16 is stored).
+    //uint16_t box_w;                 //< Width of the glyph's bounding box
+    //uint16_t box_h;                 //< Height of the glyph's bounding box
+    //int16_t ofs_x;                  //< x offset of the bounding box
+    //int16_t ofs_y;                  //< y offset of the bounding box. Measured from the top of the line
     lv_font_glyph_dsc_t g;
-    bool g_ret = lv_font_get_glyph_dsc(f, &g, c, '\0');
+    bool g_ret = lv_font_get_glyph_dsc(f, &g, c, nc);
     if (g_ret && g.gid.index) {
         lv_font_fmt_txt_dsc_t* fdsc = (lv_font_fmt_txt_dsc_t*)f->dsc;
         const lv_font_fmt_txt_glyph_dsc_t* gdsc = &fdsc->glyph_dsc[g.gid.index];
         const uint8_t* glyph = &fdsc->glyph_bitmap[gdsc->bitmap_index];
-        uint8_t w = gdsc->box_w;
-        uint8_t h = gdsc->box_h;
-        uint8_t ofs_y = gdsc->ofs_y;
-        if (glyph != nullptr && w > 0 && h > 0) {
-            if (width != nullptr) {
-                (*width) = w;
-            }
-            if (height != nullptr) {
-                (*height) = h;
-            }
-            if (offset_y != nullptr) {
-                (*offset_y) = ofs_y;
-            }
-            return glyph;
+
+        if (full_width != nullptr) {
+            // g.adv_w is not the same as the adv_w font in the glyph descriptor in the font file
+            // lv_font_get_glyph_dsc_fmt_txt divides that number by 16 and includes kerning
+            (*full_width) = g.adv_w;
+            Serial.print("-");
+            Serial.print((char)c);
+            Serial.println("-");
         }
+        if (box_w != nullptr) {
+            (*box_w) = g.box_w;
+        }
+        if (box_h != nullptr) {
+            (*box_h) = g.box_h;
+        }
+        if (offset_y != nullptr) {
+            (*offset_y) = g.ofs_y;
+        }
+
+        return glyph;
     }
-    return nullptr;
+    return NULL;
 }
 
 uint8_t ReAnimator::get_text_center(String s) {
@@ -1837,17 +1851,20 @@ uint8_t ReAnimator::get_text_center(String s) {
     uint8_t max_row = 0;
     for (uint8_t i = 0; i < s.length(); i++) {
         char c = s[i];
-        uint8_t width = 0;
-        uint8_t height = 0;
-        int8_t offset_y = 0;
+        //uint32_t adv_w = 0;
+        //uint16_t box_w = 0;
+        uint16_t box_h = 0;
+        int16_t offset_y = 0;
         /*
     g :: {.bitmap_index = 10608, .adv_w = 256, .box_w = 14, .box_h = 12, .ofs_x = 0, .ofs_y = -2},
     j :: {.bitmap_index = 11084, .adv_w = 256, .box_w = 10, .box_h = 16, .ofs_x = 0, .ofs_y = -2},
     */
-        const uint8_t* glyph = get_bitmap(font, s[i], &width, &height, &offset_y);
-        if (glyph != nullptr && width > 0 && height > 0) {
-            min_row = min((uint8_t)(MTX_NUM_ROWS-height-offset_y), min_row);
-            max_row = max((uint8_t)(height-offset_y), max_row);
+        //const uint8_t* glyph = get_bitmap(font, s[i], &adv_w, &box_w, &box_h, &offset_y);
+        const uint8_t* glyph = get_bitmap(font, s[i], '\0', nullptr, nullptr, &box_h, &offset_y);
+        //if (glyph && box_w > 0 && box_h > 0) {
+        if (glyph && box_h > 0) {
+            min_row = min((uint8_t)(MTX_NUM_ROWS-box_h-offset_y), min_row);
+            max_row = max((uint8_t)(box_h-offset_y), max_row);
             /*
             for (uint8_t j = 0; j < height; j++) {
                 for (uint8_t k = 0; k < width; k++) {
@@ -1936,7 +1953,7 @@ void ReAnimator::matrix_text(String s) {
 */
 
 
-bool ReAnimator::shift_char(char c, int8_t vmargin) {
+bool ReAnimator::shift_char(uint32_t c, uint32_t nc, int8_t vmargin) {
     if (shift_char_tracking) {
         for (uint8_t i = 0; i < MTX_NUM_ROWS; i++) {
             for (uint8_t j = 0; j < MTX_NUM_COLS-1; j++) {
@@ -1960,12 +1977,13 @@ bool ReAnimator::shift_char(char c, int8_t vmargin) {
     }
 
     bool finished_shifting = false;
-    uint8_t width = 0;
-    uint8_t height = 0;
-    int8_t offset_y = 0;
+    uint32_t full_width = 0;
+    uint16_t box_w = 0;
+    uint16_t box_h = 0;
+    int16_t offset_y = 0;
 
-    const uint8_t* glyph = get_bitmap(font, c, &width, &height, &offset_y);
-    if (glyph != nullptr) {
+    const uint8_t* glyph = get_bitmap(font, c, nc, &full_width, &box_w, &box_h, &offset_y);
+    if (glyph) {
         for (uint8_t i = 0; i < MTX_NUM_ROWS; i++) {
             for (uint8_t j = 0; j < MTX_NUM_COLS-1; j++) {
                 uint8_t k = (MTX_NUM_COLS-1)-j;
@@ -1981,26 +1999,40 @@ bool ReAnimator::shift_char(char c, int8_t vmargin) {
             p.x = 0;
             p.y = i;
 
-            uint16_t n = (i-vmargin-(MTX_NUM_ROWS-height-offset_y))*width + shift_char_column;
-            //uint16_t n = (i-vmargin-offset_y-(MTX_NUM_ROWS-1-height))*width + shift_char_column;
-            //uint16_t n = (i-vmargin-(MTX_NUM_ROWS-1-height))*width + shift_char_column;
-            if (0 <= n && n < width*height) {
-                CRGB pixel = *rgb;
-                //pixel = pixel.scale8(glyph[n]); // not all glyph pixels are completely off or on, so dim for those in between.
-                leds[cart2serp(p)] = pixel;
-                //leds[cart2serp(p)].a = (glyph[n] == 0) ? 0 : 255; // remove partial transparency
-                leds[cart2serp(p)].a = glyph[n];
+
+            CRGB pixel = *rgb;
+            leds[cart2serp(p)] = pixel;
+
+            // instead of dimming the pixel color to match the glyph's bitmap
+            // we use transparency instead where a transparency of 0 represents the glyph's
+            // negative space
+            uint8_t alpha = 0;
+            uint16_t n = (i-vmargin-(MTX_NUM_ROWS-1-box_h-offset_y))*box_w + shift_char_column;
+            if (0 <= n && n < box_w*box_h && shift_char_column < box_w) {
+                if (glyph) {
+                    //alpha = (glyph[n] == 0) ? 0 : 255; // remove partial transparency
+                    alpha = glyph[n];
+                }
             }
-            else {
-                leds[cart2serp(p)] = 0x00000000; // transparent black
-            }
+            leds[cart2serp(p)].a = alpha;
         }
 
-        shift_char_column = (shift_char_column+1)%width;
+        // full_width should be glyph's adv_w specified in the font file divided by 16 plus kerning
+        // see lv_font_get_bitmap_fmt_txt() in lv_font_minimal.c
+        // however kerning does not appear to be implemented for fonts output by the online font converter
+        // using just the glyph's box_w gives better results
+        // whitespace (just space U+0020?) glyphs have a box_w of 0 so their full width must be used instead
+        // however you will likely get better results if you manually edit the font file to set the box_w of
+        // whitespace characters to be closer to the average character width.
+        uint16_t shift_width = box_w ? box_w : full_width;
+        shift_char_column = (shift_char_column+1)%shift_width;
         if (shift_char_column == 0) {
             finished_shifting = true; // character fully shifted onto matrix.
             shift_char_tracking = 1; // add tracking (spacing between letters) on next call
         }
+    }
+    else {
+        Serial.println("null");
     }
 
     return finished_shifting;
@@ -2018,13 +2050,8 @@ void ReAnimator::setup_clock() {
 
 void ReAnimator::refresh_date_time(uint16_t draw_interval) {
     static uint32_t last_time = millis();
-
-    const uint8_t nd = 4;
-    const Point corners[nd] = {{.x = (uint8_t)(MTX_NUM_COLS-1-3), .y = 0}, {.x = (uint8_t)(MTX_NUM_COLS-1-9), .y = 0}, {.x = (uint8_t)(MTX_NUM_COLS-1-3), .y = 8}, {.x = (uint8_t)(MTX_NUM_COLS-1-9), .y = 8}};
-    extern lv_font_t seven_segment;
-    const lv_font_t* clkfont = &seven_segment;
-
     if (is_wait_over(draw_interval)) {
+        const uint8_t nd = 4;
         struct tm local_now = {0};
         // the second argument of getLocalTime indicates how long it should loop waiting for the time to be received from ntp
         // since getLocalTime() is already being called around every 200 ms (via the if above) there is no need for getLocalTime()
@@ -2046,26 +2073,33 @@ void ReAnimator::refresh_date_time(uint16_t draw_interval) {
             }
         }
 
+        extern lv_font_t seven_segment;
+        const lv_font_t* clkfont = &seven_segment;
+        uint16_t max_width = 0;
+        uint16_t max_height = 0;
+        get_bitmap(clkfont, '0', '\0', nullptr, &max_width, &max_height);
+        const uint8_t left_col = (MTX_NUM_COLS/2)+max_width;
+        const uint8_t right_col = (MTX_NUM_COLS/2)-2;
+        const uint8_t top_row = 0;
+        const uint8_t bottom_row = (MTX_NUM_ROWS/2)+max_height+2;
+        const Point corners[nd] = {{.x = left_col, .y = top_row}, {.x = right_col, .y = top_row}, {.x = left_col, .y = bottom_row}, {.x = right_col, .y = bottom_row}};
+
         for (uint8_t i = 0; i < nd; i++) {
             char c = ts[i];
+            uint16_t box_w = 0;
+            uint16_t box_h = 0;
+            const uint8_t* glyph = get_bitmap(clkfont, c, '\0', nullptr, &box_w, &box_h);
 
-            uint8_t max_width = 0;
-            get_bitmap(clkfont, '0', &max_width);
-            uint8_t width = 0;
-            uint8_t height = 0;
-            const uint8_t* glyph = get_bitmap(clkfont, c, &width, &height);
-
-            if (glyph != nullptr) {
+            if (glyph) {
                 uint8_t n = 0;
                 Point p0 = corners[i];
-                for (uint8_t j = 0; j < height; j++) {
+                for (uint8_t j = 0; j < box_h; j++) {
                     // not all characters are max_width so we cannot count on their negative space overwriting the previous character
-                    // therefore we have to loop across max_width so the previous character can be overwritten with alpha = 0 if the
+                    // therefore we have to loop across max_width so the previous character can be overwritten with alpha = 0
                     // even if the bitmap is not specified for that area.
                     for (uint8_t k = 0; k < max_width; k++) {
-                        uint8_t kk = p0.x-k;
                         Point p;
-                        p.x = kk;
+                        p.x = p0.x-k;
                         p.y = p0.y+j;
 
                         // there are a couple of different ways you can show a glyph
@@ -2081,14 +2115,11 @@ void ReAnimator::refresh_date_time(uint16_t draw_interval) {
                         //    leds[cart2serp(p)].a = glyph[n];
 
                         CRGB pixel = *rgb;
-                        // setting color to black is not necessary when transparency is used but it may be advantageous in a yet
-                        // unknown way, so keeping this line but commenting it out.
-                        //pixel = pixel.scale8(glyph[n]); // not all glyph pixels are completely off or on, so dim for those in between.
                         leds[cart2serp(p)] = pixel;
 
                         uint8_t alpha = 0;
-                        // k >= max_width - width aligns characters to the right 
-                        if (k >= max_width - width) {
+                        // k >= max_width - box_w aligns characters to the right 
+                        if (k >= max_width - box_w) {
                             //alpha = (glyph[n] == 0) ? 0 : 255; // remove partial transparency
                             alpha = glyph[n];
                             n++;

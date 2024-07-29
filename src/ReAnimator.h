@@ -53,8 +53,8 @@ enum Info {TIME_12HR = 0, TIME_24HR = 1, DATE_MMDD = 2, DATE_DDMM = 3, TIME_12HR
 class ReAnimator {
     //enum Direction {STILL = 0, N = 1, NE = 2, E = 3, SE = 4, S = 5, SW = 6, W = 7, NW = 8};
 
-    uint8_t MTX_NUM_ROWS = 0;
     uint8_t MTX_NUM_COLS = 0;
+    uint8_t MTX_NUM_ROWS = 0;
     uint16_t MTX_NUM_LEDS = 0;
 
     CRGBA* leds;
@@ -295,9 +295,10 @@ class ReAnimator {
 // ++++++++++++++++++++++++++++++
 // ++++++++++++ TEXT ++++++++++++
 // ++++++++++++++++++++++++++++++
-    const uint8_t* get_bitmap(const lv_font_t* f, char c, uint8_t* width = nullptr, uint8_t* height = nullptr, int8_t* offset_y = nullptr);
+    //const uint8_t* get_bitmap(const lv_font_t* f, char c, uint8_t* width = nullptr, uint8_t* height = nullptr, int8_t* offset_y = nullptr);
+    const uint8_t* get_bitmap(const lv_font_t* f, uint32_t c, uint32_t nc = '\0', uint32_t* full_width = nullptr, uint16_t* box_w = nullptr, uint16_t* box_h = nullptr, int16_t* offset_y = nullptr);
     uint8_t get_text_center(String s);
-    bool shift_char(char c, int8_t vmargin = 0);
+    bool shift_char(uint32_t c, uint32_t nc = '\0', int8_t vmargin = 0);
     //void matrix_char(char c);
     //void matrix_text(String s);
 
