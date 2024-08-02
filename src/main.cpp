@@ -599,7 +599,7 @@ void puck_man_cb(uint8_t event) {
 
 
 bool load_layer(uint8_t lnum, JsonVariant layer_json) {
-  if (layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull() || (layer_json[F("t")] == "t" && layer_json[F("w")].isNull()) ) {
+  if ( layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull() || (layer_json[F("t")] == "t" && layer_json[F("w")].isNull()) ) {
     if (layers[lnum] != nullptr) {
       delete layers[lnum];
       layers[lnum] = nullptr;
@@ -743,25 +743,6 @@ bool load_composite(String id) {
   }
 
   if (file.available()) {
-    // 360 ms on average
-    // 333 ms on average
-    // 346 ms on average
-
-    // 214 ms on average total time between show(), global StaticJSONDoc
-    //String json = file.readString();
-    //DeserializationError error = deserializeJson(gcmdoc, json);
-    //file.close();
-
-    // 241 ms on average total time between show(), global DynamicJSONDoc
-    // 212 ms on average total time between show(), global StaticJSONDoc
-    //DeserializationError error = deserializeJson(gcmdoc, file);
-    //file.close();
-
-    // 213 ms on average total time between show(), global DynamicJSONDoc
-    // 209 ms on average total time between show(), global StaticJSONDoc
-    // 189 ms on average total time between show(), local DynamicJSONDoc
-    // 186 ms on average total time between show(), local StaticJSONDoc
-    //DynamicJsonDocument gcmdoc(768);
     StaticJsonDocument<768> gcmdoc;
     ReadBufferingStream bufferedFile(file, 64);
     DeserializationError error = deserializeJson(gcmdoc, bufferedFile);
@@ -826,18 +807,6 @@ bool load_from_playlist(String id) {
     String fs_path = form_path(F("pl"), id);
     File file = LittleFS.open(fs_path, "r");
     if (file && file.available()) {
-      // 29 ms slower on average
-      //String json = file.readString();
-      //file.close();
-      //DeserializationError error = deserializeJson(gpldoc, json);
-
-      // 19 ms slower on average
-      //String json = file.readString();
-      //file.close();
-      //DeserializationError error = deserializeJson(gpldoc, file);
-
-      // fastest
-      // is this still the fastest if the playlist is long?
       ReadBufferingStream bufferedFile(file, 64);
       DeserializationError error = deserializeJson(gpldoc, bufferedFile);
       file.close();
@@ -897,7 +866,6 @@ public:
   virtual ~CaptiveRequestHandler() {}
 
   bool canHandle(AsyncWebServerRequest *request){
-    //request->addInterestingHeader("ANY");
     return true;
   }
 
@@ -963,10 +931,6 @@ void wifi_AP(void) {
 
 bool wifi_connect(void) {
   bool success = false;
-
-  //if (!WiFi.config(LOCAL_IP, GATEWAY, SUBNET_MASK, DNS1, DNS2)) {
-  //  DEBUG_PRINTLN(F("WiFi config failed."));
-  //}
 
   preferences.begin("config", false);
 
@@ -1258,24 +1222,10 @@ void show(void) {
     CRGBA pixel;
     for (uint8_t i = 0; i < NUM_LAYERS; i++) {
       if (layers[i] != nullptr) {
-        //Serial.print("show: ");
-        //Serial.println(i);
         for (uint16_t j = 0; j < NUM_LEDS; j++) {
-          // transparency is used in two different ways here.
-          // 1) if the pixels of the image have an alpha less than 100% (255) then they will be replaced with the background layer.
-          // 2) !!NOT IMPLEMENTED!! Layer composer has an Alpha slider which is separate from the image's alpha channel. This slider controls how much of the
-          //    non-transparent parts of the original image are blended with the layers below it.
-          // in short 1) local/pixel level effect and 2) global effect
-          //
           pixel = layers[i]->get_pixel(j);
-          uint8_t alpha = pixel.a;
           CRGB bgpixel = leds[j];
-          // before implementing pixel level transparency previously used a global alpha that is not currently implemented
-          //alpha = scale8(alpha, gimage_layer_alpha);
-          //if (alpha != 255) {
-          //  bgpixel.fadeLightBy(64); // fading the background areas make the pixel art stand out
-          //}
-          leds[j] = nblend(bgpixel, (CRGB)pixel, alpha);
+          leds[j] = nblend(bgpixel, (CRGB)pixel, pixel.a);
         }
       }
     }
@@ -1335,7 +1285,7 @@ void setup() {
   homogenize_brightness();
   FastLED.setBrightness(homogenized_brightness);
 
-  //random16_set_seed(analogRead(A0)); // use randomness ??? need to look up which pin for ESP32 ???
+  random16_set_seed(analogRead(A0)); // use randomness ??? need to look up which pin for ESP32 ???
 
   if (!LittleFS.begin()) {
     DEBUG_PRINTLN("LittleFS initialisation failed!");
@@ -1370,8 +1320,8 @@ void setup() {
   // use core 0 to load images to prevent lag
   xTaskCreatePinnedToCore(ReAnimator::load_image_from_queue, "Task1", 10000, NULL, 1, &Task1, 0);
 
-  //load_file(F("pl"), "startup");
-  load_file(F("im"), "bottle_magic");
+  load_file(F("pl"), "startup");
+  //load_file(F("im"), "bottle_magic");
 }
 
 
