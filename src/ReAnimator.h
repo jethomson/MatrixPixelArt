@@ -51,8 +51,6 @@ enum Info {TIME_12HR = 0, TIME_24HR = 1, DATE_MMDD = 2, DATE_DDMM = 3, TIME_12HR
 
 
 class ReAnimator {
-    //enum Direction {STILL = 0, N = 1, NE = 2, E = 3, SE = 4, S = 5, SW = 6, W = 7, NW = 8};
-
     uint8_t MTX_NUM_COLS = 0;
     uint8_t MTX_NUM_ROWS = 0;
     uint16_t MTX_NUM_LEDS = 0;
@@ -164,7 +162,6 @@ class ReAnimator {
     };
 
     const lv_font_t* font;
-    //const lv_font_t* clkfont;
 
     struct fstring {
       String s;
@@ -190,7 +187,6 @@ class ReAnimator {
 
   public:
     ReAnimator(uint8_t num_rows, uint8_t num_cols);
-    //~ReAnimator() { free(leds); leds = nullptr; free(pm_puck_dots); pm_puck_dots = nullptr;}
     ~ReAnimator() { delete[] leds; leds = nullptr; delete[] pm_puck_dots; pm_puck_dots = nullptr;}
 
     void setup(LayerType ltype, int8_t id);
@@ -247,9 +243,7 @@ class ReAnimator {
     void orbit(uint16_t draw_interval, int8_t delta);
     void theater_chase(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
     void general_chase(uint16_t draw_interval, uint16_t genparam, uint16_t(ReAnimator::*dfp)(uint16_t));
-    //void accelerate_decelerate_theater_chase(uint16_t(ReAnimator::*dfp)(uint16_t));
     void running_lights(uint16_t draw_interval, uint16_t genparam, uint16_t(ReAnimator::*dfp)(uint16_t));
-    //void accelerate_decelerate_running_lights(uint16_t(ReAnimator::*dfp)(uint16_t));
     void shooting_star(uint16_t draw_interval, uint8_t star_size, uint8_t star_trail_decay, uint8_t spm, uint16_t(ReAnimator::*dfp)(uint16_t));
     void cylon(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
 
@@ -295,12 +289,9 @@ class ReAnimator {
 // ++++++++++++++++++++++++++++++
 // ++++++++++++ TEXT ++++++++++++
 // ++++++++++++++++++++++++++++++
-    //const uint8_t* get_bitmap(const lv_font_t* f, char c, uint8_t* width = nullptr, uint8_t* height = nullptr, int8_t* offset_y = nullptr);
     const uint8_t* get_bitmap(const lv_font_t* f, uint32_t c, uint32_t nc = '\0', uint32_t* full_width = nullptr, uint16_t* box_w = nullptr, uint16_t* box_h = nullptr, int16_t* offset_y = nullptr);
     uint8_t get_text_center(String s);
     bool shift_char(uint32_t c, uint32_t nc = '\0', int8_t vmargin = 0);
-    //void matrix_char(char c);
-    //void matrix_text(String s);
 
 
 // ++++++++++++++++++++++++++++++

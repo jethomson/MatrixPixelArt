@@ -48,7 +48,6 @@
 
 //LV_FONT_DECLARE(ascii_sector_12); //OR use extern lv_font_t ascii_sector_12;
 extern lv_font_t ascii_sector_12;
-//extern lv_font_t seven_segment;
 
 const char* timezone = "EST5EDT,M3.2.0,M11.1.0";
 
@@ -63,12 +62,12 @@ inline void cb_dbg_print(uint32_t i) {
 ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
     set_lvfmcb(&cb_dbg_print);
 
-    // it should be able to use possible to use ReAnimator with matrices of different sizes in the same project
+    // it should be possible to use ReAnimator with matrices of different sizes in the same project
     // so store matrix size in the object instead of making it static to the class
     MTX_NUM_ROWS = num_rows,
     MTX_NUM_COLS = num_cols;
     MTX_NUM_LEDS = num_rows*num_cols;
-    //leds = (CRGBA*)malloc(MTX_NUM_LEDS*sizeof(CRGBA));
+
     // abort() is called if out of memory so no point in trying to check?
     leds = new CRGBA[MTX_NUM_LEDS];
 
@@ -139,7 +138,6 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
     fresh_image = false;
 
     font = &ascii_sector_12;
-    //clkfont = &seven_segment;
 
     refresh_text_index = 0;
     shift_char_column = 0;
@@ -167,7 +165,6 @@ ReAnimator::Freezer::Freezer(ReAnimator &r) : parent(r) {
 void ReAnimator::setup(LayerType ltype, int8_t id) {
     layer_brightness = 255;
     proxy_color_set = false;
-
 
     // we want patterns to persist from one composite to another if they are on the same layer.
     // this allows for a pattern to play continuously (i.e without restarting) when the next item in a playlist is loaded.
@@ -481,7 +478,7 @@ void ReAnimator::set_text(String s) {
     shift_char_column = 0; // start at the beginning of a glyph
 
     ftext.s = s;
-    ftext.vmargin = MTX_NUM_COLS/2 - get_text_center(ftext.s);
+    ftext.vmargin = MTX_NUM_ROWS/2 - get_text_center(ftext.s);
 }
 
 
@@ -778,7 +775,6 @@ int8_t ReAnimator::apply_overlay(Overlay overlay) {
 }
 
 
-//void ReAnimator::shift_text(struct fstring ftext) {
 void ReAnimator::refresh_text(uint16_t draw_interval) {
     if (is_wait_over(draw_interval)) {
         uint32_t c = ftext.s[refresh_text_index];
@@ -838,7 +834,6 @@ void ReAnimator::orbit(uint16_t draw_interval, int8_t delta) {
             }
         }
 
-        //leds[pos] = CHSV(*hue, 255, 255);
         leds[pos] = *rgb;
         pos = pos + delta;
 
@@ -866,7 +861,7 @@ void ReAnimator::theater_chase_old(uint16_t draw_interval, uint16_t(ReAnimator::
 //3 is confusing
 //2 gives a checkerboard
 //4 is OK
-//16, 128 is cool
+//16, 128 are cool
 void ReAnimator::theater_chase(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
     static uint16_t delta = 0;
 
@@ -874,7 +869,6 @@ void ReAnimator::theater_chase(uint16_t draw_interval, uint16_t(ReAnimator::*dfp
         fadeToBlackBy(leds, MTX_NUM_LEDS, 128);
 
         for (uint16_t i = 0; i+delta < MTX_NUM_LEDS; i=i+16) {
-            //leds[(this->*dfp)(i+delta)] = CHSV(*hue, 255, 255);
             leds[(this->*dfp)(i+delta)] = *rgb;
         }
 
@@ -891,7 +885,6 @@ void ReAnimator::general_chase(uint16_t draw_interval, uint16_t genparam, uint16
         fadeToBlackBy(leds, MTX_NUM_LEDS, (255-(genparam*8)));
 
         for (uint16_t i = 0; i+delta < MTX_NUM_LEDS; i=i+genparam) {
-            //leds[(this->*dfp)(i+delta)] = CHSV(*hue, 255, 255);
             leds[(this->*dfp)(i+delta)] = *rgb;
         }
 
@@ -909,7 +902,6 @@ void ReAnimator::running_lights(uint16_t draw_interval, uint16_t genparam, uint1
             uint16_t a = genparam*(i+delta)*255/(MTX_NUM_LEDS-1);
             // this pattern normally runs from right-to-left, so flip it by using negative indexing
             uint16_t ni = (MTX_NUM_LEDS-1) - i;
-            //leds[(this->*dfp)(ni)] = CHSV(*hue, 255, sin8(a));
             CRGBA light = *rgb;
             nscale8x3(light.r, light.g, light.b, 255-sin8(a));
             leds[(this->*dfp)(ni)] = light;
@@ -974,7 +966,6 @@ void ReAnimator::cylon(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16
     if (is_wait_over(draw_interval)) {
         fadeToBlackBy(leds, MTX_NUM_LEDS, 20);
 
-        //leds[(this->*dfp)(pos)] += CHSV(*hue, 255, 192);
         leds[(this->*dfp)(pos)] += *rgb;
 
         pos = pos + delta;
@@ -987,13 +978,7 @@ void ReAnimator::cylon(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16
 
 void ReAnimator::solid(uint16_t draw_interval) {
     if (is_wait_over(draw_interval)) {
-        //fill_solid(leds, MTX_NUM_LEDS, CHSV(hue, 255, 255));
         fill_solid(leds, MTX_NUM_LEDS, *rgb);
-        
-        
-        //CHSV chsv = rgb2hsv_approximate(*rgb);
-        //chsv.h += 128;
-        //fill_solid(leds, MTX_NUM_LEDS, chsv);
     }
 }
 
@@ -1082,8 +1067,6 @@ void ReAnimator::mitosis(uint16_t draw_interval, uint8_t cell_size) {
         for (uint8_t i = 0; i < cell_size; i++) {
             uint16_t pi = pos+(cell_size-1)-i;
             uint16_t ni = (MTX_NUM_LEDS-1) - pi;
-            //leds[pi] = CHSV(*hue, 255, 255);
-            //leds[ni] = CHSV(*hue, 255, 255);
             leds[pi] = *rgb;
             leds[ni] = *rgb;
         }
@@ -1100,7 +1083,6 @@ void ReAnimator::bubbles(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint
     static uint8_t bubble_time[num_bubbles] = {};
 
     if (pattern != last_pattern_ran) {
-        // ??? bubble_time[num_bubbles] = memset(bubble_time, 0, sizeof(bubble_time));
         memset(bubble_time, 0, sizeof(bubble_time));
 
     }
@@ -1163,7 +1145,6 @@ void ReAnimator::matrix(uint16_t draw_interval) {
 
         if (random8() > 205) {
             leds[0] = CHSV(HUE_GREEN, 255, 255);
-            //leds[0] = CRGBA::Green; // is this noticeably different from HUE_GREEN ?
             leds[0] = 0x00FF40; // result of using a HSV to RGB calculator to convert 96 (HUE_GREEN) to RGB. (96/256)*360 = 135. 135, 100%, 100% --> 0x00FF40
         }
         else {
@@ -1182,9 +1163,6 @@ void ReAnimator::weave(uint16_t draw_interval) {
 
     if (is_wait_over(draw_interval)) {
         fadeToBlackBy(leds, MTX_NUM_LEDS, 20);
-
-        //leds[pos] += CHSV(*hue, 255, 128);
-        //leds[MTX_NUM_LEDS-1-pos] += CHSV(*hue+(HUE_PURPLE-HUE_ALIEN_GREEN), 255, 128);
         leds[pos] += *rgb;
         leds[MTX_NUM_LEDS-1-pos] += (CRGBA::White - *rgb);
         pos = (pos + 2) % MTX_NUM_LEDS;
@@ -1406,8 +1384,6 @@ void ReAnimator::bouncing_balls(uint16_t draw_interval, uint16_t(ReAnimator::*df
     static uint16_t ball_vi[num_balls] = {};
 
     if (pattern != last_pattern_ran) {
-        // ??? ball_time[num_balls] = memset(ball_time, 0, sizeof(ball_time));
-        // ??? ball_vi[num_balls] = memset(ball_vi, 0, sizeof(ball_vi));
         memset(ball_time, 0, sizeof(ball_time));
         memset(ball_vi, 0, sizeof(ball_vi));
     }
@@ -1641,31 +1617,6 @@ void ReAnimator::fade_randomly(uint8_t chance_of_fade, uint8_t decay) {
 // ++++++++++++++++++++++++++++++
 // +++++++++++ IMAGE ++++++++++++
 // ++++++++++++++++++++++++++++++
-//bool ReAnimator::load_image_from_json(String json, String* message) {
-//  bool retval = false;
-//  //const size_t CAPACITY = JSON_OBJECT_SIZE(6) + JSON_ARRAY_SIZE(360);
-//  //StaticJsonDocument<CAPACITY> doc;
-//  DynamicJsonDocument doc(8192);
-//
-//  DeserializationError error = deserializeJson(doc, json);
-//  if (error) {
-//    //Serial.print("deserializeJson() failed: ");
-//    //Serial.println(error.c_str());
-//    if (message) {
-//      *message = F("load_image_from_json: deserializeJson() failed.");
-//    }
-//    return false;
-//  }
-//
-//  JsonObject object = doc.as<JsonObject>();
-//
-//  for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) leds[i] = 0;
-//  retval = deserializeSegment(object, leds, MTX_NUM_LEDS);
-//
-//  return retval;
-//}
-
-
 bool ReAnimator::load_image_from_file(String fs_path, String* message) {
     bool retval = false;
     if (fs_path == "") {
@@ -1684,8 +1635,6 @@ bool ReAnimator::load_image_from_file(String fs_path, String* message) {
         ReadBufferingStream bufferedFile(file, 64);
         DeserializationError error = deserializeJson(doc, bufferedFile);
         if (error) {
-            //Serial.print("deserializeJson() failed: ");
-            //Serial.println(error.c_str());
             if (message) {
                 *message = F("set_image(): deserializeJson() failed.");
             }
@@ -1721,11 +1670,10 @@ bool ReAnimator::load_image_from_file(String fs_path, String* message) {
 
 
 // this runs on core 0
-// loading an image takes a while can make the animation laggy if ran on the same core as the main code
+// loading an image takes a while which can make the animation laggy if ran on the same core as the main code
 void ReAnimator::load_image_from_queue(void* parameter) {
     for (;;) {
         // calling vTaskDelay() prevents watchdog error, but I'm not sure why and if this is a good way to handle it  
-        //vTaskDelay(1); // how long ???
         vTaskDelay(pdMS_TO_TICKS(1)); // 1 ms
         Image image;
         if (xQueueReceive(qimages, (void *)&image, 0) == pdTRUE) {
@@ -1778,30 +1726,6 @@ void ReAnimator::load_image_from_queue(void* parameter) {
 }
 
 
-/*
-  lv_font_glyph_dsc_t g;
-  bool g_ret = lv_font_get_glyph_dsc(myfont, &g, c, '\0');
-
-  if (g_ret && g.gid.index) {
-    lv_font_fmt_txt_dsc_t* fdsc = (lv_font_fmt_txt_dsc_t*)myfont->dsc;
-    const lv_font_fmt_txt_glyph_dsc_t* gdsc = &fdsc->glyph_dsc[g.gid.index];
-    const uint8_t* glyph = &fdsc->glyph_bitmap[gdsc->bitmap_index];
-
-    //uint8_t width = lv_font_get_glyph_width(myfont, c, '\0');
-    //uint8_t height = lv_font_get_line_height(myfont);
-    uint8_t width = gdsc->box_w;
-    uint8_t height = gdsc->box_h;
-
-    Serial.print("bpp: ");
-    Serial.print(fdsc->bpp);
-    Serial.print(" width: ");
-    Serial.print(width);
-    Serial.print(" height: ");
-    Serial.println(height);
-
-    if (glyph && height > 0 && width > 0) {
-*/
-
 
 // ++++++++++++++++++++++++++++++
 // ++++++++++++ TEXT ++++++++++++
@@ -1841,6 +1765,7 @@ const uint8_t* ReAnimator::get_bitmap(const lv_font_t* f, uint32_t c, uint32_t n
     return NULL;
 }
 
+
 uint8_t ReAnimator::get_text_center(String s) {
     uint8_t min_row = MTX_NUM_COLS;
     uint8_t max_row = 0;
@@ -1861,70 +1786,6 @@ uint8_t ReAnimator::get_text_center(String s) {
     }
     return 0;
 }
-
-/*
-uint8_t ReAnimator::get_text_center(String s) {
-    uint8_t min_row = MTX_NUM_COLS;
-    uint8_t max_row = 0;
-    for (uint8_t i = 0; i < s.length(); i++) {
-        char c = s[i];
-        const uint8_t* glyph = font->get_bitmap(font, c);
-        if (glyph) {
-            uint8_t width = font->get_width(font, c);
-            for (uint8_t j = 0; j < MTX_NUM_COLS; j++) {
-                for (uint8_t k = 0; k < width; k++) {
-                    uint16_t n = j*width + k;
-                    if(glyph[n]) {
-                        min_row = min(j, min_row);
-                        max_row = max(j, max_row);
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    if ((max_row-min_row+1)/2 + min_row > 0) {
-        return (max_row-min_row+1)/2 + min_row;
-    }
-    return 0;
-}
-*/
-
-/*
-// do not delete these yet. they might be better for use with position functions.
-void ReAnimator::matrix_char(char c) {
-    const uint8_t* glyph = font->get_bitmap(font, c);
-    if (glyph) {
-        for (uint16_t q = 0; q < MTX_NUM_LEDS; q++) {
-            leds[q] = CHSV(0, 0, 0);
-        }
-        uint8_t width = font->get_width(font, c);
-        uint16_t n = 0;
-        uint8_t pad = (MTX_NUM_COLS-width)/2;
-        for (uint8_t i = 0; i < MTX_NUM_COLS; i++) {
-            for (uint8_t j = 0; j < width; j++) {
-                uint8_t k = (MTX_NUM_COLS-1)-pad-j;
-                Point p;
-                p.x = k;
-                p.y = i;
-                leds[cart2serp(p)] = CHSV(hue, 255, glyph[n]);
-                n++;
-            }
-        }
-    }
-}
-
-void ReAnimator::matrix_text(String s) {
-    static uint32_t pm = 0;
-    static uint16_t i = 0;
-    if ((millis()-pm) > 1000) {
-        pm = millis();
-        matrix_char(s[i]);
-        i = (i+1) % s.length();
-    }
-}
-*/
 
 
 bool ReAnimator::shift_char(uint32_t c, uint32_t nc, int8_t vmargin) {
@@ -1990,14 +1851,6 @@ bool ReAnimator::shift_char(uint32_t c, uint32_t nc, int8_t vmargin) {
                 alpha = glyph[(glyph_row*box_w)+shift_char_column];
                 glyph_row++;
             }
-/*
-
-            uint16_t n = (i-vmargin-(MTX_NUM_ROWS-1-box_h-offset_y))*box_w + shift_char_column;
-            if (0 <= n && n < box_w*box_h && shift_char_column < box_w) {
-                //alpha = (glyph[n] == 0) ? 0 : 255; // remove partial transparency
-                alpha = glyph[n];
-            }
-*/
             leds[cart2serp(p)].a = alpha;
         }
 
@@ -2173,7 +2026,6 @@ int16_t ReAnimator::cart2serp(Point p) {
 }
 
 
-//void ReAnimator::flip(CRGB sm[MTX_NUM_LEDS], bool dim) {
 void ReAnimator::flip(CRGB* sm, bool dim) {
     Point p1;
     Point p2;
@@ -2369,11 +2221,6 @@ uint16_t ReAnimator::mover(uint16_t i) {
 // ++++++++++++++++++++++++++++++
 // ++++++++++ HELPERS +++++++++++
 // ++++++++++++++++++++++++++++++
-//void ReAnimator::fadeToBlackBy(CRGBA pixel, uint8_t fadeBy) {
-//    CRGB pixel_rgb = (CRGB)pixel;
-//    pixel_rgb = pixel_rgb.scale8(255-fadeBy);
-//}
-
 void ReAnimator::fadeToBlackBy(CRGBA leds[], uint16_t num_leds, uint8_t fadeBy) {
     for (uint16_t i = 0; i < num_leds; i++) {
         leds[i].fadeToBlackBy(fadeBy);
@@ -2548,7 +2395,6 @@ bool ReAnimator::Freezer::is_frozen() {
 }
 
 
-// ??? static int ReAnimator::compare(const void *a, const void *b) {
 int ReAnimator::compare(const void *a, const void *b) {
     Starship *StarshipA = (Starship *)a;
     Starship *StarshipB = (Starship *)b;
