@@ -135,7 +135,8 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
 
     dr_delta = 0;
 
-    fresh_image = false;
+    image_loaded = false;
+    image_clean = false;
 
     font = &ascii_sector_12;
 
@@ -190,7 +191,8 @@ void ReAnimator::setup(LayerType ltype, int8_t id) {
         set_overlay(NO_OVERLAY, false);
         set_cb(noop_cb);
 
-        fresh_image = false;
+        image_loaded = false;
+        image_clean = false;
     }
 }
 
@@ -465,10 +467,10 @@ void ReAnimator::increment_overlay(bool is_persistent) {
 
 void ReAnimator::set_image(String id, String* message) {
   image_path = form_path(F("im"), id);
-  //fresh_image = load_image_from_file(image_path, message);
-  Image image = {&image_path, &MTX_NUM_LEDS, leds, &proxy_color_set, &proxy_color, &fresh_image};
+  image_loaded = false;
+  image_clean = false;
+  Image image = {&image_path, &MTX_NUM_LEDS, leds, &proxy_color_set, &proxy_color, &image_loaded, &image_clean};
   xQueueSend(qimages, (void *)&image, 0);
-  fresh_image = true;
 }
 
 
@@ -564,9 +566,11 @@ void ReAnimator::reanimate() {
     //process_sound();
 
     if (!freezer.is_frozen()) {
-        if (_ltype == Image_t && !fresh_image) {
-            //fresh_image = load_image_from_file(image_path);
-            Image image = {&image_path, &MTX_NUM_LEDS, leds, &proxy_color_set, &proxy_color, &fresh_image};
+        if (_ltype == Image_t && image_loaded && !image_clean) {
+            // frozen_decay changed image, so refresh the image.
+            image_loaded = false;
+            image_clean = false;
+            Image image = {&image_path, &MTX_NUM_LEDS, leds, &proxy_color_set, &proxy_color, &image_loaded, &image_clean};
             xQueueSend(qimages, (void *)&image, 0);
         }
         else if (_ltype == Pattern_t) {
@@ -766,7 +770,7 @@ int8_t ReAnimator::apply_overlay(Overlay overlay) {
             freezer.timer(7000);
             if (freezer.is_frozen()) {
                 fade_randomly(7, 100);
-                fresh_image = false;
+                image_clean = false;
             }
             break;
     }
@@ -1654,7 +1658,7 @@ bool ReAnimator::load_image_from_file(String fs_path, String* message) {
 
         // for unknown reasons initializing the leds[] to all black
         // makes the code slightly faster
-        for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) leds[i] = 0x00FFFFFF;
+        for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) leds[i] = 0x00000000;
         retval = deserializeSegment(object, leds, MTX_NUM_LEDS);
         if (message) {
             *message = F("set_image(): deserializeSegment() had error.");
@@ -1679,18 +1683,21 @@ void ReAnimator::load_image_from_queue(void* parameter) {
         if (xQueueReceive(qimages, (void *)&image, 0) == pdTRUE) {
             // make sure we are not referencing leds in a layer that was destroyed
             if (image.leds == nullptr) {
-                *(image.fresh_image) = false;
+                *(image.image_loaded) = false;
+                *(image.image_clean) = false;
                 continue;
             }
 
             if (*(image.image_path) == "") {
-               *(image.fresh_image) = false;
+                *(image.image_loaded) = false;
+               *(image.image_clean) = false;
                 continue;
             }
 
             File file = LittleFS.open(*(image.image_path), "r");
             if (!file) {
-                *(image.fresh_image) = false;
+                *(image.image_loaded) = false;
+                *(image.image_clean) = false;
                 continue;
             }
 
@@ -1699,7 +1706,8 @@ void ReAnimator::load_image_from_queue(void* parameter) {
                 ReadBufferingStream bufferedFile(file, 64);
                 DeserializationError error = deserializeJson(doc, bufferedFile);
                 if (error) {
-                    *(image.fresh_image) = false;
+                    *(image.image_loaded) = false;
+                    *(image.image_clean) = false;
                     continue;
                 }
 
@@ -1716,8 +1724,9 @@ void ReAnimator::load_image_from_queue(void* parameter) {
 
                 // for unknown reasons initializing the leds[] to all black
                 // makes the code slightly faster
-                for (uint16_t i = 0; i < *(image.MTX_NUM_LEDS); i++) image.leds[i] = 0x00FFFFFF;
-                *(image.fresh_image) = deserializeSegment(object, image.leds, *(image.MTX_NUM_LEDS));
+                for (uint16_t i = 0; i < *(image.MTX_NUM_LEDS); i++) image.leds[i] = 0x00000000;
+                *(image.image_loaded) = deserializeSegment(object, image.leds, *(image.MTX_NUM_LEDS));
+                *(image.image_clean) = *(image.image_loaded);
             }
             file.close();
         }

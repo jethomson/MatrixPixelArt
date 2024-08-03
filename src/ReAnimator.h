@@ -57,7 +57,7 @@ class ReAnimator {
 
     CRGBA* leds;
 
-    LayerType _ltype;
+    //LayerType _ltype;
     int8_t _id ;
 
     uint8_t layer_brightness;
@@ -143,7 +143,7 @@ class ReAnimator {
     String image_path;
     CRGB proxy_color;
     bool proxy_color_set;
-    bool fresh_image;
+    bool image_clean; // tracks whether frozen decay (or possibly other accents) have corrupted the image indicating it needs a refresh
 
     typedef struct Image {
       String* image_path;
@@ -151,7 +151,8 @@ class ReAnimator {
       CRGBA* leds;
       bool* proxy_color_set;
       CRGB* proxy_color;
-      bool* fresh_image;
+      bool* image_loaded;
+      bool* image_clean;
     } Image;
 
     static QueueHandle_t qimages;
@@ -186,6 +187,9 @@ class ReAnimator {
     uint32_t fwpm ; // previous millis for finished_waiting()
 
   public:
+    LayerType _ltype;
+    bool image_loaded; // tracks whether image loading into leds[] has completed. helps prevent flicker by trying to display leds[] that is blank or has a partial image.
+
     ReAnimator(uint8_t num_rows, uint8_t num_cols);
     ~ReAnimator() { delete[] leds; leds = nullptr; delete[] pm_puck_dots; pm_puck_dots = nullptr;}
 

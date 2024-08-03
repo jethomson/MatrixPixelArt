@@ -1212,20 +1212,32 @@ void show(void) {
     //if (dt > 100) {
     //  DEBUG_PRINTLN(dt);
     //}
-    refresh_now = false;
+    //refresh_now = false;
     gdynamic_hue+=3;
     gdynamic_rgb = CHSV(gdynamic_hue, 255, 255);
     gdynamic_comp_rgb = CRGB::White - gdynamic_rgb;
     grandom_hue = random8();
 
-    FastLED.clear(); // use clear instead of tracking background layer.
+    bool first_layer = true;
     CRGBA pixel;
     for (uint8_t i = 0; i < NUM_LAYERS; i++) {
       if (layers[i] != nullptr) {
+        if (layers[i]->_ltype == Image_t && !layers[i]->image_loaded) {
+          // to prevent flicker do not show an image layer if the image is not finished loading
+          continue;
+        }
+        uint8_t alpha_mask = 0; // when 0, then transparency is determined by pixel.a
+        if (first_layer) {
+          first_layer = false;
+          refresh_now = false;
+          // data is in leds[] is completely covered instead of blended for first layer
+          // this should be faster than FastLED.clear()
+          alpha_mask = 255; // when 255, then no transparency
+        }
         for (uint16_t j = 0; j < NUM_LEDS; j++) {
           pixel = layers[i]->get_pixel(j);
           CRGB bgpixel = leds[j];
-          leds[j] = nblend(bgpixel, (CRGB)pixel, pixel.a);
+          leds[j] = nblend(bgpixel, (CRGB)pixel, pixel.a|alpha_mask);
         }
       }
     }
