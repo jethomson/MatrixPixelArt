@@ -480,7 +480,21 @@ void ReAnimator::set_text(String s) {
     shift_char_column = 0; // start at the beginning of a glyph
 
     ftext.s = s;
-    ftext.vmargin = MTX_NUM_ROWS/2 - get_text_center(ftext.s);
+
+    int16_t max_height_above_baseline = 0;
+    for (uint8_t i = 0; i < s.length(); i++) {
+        char c = s[i];
+        uint16_t box_h = 0;
+        int16_t offset_y = 0;
+
+        const uint8_t* glyph = get_bitmap(font, s[i], '\0', nullptr, nullptr, &box_h, &offset_y);
+        if (glyph && box_h > 0) {
+            max_height_above_baseline = max((int16_t)(box_h+offset_y), max_height_above_baseline);
+            ftext.baseline = max((int16_t)(-offset_y), ftext.baseline);
+        }
+    }
+    ftext.line_height = max_height_above_baseline+ftext.baseline;
+    ftext.vmargin = (MTX_NUM_ROWS - ftext.line_height)/2;
 }
 
 
@@ -783,7 +797,7 @@ void ReAnimator::refresh_text(uint16_t draw_interval) {
     if (is_wait_over(draw_interval)) {
         uint32_t c = ftext.s[refresh_text_index];
         uint32_t nc = ftext.s[(refresh_text_index+1) % ftext.s.length()];
-        if(shift_char(c, nc, ftext.vmargin)) {
+        if(shift_char(c, nc)) {
             refresh_text_index = (refresh_text_index+1) % ftext.s.length();
         }
     }
@@ -1773,8 +1787,7 @@ const uint8_t* ReAnimator::get_bitmap(const lv_font_t* f, uint32_t c, uint32_t n
     }
     return NULL;
 }
-
-
+/*
 uint8_t ReAnimator::get_text_center(String s) {
     uint8_t min_row = MTX_NUM_COLS;
     uint8_t max_row = 0;
@@ -1789,15 +1802,45 @@ uint8_t ReAnimator::get_text_center(String s) {
             max_row = max((uint8_t)(box_h-offset_y), max_row);
         }
     }
-
+    Serial.print("min_row: ");
+    Serial.println(min_row);
+    Serial.print("max_row: ");
+    Serial.println(max_row);
     if ((max_row-min_row+1)/2 + min_row > 0) {
         return (max_row-min_row+1)/2 + min_row;
     }
     return 0;
 }
+*/
 
 
-bool ReAnimator::shift_char(uint32_t c, uint32_t nc, int8_t vmargin) {
+/*
+int16_t ReAnimator::get_text_center(String s) {
+    int16_t marg = MTX_NUM_ROWS;
+    for (uint8_t i = 0; i < s.length(); i++) {
+        char c = s[i];
+        uint16_t box_h = 0;
+        int16_t offset_y = 0;
+
+        const uint8_t* glyph = get_bitmap(font, s[i], '\0', nullptr, nullptr, &box_h, &offset_y);
+        if (glyph && box_h > 0) {
+            ftext.baseline = max((int16_t)(-offset_y), ftext.baseline);
+            int16_t glyph_marg = MTX_NUM_ROWS-box_h-offset_y;
+            Serial.println(MTX_NUM_ROWS-box_h-offset_y);
+            marg = min(glyph_marg, marg);
+        }
+    }
+    Serial.print("marg: ");
+    Serial.println(marg);
+    return 0;
+    if (marg/2 > 0) {
+        return marg/2;
+    }
+    return 0;
+}
+*/
+
+bool ReAnimator::shift_char(uint32_t c, uint32_t nc) {
     if (shift_char_tracking) {
         for (uint8_t i = 0; i < MTX_NUM_ROWS; i++) {
             for (uint8_t j = 0; j < MTX_NUM_COLS-1; j++) {
@@ -1852,11 +1895,10 @@ bool ReAnimator::shift_char(uint32_t c, uint32_t nc, int8_t vmargin) {
             // instead of dimming the pixel color to match the glyph's brightness we use transparency
             // where a transparency of 0 represents the glyph's negative space
             uint8_t alpha = 0;
-            // do not start drawning the glyph until we are on the right line to ensure
-            // the glyph is in the correct position relative to the other characters: MTX_NUM_ROWS-box_h-offset_y
-            // and that the text is vertically centered: vmargin
-            if (i >= (MTX_NUM_ROWS-box_h-offset_y) + vmargin && glyph_row < box_h) {
-                //alpha = (glyph[(glyph_row*box_w)+shift_char_column] == 0) ? 0 : 255; // remove partial transparency
+            // do not start drawning the glyph until we are on the right line to ensure the glyph is in the
+            // orrect position relative to the other characters: MTX_NUM_ROWS-box_h-offset_y-ftext.baseline
+            // and that the text is vertically centered: ftext.vmargin
+            if (i >= (MTX_NUM_ROWS-box_h-offset_y-ftext.baseline) - ftext.vmargin && glyph_row < box_h) {
                 alpha = glyph[(glyph_row*box_w)+shift_char_column];
                 glyph_row++;
             }
