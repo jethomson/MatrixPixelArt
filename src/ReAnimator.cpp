@@ -1787,58 +1787,7 @@ const uint8_t* ReAnimator::get_bitmap(const lv_font_t* f, uint32_t c, uint32_t n
     }
     return NULL;
 }
-/*
-uint8_t ReAnimator::get_text_center(String s) {
-    uint8_t min_row = MTX_NUM_COLS;
-    uint8_t max_row = 0;
-    for (uint8_t i = 0; i < s.length(); i++) {
-        char c = s[i];
-        uint16_t box_h = 0;
-        int16_t offset_y = 0;
 
-        const uint8_t* glyph = get_bitmap(font, s[i], '\0', nullptr, nullptr, &box_h, &offset_y);
-        if (glyph && box_h > 0) {
-            min_row = min((uint8_t)(MTX_NUM_ROWS-box_h-offset_y), min_row);
-            max_row = max((uint8_t)(box_h-offset_y), max_row);
-        }
-    }
-    Serial.print("min_row: ");
-    Serial.println(min_row);
-    Serial.print("max_row: ");
-    Serial.println(max_row);
-    if ((max_row-min_row+1)/2 + min_row > 0) {
-        return (max_row-min_row+1)/2 + min_row;
-    }
-    return 0;
-}
-*/
-
-
-/*
-int16_t ReAnimator::get_text_center(String s) {
-    int16_t marg = MTX_NUM_ROWS;
-    for (uint8_t i = 0; i < s.length(); i++) {
-        char c = s[i];
-        uint16_t box_h = 0;
-        int16_t offset_y = 0;
-
-        const uint8_t* glyph = get_bitmap(font, s[i], '\0', nullptr, nullptr, &box_h, &offset_y);
-        if (glyph && box_h > 0) {
-            ftext.baseline = max((int16_t)(-offset_y), ftext.baseline);
-            int16_t glyph_marg = MTX_NUM_ROWS-box_h-offset_y;
-            Serial.println(MTX_NUM_ROWS-box_h-offset_y);
-            marg = min(glyph_marg, marg);
-        }
-    }
-    Serial.print("marg: ");
-    Serial.println(marg);
-    return 0;
-    if (marg/2 > 0) {
-        return marg/2;
-    }
-    return 0;
-}
-*/
 
 bool ReAnimator::shift_char(uint32_t c, uint32_t nc) {
     if (shift_char_tracking) {
