@@ -137,6 +137,7 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
 
     image_loaded = false;
     image_clean = false;
+    image_not_loaded_count = 0;
 
     font = &ascii_sector_12;
 
@@ -193,6 +194,7 @@ void ReAnimator::setup(LayerType ltype, int8_t id) {
 
         image_loaded = false;
         image_clean = false;
+        image_not_loaded_count = 0;
     }
 }
 
@@ -469,9 +471,85 @@ void ReAnimator::set_image(String id, String* message) {
   image_path = form_path(F("im"), id);
   image_loaded = false;
   image_clean = false;
+  image_not_loaded_count = 0;
   Image image = {&image_path, &MTX_NUM_LEDS, leds, &proxy_color_set, &proxy_color, &image_loaded, &image_clean};
   xQueueSend(qimages, (void *)&image, 0);
 }
+
+
+// this runs on core 0
+// loading an image takes a while which can make the animation laggy if ran on the same core as the main code
+void ReAnimator::load_image_from_queue(void* parameter) {
+    for (;;) {
+        // calling vTaskDelay() prevents watchdog error, but I'm not sure why and if this is a good way to handle it  
+        vTaskDelay(pdMS_TO_TICKS(1)); // 1 ms
+        Image image;
+        if (xQueueReceive(qimages, (void *)&image, 0) == pdTRUE) {
+            // make sure we are not referencing leds in a layer that was destroyed
+            if (image.leds == nullptr) {
+                *(image.image_loaded) = false;
+                *(image.image_clean) = false;
+                continue;
+            }
+
+            if (*(image.image_path) == "") {
+                *(image.image_loaded) = false;
+               *(image.image_clean) = false;
+                continue;
+            }
+
+            File file = LittleFS.open(*(image.image_path), "r");
+            if (!file) {
+                *(image.image_loaded) = false;
+                *(image.image_clean) = false;
+                continue;
+            }
+
+            if (file.available()) {
+                DynamicJsonDocument doc(8192);
+                ReadBufferingStream bufferedFile(file, 64);
+                DeserializationError error = deserializeJson(doc, bufferedFile);
+                if (error) {
+                    *(image.image_loaded) = false;
+                    *(image.image_clean) = false;
+                    continue;
+                }
+
+                JsonObject object = doc.as<JsonObject>();
+
+                *(image.proxy_color_set) = false;
+                if (!object[F("pc")].isNull()) {
+                    std::string pc = object[F("pc")].as<std::string>();
+                    if (!pc.empty()) {
+                        *(image.proxy_color) = std::stoul(pc, nullptr, 16);
+                        *(image.proxy_color_set) = true;
+                    }
+                }
+
+                // for unknown reasons initializing the leds[] to all black
+                // makes the code slightly faster
+                for (uint16_t i = 0; i < *(image.MTX_NUM_LEDS); i++) image.leds[i] = 0x00000000;
+                *(image.image_loaded) = deserializeSegment(object, image.leds, *(image.MTX_NUM_LEDS));
+                *(image.image_clean) = *(image.image_loaded);
+            }
+            file.close();
+        }
+    }
+    vTaskDelete(NULL);
+}
+
+
+int8_t ReAnimator::get_image_status() {
+    if (!image_loaded) {
+        if (image_not_loaded_count > 4) {
+            return -1; // taking too long to load, image is considered broken
+        }
+        image_not_loaded_count++;
+        return 0; // image has not finished loading yet
+    }
+    return 1;
+}
+
 
 
 void ReAnimator::set_text(String s) {
@@ -1682,68 +1760,6 @@ bool ReAnimator::load_image_from_file(String fs_path, String* message) {
         *message = F("set_image(): Matrix loaded.");
     }
     return retval;
-}
-
-
-// this runs on core 0
-// loading an image takes a while which can make the animation laggy if ran on the same core as the main code
-void ReAnimator::load_image_from_queue(void* parameter) {
-    for (;;) {
-        // calling vTaskDelay() prevents watchdog error, but I'm not sure why and if this is a good way to handle it  
-        vTaskDelay(pdMS_TO_TICKS(1)); // 1 ms
-        Image image;
-        if (xQueueReceive(qimages, (void *)&image, 0) == pdTRUE) {
-            // make sure we are not referencing leds in a layer that was destroyed
-            if (image.leds == nullptr) {
-                *(image.image_loaded) = false;
-                *(image.image_clean) = false;
-                continue;
-            }
-
-            if (*(image.image_path) == "") {
-                *(image.image_loaded) = false;
-               *(image.image_clean) = false;
-                continue;
-            }
-
-            File file = LittleFS.open(*(image.image_path), "r");
-            if (!file) {
-                *(image.image_loaded) = false;
-                *(image.image_clean) = false;
-                continue;
-            }
-
-            if (file.available()) {
-                DynamicJsonDocument doc(8192);
-                ReadBufferingStream bufferedFile(file, 64);
-                DeserializationError error = deserializeJson(doc, bufferedFile);
-                if (error) {
-                    *(image.image_loaded) = false;
-                    *(image.image_clean) = false;
-                    continue;
-                }
-
-                JsonObject object = doc.as<JsonObject>();
-
-                *(image.proxy_color_set) = false;
-                if (!object[F("pc")].isNull()) {
-                    std::string pc = object[F("pc")].as<std::string>();
-                    if (!pc.empty()) {
-                        *(image.proxy_color) = std::stoul(pc, nullptr, 16);
-                        *(image.proxy_color_set) = true;
-                    }
-                }
-
-                // for unknown reasons initializing the leds[] to all black
-                // makes the code slightly faster
-                for (uint16_t i = 0; i < *(image.MTX_NUM_LEDS); i++) image.leds[i] = 0x00000000;
-                *(image.image_loaded) = deserializeSegment(object, image.leds, *(image.MTX_NUM_LEDS));
-                *(image.image_clean) = *(image.image_loaded);
-            }
-            file.close();
-        }
-    }
-    vTaskDelete(NULL);
 }
 
 

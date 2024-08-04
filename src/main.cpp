@@ -100,6 +100,8 @@ bool create_patterns_list(void);
 bool create_accents_list(void);
 bool save_data(String fs_path, String json, String* message = nullptr);
 void puck_man_cb(uint8_t event);
+bool image_exists(String id);
+bool is_valid_layer_json(JsonVariant layer_json);
 bool load_layer(uint8_t lnum, JsonVariant layer_json);
 bool load_image_to_layer(uint8_t lnum, String id);
 bool load_image_solo(String id);
@@ -598,13 +600,39 @@ void puck_man_cb(uint8_t event) {
 }
 
 
+bool image_exists(String id) {
+  return image_list.find(id.c_str()) != image_list.end();
+}
+
+
+bool is_valid_layer_json(JsonVariant layer_json) {
+  if (layer_json[F("t")] == "e") {
+    return false;
+  }
+  if (layer_json[F("t")].isNull()) {
+    return false;
+  }
+  if (layer_json[F("id")].isNull()) {
+    return false;
+  }
+  if (layer_json[F("t")] == "t" && layer_json[F("w")].isNull()) {
+    return false;
+  }
+  if (layer_json[F("t")] == "im" && !image_exists(layer_json[F("id")])) {
+    return false;
+  }
+  return true;
+}
+
+
 bool load_layer(uint8_t lnum, JsonVariant layer_json) {
-  if ( layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull() || (layer_json[F("t")] == "t" && layer_json[F("w")].isNull()) ) {
+  //if ( layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull() || (layer_json[F("t")] == "t" && layer_json[F("w")].isNull()) || (layer_json[F("t")] == "im" && !image_exists(layer_json[F("id")])) ) {
+  if (!is_valid_layer_json(layer_json)) {
     if (layers[lnum] != nullptr) {
       delete layers[lnum];
       layers[lnum] = nullptr;
     }
-    return true;
+    return false;
   }
 
   if (layers[lnum] == nullptr) {
@@ -660,7 +688,9 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
       ghost_layers[lnum] = 4;
     }
     layers[lnum]->setup(Image_t, -2);
-    load_image_to_layer(lnum, id);
+    if (!load_image_to_layer(lnum, id)) {
+      return false;
+    }
     layers[lnum]->set_overlay(static_cast<Overlay>(accent_id), true);
     layers[lnum]->set_heading(movement);
   }
@@ -698,14 +728,18 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
 // existence checks.
 bool load_image_to_layer(uint8_t lnum, String id) {
   // the set image_list is used instead of LittleFS.exists() because exists() is much slower
-  if ( layers[lnum] != nullptr && image_list.find(id.c_str()) != image_list.end() ) {
-    layers[lnum]->set_image(id);
-    // since the image is loaded asynchronously using another core to prevent lag
-    // waiting to determine if the image was loaded successfully would defeat the purpose.
-    // so the best we can do is check if the image exists for indicating success.
-    // this file existence check helps playlist handling perform better because it means
-    // non-existent images can be skipped.
-    return true;
+  if (layers[lnum] != nullptr) {
+    if (image_exists(id)) {
+      layers[lnum]->set_image(id);
+      // since the image is loaded asynchronously using another core to prevent lag
+      // waiting to determine if the image was loaded successfully would defeat the purpose.
+      // so the best we can do is check if the image exists for indicating success.
+      // this file existence check helps playlist handling perform better because it means
+      // non-existent images can be skipped.
+      return true;
+    }
+    delete layers[lnum];
+    layers[lnum] = nullptr;
   }
   return false;
 }
@@ -724,9 +758,11 @@ bool load_image_solo(String id) {
   if (layers[0] == nullptr) {
     layers[0] = new ReAnimator(NUM_ROWS, NUM_COLS);
     layers[0]->setup(Image_t, -2);
-    layers[0]->set_color(&gdynamic_rgb);
     retval = load_image_to_layer(0, id);
-    layers[0]->set_heading(0);
+    if (retval) {
+      layers[0]->set_color(&gdynamic_rgb);
+      layers[0]->set_heading(0);
+    }
   }
 
   return retval;
@@ -759,7 +795,7 @@ bool load_composite(String id) {
     if (!layer_objects.isNull() && layer_objects.size() > 0) {
       for (uint8_t i = 0; i < layer_objects.size(); i++) {
         if(layer_objects[i].is<JsonVariant>()) {
-          retval = load_layer(i, layer_objects[i]);
+          retval = load_layer(i, layer_objects[i]) || retval;
         }
       }
     }
@@ -1222,9 +1258,21 @@ void show(void) {
     CRGBA pixel;
     for (uint8_t i = 0; i < NUM_LAYERS; i++) {
       if (layers[i] != nullptr) {
-        if (layers[i]->_ltype == Image_t && !layers[i]->image_loaded) {
-          // to prevent flicker do not show an image layer if the image is not finished loading
-          continue;
+        if (layers[i]->_ltype == Image_t) {
+          // to prevent flicker do not show an image layer if the image is not finished loading.
+          // if break loop, then higher layers will NOT be shown until the image is loaded.
+          // if continue loop, then higher layers will be shown before the image is loaded.
+          // using break; prevents a flicker at the cost of waiting longer for every layer to be shown
+
+          // it is possible the image may never load, so after some time has passed the image is
+          // marked as broken (-1) by get_image_status()
+          uint8_t image_status = layers[i]->get_image_status();
+          if (image_status == 0) {
+            break;
+          }
+          if (image_status == -1) {
+            continue;
+          }
         }
         uint8_t alpha_mask = 0; // when 0, then transparency is determined by pixel.a
         if (first_layer) {

@@ -144,6 +144,7 @@ class ReAnimator {
     CRGB proxy_color;
     bool proxy_color_set;
     bool image_clean; // tracks whether frozen decay (or possibly other accents) have corrupted the image indicating it needs a refresh
+    uint8_t image_not_loaded_count = 0;
 
     typedef struct Image {
       String* image_path;
@@ -219,6 +220,8 @@ class ReAnimator {
     void increment_overlay(bool is_persistent);
 
     void set_image(String fs_path, String* message = nullptr);
+    static void load_image_from_queue(void* parameter);
+    int8_t get_image_status();
     void set_text(String s);
     void set_info(Info id);
 
@@ -229,8 +232,6 @@ class ReAnimator {
     void set_heading(uint8_t h);
 
     //void set_sound_value_gain(uint8_t gain);
-
-    static void load_image_from_queue(void* parameter);
 
     void clear();
     void reanimate();
