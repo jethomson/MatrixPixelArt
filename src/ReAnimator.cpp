@@ -1670,9 +1670,7 @@ bool ReAnimator::load_image_from_file(String fs_path, String* message) {
             }
         }
 
-        // for unknown reasons initializing the leds[] to all black
-        // makes the code slightly faster
-        for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) leds[i] = 0x00000000;
+        clear();
         retval = deserializeSegment(object, leds, MTX_NUM_LEDS);
         if (message) {
             *message = F("set_image(): deserializeSegment() had error.");
