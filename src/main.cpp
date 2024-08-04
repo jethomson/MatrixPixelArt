@@ -1271,7 +1271,7 @@ void show(void) {
             break;
           }
           if (image_status == -1) {
-            continue;
+            continue; // skip the showing the image, but show the rest of the layers
           }
         }
         uint8_t alpha_mask = 0; // when 0, then transparency is determined by pixel.a
