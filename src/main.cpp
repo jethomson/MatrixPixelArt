@@ -1268,10 +1268,10 @@ void show(void) {
           // marked as broken (-1) by get_image_status()
           uint8_t image_status = layers[i]->get_image_status();
           if (image_status == 0) {
-            break;
+            break; // skip showing the image, and every layer above it.
           }
           if (image_status == -1) {
-            continue; // skip the showing the image, but show the rest of the layers
+            continue; // skip showing the image, but show the rest of the layers.
           }
         }
         uint8_t alpha_mask = 0; // when 0, then transparency is determined by pixel.a
