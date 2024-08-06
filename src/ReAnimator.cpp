@@ -485,6 +485,7 @@ void ReAnimator::load_image_from_queue(void* parameter) {
         vTaskDelay(pdMS_TO_TICKS(1)); // 1 ms
         Image image;
         if (xQueueReceive(qimages, (void *)&image, 0) == pdTRUE) {
+            //print_dt();
             // make sure we are not referencing leds in a layer that was destroyed
             if (image.leds == nullptr) {
                 *(image.image_loaded) = false;
@@ -533,6 +534,7 @@ void ReAnimator::load_image_from_queue(void* parameter) {
                 *(image.image_clean) = *(image.image_loaded);
             }
             file.close();
+            //print_dt();
         }
     }
     vTaskDelete(NULL);
@@ -2417,6 +2419,7 @@ int ReAnimator::compare(const void *a, const void *b) {
 }
 
 
+
 /*
 void ReAnimator::print_dt() {
     static uint32_t pm = 0; // previous millis
@@ -2425,6 +2428,7 @@ void ReAnimator::print_dt() {
     pm = millis();
 }
 */
+
 
 
 

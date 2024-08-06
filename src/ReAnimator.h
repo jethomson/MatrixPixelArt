@@ -336,7 +336,7 @@ class ReAnimator {
     void ntranslate(CRGBA in[], CRGBA out[], int8_t xi = 0, int8_t yi = 0, int8_t sx = 1, int8_t sy = 1, bool wrap = true, int8_t gap = 0);
     uint16_t mover(uint16_t i);
 
-    //void print_dt();
+    //static void print_dt();
 
 };
 

@@ -25,6 +25,9 @@
 #define SOFT_AP_SSID "PixelArt"
 #define MDNS_HOSTNAME "pixelart"
 
+// minimum amount of time between display refreshes
+#define REFRESH_INTERVAL 100
+
 // these values are used if the number of rows and columns of the LED matrix are not provided
 // on the configuration page of the frontend
 #define DEFAULT_NUM_ROWS 16
@@ -874,6 +877,10 @@ bool load_from_playlist(String id) {
       if(load_file(item[F("t")], item[F("id")])) {
         if(item[F("d")].is<JsonInteger>()) {
           item_duration = item[F("d")];
+          // it takes a bit under 100 ms to load an image
+          // item_durations of around 100 ms and less can cause the display to appear stalled or act erratic and causes a crash
+          // therefore the minimum item_duration is limited to 125 ms
+          item_duration = max(item_duration, (uint32_t)125);
         }
         refresh_needed = true;
       }
@@ -1243,9 +1250,9 @@ void show(void) {
 
   // blend block
   uint32_t dt = millis()-pm;
-  if (dt > 100 || refresh_now) {
+  if (dt > REFRESH_INTERVAL || refresh_now) {
     pm = millis();
-    //if (dt > 100) {
+    //if (dt > REFRESH_INTERVAL) {
     //  DEBUG_PRINTLN(dt);
     //}
     //refresh_now = false;

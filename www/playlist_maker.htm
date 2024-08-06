@@ -265,7 +265,7 @@ let ul_playlist = document.getElementById("ul_playlist");
 
 
 function add(item, value) {
-    item.insertAdjacentHTML("beforeend", `<input title="seconds" type="number" min="0.001" step="0.1" value="${value}"/>`)
+    item.insertAdjacentHTML("beforeend", `<input title="seconds" type="number" min="0.125" step="0.1" value="${value}"/>`)
     item.insertAdjacentHTML("beforeend", '<input type="button" value="x" class="rmbutton"/>')
 }
 
