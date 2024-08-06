@@ -1654,8 +1654,6 @@ void ReAnimator::halloween_colors_orbit(uint16_t draw_interval, int8_t delta) {
 
 
 void ReAnimator::dynamic_rainbow(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
-    uint16_t dr_delta = 0;
-
     if (is_wait_over(draw_interval)) {
         for(uint16_t i = MTX_NUM_LEDS-1; i > 0; i--) {
             leds[(this->*dfp)(i)] = leds[(this->*dfp)(i-1)];
