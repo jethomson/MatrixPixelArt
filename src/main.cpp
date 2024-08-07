@@ -25,9 +25,6 @@
 #define SOFT_AP_SSID "PixelArt"
 #define MDNS_HOSTNAME "pixelart"
 
-// minimum amount of time between display refreshes
-#define REFRESH_INTERVAL 100
-
 // these values are used if the number of rows and columns of the LED matrix are not provided
 // on the configuration page of the frontend
 #define DEFAULT_NUM_ROWS 16
@@ -50,8 +47,8 @@ DNSServer dnsServer;
 
 Preferences preferences;
 
-bool grestart_needed = false;
-bool gdns_up = false;
+bool restart_needed = false;
+bool dns_up = false;
 
 IPAddress IP;
 String mdns_host;
@@ -74,14 +71,14 @@ CRGB gdynamic_comp_rgb = 0x000000; // complementary color to the dynamic color
 
 uint8_t homogenized_brightness = 255;
 
-//uint8_t gimage_layer_alpha = 255;
+bool playlist_enabled = false;
 
-bool gplaylist_enabled = false;
+String art_type = "";
 
 struct {
   String type;
   String id;
-} gnextup;
+} ui_request;
 
 String patterns_json;
 String accents_json;
@@ -106,11 +103,11 @@ void puck_man_cb(uint8_t event);
 bool image_exists(String id);
 bool is_valid_layer_json(JsonVariant layer_json);
 bool load_layer(uint8_t lnum, JsonVariant layer_json);
-bool load_image_to_layer(uint8_t lnum, String id);
+bool load_image_to_layer(uint8_t lnum, String id, uint32_t image_duration = REFRESH_INTERVAL);
 bool load_image_solo(String id);
-bool load_composite(String fs_path);
-bool load_file(String type, String id);
+bool load_collection(String type, String id);
 bool load_from_playlist(String id = "");
+bool load_file(String type, String id);
 
 bool attempt_connect(void);
 String get_ip(void);
@@ -277,7 +274,7 @@ void list_files(File dir, String parent) {
       String type = dir.name();
       String id = entry.name();
       id.remove(id.length()-5); // remove .json extension
-      if (type == "im" || type == "cm") {
+      if (type == "im" || type == "cm" || type == "an") {
         gfile_list_json_tmp += "{\"t\":\"";
         gfile_list_json_tmp += type;
         gfile_list_json_tmp += "\",";
@@ -648,6 +645,7 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
   uint8_t color_type = 0; // dynamic color
   std::string color = "0xFFFF00"; // yellow as a warning
   uint8_t movement = 0; // no movement
+  uint32_t image_duration = REFRESH_INTERVAL;
 
   if (!layer_json[F("a")].isNull()) {
     accent_id = layer_json[F("a")];
@@ -675,6 +673,10 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     movement = layer_json[F("m")];
   }
 
+  if (!layer_json[F("d")].isNull()) {
+    image_duration = layer_json[F("d")];
+  }
+
   ghost_layers[lnum] = 0;
   if (layer_json[F("t")] == "im") {
     String id = layer_json[F("id")];
@@ -691,7 +693,7 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
       ghost_layers[lnum] = 4;
     }
     layers[lnum]->setup(Image_t, -2);
-    if (!load_image_to_layer(lnum, id)) {
+    if (!load_image_to_layer(lnum, id, image_duration)) {
       return false;
     }
     layers[lnum]->set_overlay(static_cast<Overlay>(accent_id), true);
@@ -729,11 +731,11 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
 // its other attributes but replace its image.
 // this helps streamline code from having the same repeative layer and image
 // existence checks.
-bool load_image_to_layer(uint8_t lnum, String id) {
+bool load_image_to_layer(uint8_t lnum, String id, uint32_t image_duration) {
   // the set image_list is used instead of LittleFS.exists() because exists() is much slower
   if (layers[lnum] != nullptr) {
     if (image_exists(id)) {
-      layers[lnum]->set_image(id);
+      layers[lnum]->set_image(id, image_duration);
       // since the image is loaded asynchronously using another core to prevent lag
       // waiting to determine if the image was loaded successfully would defeat the purpose.
       // so the best we can do is check if the image exists for indicating success.
@@ -772,9 +774,9 @@ bool load_image_solo(String id) {
 }
 
 
-bool load_composite(String id) {
+bool load_collection(String type, String id) {
   bool retval = false;
-  String fs_path = form_path(F("cm"), id);
+  String fs_path = form_path(type, id);
   File file = LittleFS.open(fs_path, "r");
   
   if(!file){
@@ -807,97 +809,106 @@ bool load_composite(String id) {
   return retval;
 }
 
-bool load_file(String type, String id) {
-  bool retval = false;
-  if (type == "cm") {
-    retval = load_composite(id);
-  }
-  else if (type == "im") {
-    retval = load_image_solo(id);
-  }
-  else if (type == "pl") {
-    retval = load_from_playlist(id);
-  }
-  return retval;
-}
-
 
 bool load_from_playlist(String id) {
-  static String resume_id;
-  static uint32_t pm = 0;
-  static uint32_t item_duration = 0;
-  static uint8_t i = 0;
-  static JsonArray playlist;
-  static bool playlist_loaded = false;
   bool refresh_needed = false;
+  if (playlist_enabled) {
+    static String resume_id;
+    static uint32_t pm = 0;
+    static uint32_t item_duration = 0;
+    static uint8_t i = 0;
+    static JsonArray playlist;
+    static bool playlist_loaded = false;
 
-  if (id != "") {
-    // should not do if (id != "" && id != resume_id)
-    // because a playlist with an id matching resume_id may have been edited,
-    // and therefore we would like to reload it to see the changes.
-    // calling with an id means we want to load a new playlist so reinitialize everything
-    gplaylist_enabled = false;
-    resume_id = id;
-    pm = 0; // using zero pm and item_duration ensures first item will be loaded immediately next time load_from_playlist() is called
-    item_duration = 0;
-    i = 0;
-    playlist_loaded = false;
+    if (id != "") {
+      // should not do if (id != "" && id != resume_id)
+      // because a playlist with an id matching resume_id may have been edited,
+      // and therefore we would like to reload it to see the changes.
+      // calling with an id means we want to load a new playlist so reinitialize everything
+      playlist_enabled = false;
+      resume_id = id;
+      pm = 0; // using zero pm and item_duration ensures first item will be loaded immediately next time load_from_playlist() is called
+      item_duration = 0;
+      i = 0;
+      playlist_loaded = false;
 
-    String fs_path = form_path(F("pl"), id);
-    File file = LittleFS.open(fs_path, "r");
-    if (file && file.available()) {
-      ReadBufferingStream bufferedFile(file, 64);
-      DeserializationError error = deserializeJson(gpldoc, bufferedFile);
-      file.close();
-      if (error) {
-        Serial.print("deserializeJson() failed: ");
-        Serial.println(error.c_str());
-        gplaylist_enabled = false;
-        return refresh_needed;
-      }
-      JsonObject object = gpldoc.as<JsonObject>();
-      if (!object[F("pl")].isNull() && object[F("pl")].size() > 0) {
-        playlist = object[F("pl")];
-        gplaylist_enabled = true;
-        playlist_loaded  = true;
-        // instead of loading the playlist and then loading the first item
-        // just load the playlist on this call, then the next call can load the first item
-        // returning now means less time is spent in this function when a new playlist is loaded
-        return refresh_needed;
+      String fs_path = form_path(F("pl"), id);
+      File file = LittleFS.open(fs_path, "r");
+      if (file && file.available()) {
+        ReadBufferingStream bufferedFile(file, 64);
+        DeserializationError error = deserializeJson(gpldoc, bufferedFile);
+        file.close();
+        if (error) {
+          Serial.print("deserializeJson() failed: ");
+          Serial.println(error.c_str());
+          playlist_enabled = false;
+          return refresh_needed;
+        }
+        JsonObject object = gpldoc.as<JsonObject>();
+        if (!object[F("pl")].isNull() && object[F("pl")].size() > 0) {
+          playlist = object[F("pl")];
+          playlist_enabled = true;
+          playlist_loaded  = true;
+          // instead of loading the playlist and then loading the first item
+          // just load the playlist on this call, then the next call can load the first item
+          // returning now means less time is spent in this function when a new playlist is loaded
+          return refresh_needed;
+        }
       }
     }
-  }
 
-  if (playlist_loaded && (millis()-pm) > item_duration) {
-    pm = millis();
-    item_duration = 1000; // set to a safe value which will be replaced below
+    if (playlist_loaded && (millis()-pm) > item_duration) {
+      pm = millis();
+      item_duration = 1000; // set to a safe value which will be replaced below
 
-    if(playlist[i].is<JsonVariant>()) {
-      JsonVariant item = playlist[i];
-      if(load_file(item[F("t")], item[F("id")])) {
-        if(item[F("d")].is<JsonInteger>()) {
-          item_duration = item[F("d")];
-          // it takes a bit under 100 ms to load an image
-          // item_durations of around 100 ms and less can cause the display to appear stalled or act erratic and causes a crash
-          // therefore the minimum item_duration is limited to 125 ms
-          item_duration = max(item_duration, (uint32_t)125);
+      if(playlist[i].is<JsonVariant>()) {
+        JsonVariant item = playlist[i];
+        if(load_file(item[F("t")], item[F("id")])) {
+          if(item[F("d")].is<JsonInteger>()) {
+            item_duration = item[F("d")];
+            // it takes a bit under 100 ms to load an image
+            // item_durations of around 100 ms and less can cause the display to appear stalled or act erratic and causes a crash
+            // therefore the minimum item_duration is limited to 125 ms
+            item_duration = max(item_duration, (uint32_t)125);
+          }
+          refresh_needed = true;
         }
-        refresh_needed = true;
+        else {
+          item_duration = 0;
+        }
+        if (playlist.size() > 0) {
+          i = (i+1) % playlist.size();
+        }
       }
       else {
-        item_duration = 0;
+        playlist_enabled = false;
       }
-      if (playlist.size() > 0) {
-        i = (i+1) % playlist.size();
-      }
-    }
-    else {
-      gplaylist_enabled = false;
     }
   }
   return refresh_needed;
 }
 
+
+bool load_file(String type, String id) {
+  bool retval = false;
+  art_type = type;
+  if (type == "im") {
+    retval = load_image_solo(id);
+  }
+  else if (type == "cm") {
+    retval = load_collection(type, id);
+  }
+  else if (type == "an") {
+    retval = load_collection(type, id);
+  }
+  else if (type == "pl") {
+    art_type = "";
+    playlist_enabled = true;
+    // initialize playlist
+    retval = load_from_playlist(id);
+  }
+  return retval;
+}
 //////////////////////////////////////////////
 //////////////////////////////////////////////
 //////////////////////////////////////////////
@@ -1044,8 +1055,8 @@ void web_server_station_setup(void) {
     if (id != "") {
       String fs_path = form_path(type, id);
       if (save_data(fs_path, json, &message)) {
-        gnextup.type = type;
-        gnextup.id = id;
+        ui_request.type = type;
+        ui_request.id = id;
         gfile_list_needs_refresh = true;
         rc = 200;
       }
@@ -1065,10 +1076,10 @@ void web_server_station_setup(void) {
     String type = request->getParam("t", true)->value();
     String id = request->getParam("id", true)->value();
 
-    if (id != "" && (type == "im" || type == "cm" || type == "pl")) {
-      gnextup.type = type;
-      gnextup.id = id;
-      message = gnextup.id + " queued.";
+    if (id != "" && (type == "im" || type == "cm" || type == "an" || type == "pl")) {
+      ui_request.type = type;
+      ui_request.id = id;
+      message = ui_request.id + " queued.";
       rc = 200;
     }
     else {
@@ -1133,7 +1144,7 @@ void web_server_ap_setup(void) {
   // requests to the ESP are handled normally
   // a captive portal makes it easier for a user to save their WiFi credentials to the ESP because they do not
   // need to know the ESP's IP address.
-  gdns_up = dnsServer.start(53, "*", IP);
+  dns_up = dnsServer.start(53, "*", IP);
   web_server.addHandler(new CaptiveRequestHandler()).setFilter(filterOnNotLocal);
 
   // want limited access when in AP mode. AP mode is just for WiFi setup.
@@ -1150,9 +1161,9 @@ void web_server_initiate(void) {
 
   // it is possible for more than one handler to serve a file
   // the first handler that matches a request will server the file
-  // so need to put this before serveStatic(), otherwise serveStatic() will serve restart.htm, but not set grestart_needed to true;
+  // so need to put this before serveStatic(), otherwise serveStatic() will serve restart.htm, but not set restart_needed to true;
   web_server.on("/restart.htm", HTTP_GET, [](AsyncWebServerRequest *request) {
-    grestart_needed = true;
+    restart_needed = true;
     request->send(LittleFS, "/www/restart.htm");
   });
 
@@ -1217,29 +1228,23 @@ void web_server_initiate(void) {
   web_server.begin();
 }
 
-void show(void) {
-  static uint32_t pm = 0;
-  static bool refresh_now = true;
-  static bool image_has_transparency = true;
-
+void handle_ui_request(void) {
   // since web_server interrupts we have to queue changes instead of running them directly from web_server's on functions
   // otherwise changes we make could be undo once the interrupt hands back control which could be in the middle of code setting up a different animation
-  if (gnextup.id) {
-    if (gnextup.type == "pl") {
-      // initialize playlist
-      load_from_playlist(gnextup.id);
+  if (ui_request.id.length() > 0) {
+    playlist_enabled = false;
+    if (ui_request.type == "pl") {
+      playlist_enabled = true;
     }
-    else if (gnextup.type == "cm") {
-      gplaylist_enabled = false;
-      load_composite(gnextup.id);
-    }
-    else if (gnextup.type == "im") {
-      gplaylist_enabled = false;
-      load_image_solo(gnextup.id);
-    }
-    gnextup.type = "";
-    gnextup.id = "";
+
+    load_file(ui_request.type, ui_request.id);
+    ui_request.type = "";
+    ui_request.id = "";
   }
+}
+
+void show(bool refresh_now) {
+  static uint32_t pm = 0;
 
   // draw layers. changes in layers are not displayed until they are copied to leds[] in the blend block
   for (uint8_t i = 0; i < NUM_LAYERS; i++) {
@@ -1250,7 +1255,8 @@ void show(void) {
 
   // blend block
   uint32_t dt = millis()-pm;
-  if (dt > REFRESH_INTERVAL || refresh_now) {
+  static uint32_t refresh_interval = REFRESH_INTERVAL;
+  if (dt > refresh_interval || refresh_now) {
     pm = millis();
     //if (dt > REFRESH_INTERVAL) {
     //  DEBUG_PRINTLN(dt);
@@ -1261,9 +1267,14 @@ void show(void) {
     gdynamic_comp_rgb = CRGB::White - gdynamic_rgb;
     grandom_hue = random8();
 
+    // maybe loop through all the layers here checking for image layers and if the image is loaded
+    // if the image is not loaded possibly keep trying or skip the next while() to give more time for
+    // the images to finish loading.
+
     bool first_layer = true;
     CRGBA pixel;
-    for (uint8_t i = 0; i < NUM_LAYERS; i++) {
+    static uint8_t i = 0;
+    while (true) {
       if (layers[i] != nullptr) {
         if (layers[i]->_ltype == Image_t) {
           // to prevent flicker do not show an image layer if the image is not finished loading.
@@ -1284,7 +1295,7 @@ void show(void) {
         uint8_t alpha_mask = 0; // when 0, then transparency is determined by pixel.a
         if (first_layer) {
           first_layer = false;
-          refresh_now = false;
+          refresh_now = false;  // TODO: no longer correct to set this here
           // data is in leds[] is completely covered instead of blended for first layer
           // this should be faster than FastLED.clear()
           alpha_mask = 255; // when 255, then no transparency
@@ -1294,6 +1305,16 @@ void show(void) {
           CRGB bgpixel = leds[j];
           leds[j] = nblend(bgpixel, (CRGB)pixel, pixel.a|alpha_mask);
         }
+        refresh_interval = layers[i]->display_duration;
+      }
+      else if (art_type == "an") {
+        // empty (nullptr) layers need to have a duration of 0 in order to not stall the gif-like animation
+        refresh_interval = 0;
+      }
+
+      i = (i + 1) % NUM_LAYERS;
+      if (i == 0 || art_type == "an") {
+        break;
       }
     }
 
@@ -1307,16 +1328,6 @@ void show(void) {
     //  homogenized_brightness = 128;
     //}
     FastLED.setBrightness(homogenized_brightness);
-  }
-
-  // load_from_playlist both initializes a playlist and shows a playlist item
-  // initializing and showing the first playlist item takes some time, so it
-  // is better to initialize, refresh the leds, then show the first playlist item
-  // that is why load_from_playlist(gnextup.id) comes before the leds[] refresh code
-  // and load_from_playlist() comes after it.
-  if (gplaylist_enabled) {
-    // show playlist item
-    refresh_now = load_from_playlist();
   }
 
   FastLED.show();
@@ -1389,6 +1400,8 @@ void setup() {
 
   load_file(F("pl"), "startup");
   //load_file(F("im"), "bottle_magic");
+
+  //load_file(F("an"), "nyan");
 }
 
 
@@ -1400,17 +1413,20 @@ void loop() {
   //  Serial.println(esp_get_free_heap_size());
   //}
 
-  if (gdns_up) {
+  if (dns_up) {
     dnsServer.processNextRequest();
   }
 
-  if (grestart_needed || (WiFi.getMode() == WIFI_STA && WiFi.status() != WL_CONNECTED)) {
+  if (restart_needed || (WiFi.getMode() == WIFI_STA && WiFi.status() != WL_CONNECTED)) {
     delay(2000);
     ESP.restart();
   }
 
-  show();
+  bool refresh_now = load_from_playlist();
+  show(refresh_now);
 
   handle_file_list();
   handle_delete_list();
+  handle_ui_request();
+
 }

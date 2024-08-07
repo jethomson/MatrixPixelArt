@@ -192,6 +192,7 @@ class ReAnimator {
   public:
     LayerType _ltype;
     bool image_loaded; // tracks whether image loading into leds[] has completed. helps prevent flicker by trying to display leds[] that is blank or has a partial image.
+    uint32_t display_duration; // amount of time image is shown for if it is part of an animation
 
     ReAnimator(uint8_t num_rows, uint8_t num_cols);
     ~ReAnimator() { delete[] leds; leds = nullptr; delete[] pm_puck_dots; pm_puck_dots = nullptr;}
@@ -219,7 +220,7 @@ class ReAnimator {
     int8_t set_overlay(Overlay overlay, bool is_persistent);
     void increment_overlay(bool is_persistent);
 
-    void set_image(String fs_path, String* message = nullptr);
+    void set_image(String fs_path, uint32_t duration = REFRESH_INTERVAL, String* message = nullptr);
     static void load_image_from_queue(void* parameter);
     int8_t get_image_status();
     void set_text(String s);

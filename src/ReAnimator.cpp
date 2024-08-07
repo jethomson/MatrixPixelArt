@@ -138,6 +138,7 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
     image_loaded = false;
     image_clean = false;
     image_not_loaded_count = 0;
+    display_duration = REFRESH_INTERVAL;
 
     font = &ascii_sector_12;
 
@@ -467,11 +468,12 @@ void ReAnimator::increment_overlay(bool is_persistent) {
 }
 
 
-void ReAnimator::set_image(String id, String* message) {
+void ReAnimator::set_image(String id, uint32_t duration, String* message) {
   image_path = form_path(F("im"), id);
   image_loaded = false;
   image_clean = false;
   image_not_loaded_count = 0;
+  display_duration = duration;
   Image image = {&image_path, &MTX_NUM_LEDS, leds, &proxy_color_set, &proxy_color, &image_loaded, &image_clean};
   xQueueSend(qimages, (void *)&image, 0);
 }

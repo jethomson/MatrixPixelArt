@@ -23,14 +23,16 @@
 #pragma once
 
 #define NUM_LAYERS 6  // changes to NUM_LAYERS will be reflected in compositor.htm
+#define REFRESH_INTERVAL 100 // minimum amount of time between display refreshes. best to leave this at 100 ms
 
 // storage locations for animated matrices and playlists.
 // note the pathes are hardcoded in the HTML files, so changing these defines is not enough.
 // do not put a / at the end
 #define FILE_ROOT "/files"
 #define IM_ROOT "/files/im"
-#define PL_ROOT "/files/pl"
 #define CM_ROOT "/files/cm"
+#define AN_ROOT "/files/an"
+#define PL_ROOT "/files/pl"
 
 #undef DEBUG_CONSOLE
 #define DEBUG_CONSOLE Serial
@@ -58,6 +60,9 @@ inline String form_path(String type, String id) {
   }
   else if (type == "cm") {
     fs_path += CM_ROOT;
+  }
+  else if (type == "an") {
+    fs_path += AN_ROOT;
   }
   else if (type == "pl") {
     fs_path += PL_ROOT;
