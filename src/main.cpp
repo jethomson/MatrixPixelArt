@@ -1292,20 +1292,18 @@ void show(bool refresh_now) {
             continue; // skip showing the image, but show the rest of the layers.
           }
         }
-        uint8_t alpha_mask = 0; // when 0, then transparency is determined by pixel.a
+        CRGB bg_mask = CRGB::White; // when White, then bgpixel is leds[j]
         if (first_layer) {
           first_layer = false;
           refresh_now = false;
-          // data in leds[] is completely covered instead of blended for first layer
-          // this should be faster than FastLED.clear()
-          alpha_mask = 255; // when 255, then no transparency
-          // THIS IS NOT THE RIGHT APPROACH. BETTER TO SET bgpixel to black if first layer
-          // THIS APPROACH EVEN REMOVES PARTIAL TRANSPARENCY
+          // data in leds[] is written to a black background for first layer
+          // faster than FastLED.clear() ? one loop instead of two.
+          bg_mask = CRGB::Black; // when Black, then bgpixel is black
         }
         for (uint16_t j = 0; j < NUM_LEDS; j++) {
           pixel = layers[i]->get_pixel(j);
-          CRGB bgpixel = leds[j];
-          leds[j] = nblend(bgpixel, (CRGB)pixel, pixel.a|alpha_mask);
+          CRGB bgpixel = leds[j] & bg_mask;
+          leds[j] = nblend(bgpixel, (CRGB)pixel, pixel.a);
         }
         refresh_interval = layers[i]->display_duration;
       }

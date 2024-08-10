@@ -1882,11 +1882,6 @@ bool ReAnimator::shift_char(uint32_t c, uint32_t nc) {
             p.x = 0;
             p.y = i;
 
-
-            CRGB pixel = *rgb;
-            leds[cart2serp(p)] = pixel;
-
-
             // instead of dimming the pixel color to match the glyph's brightness we use transparency
             // where a transparency of 0 represents the glyph's negative space
             uint8_t alpha = 0;
@@ -1897,6 +1892,11 @@ bool ReAnimator::shift_char(uint32_t c, uint32_t nc) {
                 alpha = glyph[(glyph_row*box_w)+shift_char_column];
                 glyph_row++;
             }
+            CRGB pixel = *rgb;
+            if (alpha == 0) {
+                pixel = CRGB::Black;
+            }
+            leds[cart2serp(p)] = pixel;
             leds[cart2serp(p)].a = alpha;
         }
 
@@ -2004,10 +2004,6 @@ void ReAnimator::refresh_date_time(uint16_t draw_interval) {
                         //    leds[cart2serp(p)] = pixel;
                         //    leds[cart2serp(p)].a = glyph[n];
 
-
-                        CRGB pixel = *rgb;
-                        leds[cart2serp(p)] = pixel;
-
                         uint8_t alpha = 0;
                         if (offset_y <= i && i < box_h + offset_y) {
                             // j >= max_width - box_w aligns characters to the right 
@@ -2017,6 +2013,11 @@ void ReAnimator::refresh_date_time(uint16_t draw_interval) {
                                 n++;
                             }
                         }
+                        CRGB pixel = *rgb;
+                        if (alpha == 0) {
+                            pixel = CRGB::Black;
+                        }
+                        leds[cart2serp(p)] = pixel;
                         leds[cart2serp(p)].a = alpha;
                     }
                 }
