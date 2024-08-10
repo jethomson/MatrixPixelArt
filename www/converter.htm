@@ -725,7 +725,7 @@
               let iNext = i + 1;
               let nextPixel = ledRGBValues[iNext];
       
-              if (nextPixel[0] != r || nextPixel[1] != g || nextPixel[2] != b ) {
+              if (nextPixel[0] != r || nextPixel[1] != g || nextPixel[2] != b || nextPixel[3] != a) {
                 //Next pixel has new color
                 //The current segment ends with this pixel
                 segmentEnd = i + 1 //WLED wants the NEXT LED as the stop led...
