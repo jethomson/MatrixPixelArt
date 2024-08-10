@@ -143,8 +143,10 @@ class ReAnimator {
     String image_path;
     CRGB proxy_color;
     bool proxy_color_set;
+    bool image_dequeued;
+    bool image_loaded; // tracks whether image loading into leds[] has completed. helps prevent flicker by trying to display leds[] that is blank or has a partial image.
     bool image_clean; // tracks whether frozen decay (or possibly other accents) have corrupted the image indicating it needs a refresh
-    uint8_t image_not_loaded_count = 0;
+    uint32_t image_queued_time;
 
     typedef struct Image {
       String* image_path;
@@ -152,6 +154,7 @@ class ReAnimator {
       CRGBA* leds;
       bool* proxy_color_set;
       CRGB* proxy_color;
+      bool* image_dequeued;
       bool* image_loaded;
       bool* image_clean;
     } Image;
@@ -191,7 +194,6 @@ class ReAnimator {
 
   public:
     LayerType _ltype;
-    bool image_loaded; // tracks whether image loading into leds[] has completed. helps prevent flicker by trying to display leds[] that is blank or has a partial image.
     uint32_t display_duration; // amount of time image is shown for if it is part of an animation
 
     ReAnimator(uint8_t num_rows, uint8_t num_cols);

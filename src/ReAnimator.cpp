@@ -135,9 +135,10 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
 
     dr_delta = 0;
 
+    image_dequeued = false;
     image_loaded = false;
     image_clean = false;
-    image_not_loaded_count = 0;
+    image_queued_time = millis();
     display_duration = REFRESH_INTERVAL;
 
     font = &ascii_sector_12;
@@ -193,9 +194,10 @@ void ReAnimator::setup(LayerType ltype, int8_t id) {
         set_overlay(NO_OVERLAY, false);
         set_cb(noop_cb);
 
+        image_dequeued = false;
         image_loaded = false;
         image_clean = false;
-        image_not_loaded_count = 0;
+        image_queued_time = millis();
     }
 }
 
@@ -469,13 +471,15 @@ void ReAnimator::increment_overlay(bool is_persistent) {
 
 
 void ReAnimator::set_image(String id, uint32_t duration, String* message) {
-  image_path = form_path(F("im"), id);
-  image_loaded = false;
-  image_clean = false;
-  image_not_loaded_count = 0;
-  display_duration = duration;
-  Image image = {&image_path, &MTX_NUM_LEDS, leds, &proxy_color_set, &proxy_color, &image_loaded, &image_clean};
-  xQueueSend(qimages, (void *)&image, 0);
+    image_path = form_path(F("im"), id);
+    image_dequeued = false;
+    image_loaded = false;
+    image_clean = false;
+    image_queued_time = millis();
+    display_duration = duration;
+    //xQueueSend makes a copy of image, so it is OK that image is a local variable.
+    Image image = {&image_path, &MTX_NUM_LEDS, leds, &proxy_color_set, &proxy_color, &image_dequeued, &image_loaded, &image_clean};
+    xQueueSend(qimages, (void *)&image, 0);
 }
 
 
@@ -488,16 +492,22 @@ void ReAnimator::load_image_from_queue(void* parameter) {
         Image image;
         if (xQueueReceive(qimages, (void *)&image, 0) == pdTRUE) {
             //print_dt();
+
+            // cannot set image_dequeued here because it may be read before a proper value for image_loaded is determined
+            //*(image.image_dequeued) = true;
+
             // make sure we are not referencing leds in a layer that was destroyed
             if (image.leds == nullptr) {
                 *(image.image_loaded) = false;
                 *(image.image_clean) = false;
+                *(image.image_dequeued) = true;
                 continue;
             }
 
             if (*(image.image_path) == "") {
                 *(image.image_loaded) = false;
-               *(image.image_clean) = false;
+                *(image.image_clean) = false;
+                *(image.image_dequeued) = true;
                 continue;
             }
 
@@ -505,6 +515,7 @@ void ReAnimator::load_image_from_queue(void* parameter) {
             if (!file) {
                 *(image.image_loaded) = false;
                 *(image.image_clean) = false;
+                *(image.image_dequeued) = true;
                 continue;
             }
 
@@ -515,6 +526,7 @@ void ReAnimator::load_image_from_queue(void* parameter) {
                 if (error) {
                     *(image.image_loaded) = false;
                     *(image.image_clean) = false;
+                    *(image.image_dequeued) = true;
                     continue;
                 }
 
@@ -534,6 +546,7 @@ void ReAnimator::load_image_from_queue(void* parameter) {
                 for (uint16_t i = 0; i < *(image.MTX_NUM_LEDS); i++) image.leds[i] = 0x00000000;
                 *(image.image_loaded) = deserializeSegment(object, image.leds, *(image.MTX_NUM_LEDS));
                 *(image.image_clean) = *(image.image_loaded);
+                *(image.image_dequeued) = true;
             }
             file.close();
             //print_dt();
@@ -542,18 +555,34 @@ void ReAnimator::load_image_from_queue(void* parameter) {
     vTaskDelete(NULL);
 }
 
-
+/*
 int8_t ReAnimator::get_image_status() {
     if (!image_loaded) {
-        if (image_not_loaded_count > 4) {
+        // this approach does not really work because images are queued pretty at almost the same time but dequeuing/loading takes about 100 ms per image
+        // so this approach will work for maybe the first couple of images but any others in the queue will be considered broken.
+        if ((millis() - image_queued_time) > 200) {
+            Serial.println("bad image");
             return -1; // taking too long to load, image is considered broken
         }
-        image_not_loaded_count++;
         return 0; // image has not finished loading yet
     }
     return 1;
 }
+*/
 
+
+
+int8_t ReAnimator::get_image_status() {
+    // if image was never queued this code will not work correctly, image will never be determined to be broken.
+    if (image_dequeued) {
+        if (image_loaded) {
+            return 1; // image loaded successfully into leds[]
+        }
+        Serial.println("bad image");
+        return -1; // image is broken
+    }
+    return 0; // still waiting for image to be dequeued
+}
 
 
 void ReAnimator::set_text(String s) {
@@ -664,9 +693,10 @@ void ReAnimator::reanimate() {
     if (!freezer.is_frozen()) {
         if (_ltype == Image_t && image_loaded && !image_clean) {
             // frozen_decay changed image, so refresh the image.
+            image_dequeued = false;
             image_loaded = false;
             image_clean = false;
-            Image image = {&image_path, &MTX_NUM_LEDS, leds, &proxy_color_set, &proxy_color, &image_loaded, &image_clean};
+            Image image = {&image_path, &MTX_NUM_LEDS, leds, &proxy_color_set, &proxy_color, &image_dequeued, &image_loaded, &image_clean};
             xQueueSend(qimages, (void *)&image, 0);
         }
         else if (_ltype == Pattern_t) {

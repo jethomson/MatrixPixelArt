@@ -1246,22 +1246,30 @@ void handle_ui_request(void) {
 void show(bool refresh_now) {
   static uint32_t pm = 0;
 
-  // draw layers. changes in layers are not displayed until they are copied to leds[] in the blend block
+  bool images_waiting = false;
   for (uint8_t i = 0; i < NUM_LAYERS; i++) {
     if (layers[i] != nullptr) {
+      // draw layer. changes in layers are not displayed until they are copied to leds[] in the blend block
       layers[i]->reanimate();
+
+      if (layers[i]->_ltype == Image_t) {
+        // to prevent flickering do not show layers until all images are loaded.
+        int8_t image_status = layers[i]->get_image_status();
+        if (image_status == 0) {
+          images_waiting = true;
+        }
+      }
     }
   }
 
   // blend block
   uint32_t dt = millis()-pm;
   static uint32_t refresh_interval = REFRESH_INTERVAL;
-  if (dt > refresh_interval || refresh_now) {
+  if ((dt > refresh_interval || refresh_now) && !images_waiting) {
     pm = millis();
     //if (dt > REFRESH_INTERVAL) {
     //  DEBUG_PRINTLN(dt);
     //}
-    //refresh_now = false;
     gdynamic_hue+=3;
     gdynamic_rgb = CHSV(gdynamic_hue, 255, 255);
     gdynamic_comp_rgb = CRGB::White - gdynamic_rgb;
@@ -1277,17 +1285,9 @@ void show(bool refresh_now) {
     while (true) {
       if (layers[i] != nullptr) {
         if (layers[i]->_ltype == Image_t) {
-          // to prevent flicker do not show an image layer if the image is not finished loading.
-          // if break loop, then higher layers will NOT be shown until the image is loaded.
-          // if continue loop, then higher layers will be shown before the image is loaded.
-          // using break; prevents a flicker at the cost of waiting longer for every layer to be shown
-
-          // it is possible the image may never load, so after some time has passed the image is
+          // it is possible the image may never load, so after so many attempts the image is
           // marked as broken (-1) by get_image_status()
-          uint8_t image_status = layers[i]->get_image_status();
-          if (image_status == 0) {
-            break; // skip showing the image, and every layer above it.
-          }
+          int8_t image_status = layers[i]->get_image_status();
           if (image_status == -1) {
             continue; // skip showing the image, but show the rest of the layers.
           }
@@ -1295,10 +1295,12 @@ void show(bool refresh_now) {
         uint8_t alpha_mask = 0; // when 0, then transparency is determined by pixel.a
         if (first_layer) {
           first_layer = false;
-          refresh_now = false;  // TODO: no longer correct to set this here
-          // data is in leds[] is completely covered instead of blended for first layer
+          refresh_now = false;
+          // data in leds[] is completely covered instead of blended for first layer
           // this should be faster than FastLED.clear()
           alpha_mask = 255; // when 255, then no transparency
+          // THIS IS NOT THE RIGHT APPROACH. BETTER TO SET bgpixel to black if first layer
+          // THIS APPROACH EVEN REMOVES PARTIAL TRANSPARENCY
         }
         for (uint16_t j = 0; j < NUM_LEDS; j++) {
           pixel = layers[i]->get_pixel(j);
