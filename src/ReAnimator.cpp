@@ -543,7 +543,7 @@ void ReAnimator::load_image_from_queue(void* parameter) {
 
                 // for unknown reasons initializing the leds[] to all black
                 // makes the code slightly faster
-                for (uint16_t i = 0; i < *(image.MTX_NUM_LEDS); i++) image.leds[i] = 0x00000000;
+                for (uint16_t i = 0; i < *(image.MTX_NUM_LEDS); i++) image.leds[i] = CRGBA::Transparent;
                 *(image.image_loaded) = deserializeSegment(object, image.leds, *(image.MTX_NUM_LEDS));
                 *(image.image_clean) = *(image.image_loaded);
                 *(image.image_dequeued) = true;
@@ -721,7 +721,7 @@ CRGBA ReAnimator::get_pixel(uint16_t i) {
     static uint8_t b1 = 0;
     static uint8_t b2 = 0;
     //CRGBA pixel_out = 0xFF000000; // if black with no transparency is used it creates a sort of spotlight effect
-    CRGBA pixel_out = 0x00000000;
+    CRGBA pixel_out = CRGBA::Transparent;
     uint16_t ti = mover(i);
     if (0 <= ti && ti < MTX_NUM_LEDS) {
         pixel_out = leds[ti];
@@ -1851,7 +1851,7 @@ bool ReAnimator::shift_char(uint32_t c, uint32_t nc) {
             Point p;
             p.x = 0;
             p.y = i;
-            leds[cart2serp(p)] = 0x00000000; // transparent black
+            leds[cart2serp(p)] = CRGBA::Transparent; // transparent black
 
         }
         shift_char_tracking--;
@@ -2189,7 +2189,7 @@ void ReAnimator::ntranslate(CRGBA in[], CRGBA out[], int8_t xi, int8_t yi, int8_
 
             p1.x = ux;
             p1.y = uy;
-            out[cart2serp(p1)] = 0x00000000;
+            out[cart2serp(p1)] = CRGBA::Transparent;
 
             int8_t vx = k+dx; // shift input over into output by d
             int8_t vy = j+dy;
