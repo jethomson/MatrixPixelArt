@@ -812,6 +812,7 @@ bool load_collection(String type, String id) {
 
 
 bool load_from_playlist(String id) {
+  const uint32_t min_duration = 200;
   bool refresh_needed = false;
   if (playlist_enabled) {
     static String resume_id;
@@ -869,8 +870,8 @@ bool load_from_playlist(String id) {
             item_duration = item[F("d")];
             // it takes a bit under 100 ms to load an image
             // item_durations of around 100 ms and less can cause the display to appear stalled or act erratic and causes a crash
-            // therefore the minimum item_duration is limited to 125 ms
-            item_duration = max(item_duration, (uint32_t)125);
+            // therefore the minimum item_duration is limited to 200 ms
+            item_duration = max(item_duration, min_duration);
           }
           refresh_needed = true;
         }
