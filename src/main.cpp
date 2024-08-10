@@ -108,6 +108,7 @@ bool load_image_solo(String id);
 bool load_collection(String type, String id);
 bool load_from_playlist(String id = "");
 bool load_file(String type, String id);
+void handle_ui_request(void);
 
 bool attempt_connect(void);
 String get_ip(void);
@@ -909,6 +910,22 @@ bool load_file(String type, String id) {
   }
   return retval;
 }
+
+
+void handle_ui_request(void) {
+  // since web_server interrupts we have to queue changes instead of running them directly from web_server's on functions
+  // otherwise changes we make could be undo once the interrupt hands back control which could be in the middle of code setting up a different animation
+  if (ui_request.id.length() > 0) {
+    playlist_enabled = false;
+    if (ui_request.type == "pl") {
+      playlist_enabled = true;
+    }
+
+    load_file(ui_request.type, ui_request.id);
+    ui_request.type = "";
+    ui_request.id = "";
+  }
+}
 //////////////////////////////////////////////
 //////////////////////////////////////////////
 //////////////////////////////////////////////
@@ -1228,20 +1245,6 @@ void web_server_initiate(void) {
   web_server.begin();
 }
 
-void handle_ui_request(void) {
-  // since web_server interrupts we have to queue changes instead of running them directly from web_server's on functions
-  // otherwise changes we make could be undo once the interrupt hands back control which could be in the middle of code setting up a different animation
-  if (ui_request.id.length() > 0) {
-    playlist_enabled = false;
-    if (ui_request.type == "pl") {
-      playlist_enabled = true;
-    }
-
-    load_file(ui_request.type, ui_request.id);
-    ui_request.type = "";
-    ui_request.id = "";
-  }
-}
 
 void show(bool refresh_now) {
   static uint32_t pm = 0;
@@ -1275,34 +1278,29 @@ void show(bool refresh_now) {
     gdynamic_comp_rgb = CRGB::White - gdynamic_rgb;
     grandom_hue = random8();
 
-    // maybe loop through all the layers here checking for image layers and if the image is loaded
-    // if the image is not loaded possibly keep trying or skip the next while() to give more time for
-    // the images to finish loading.
-
     bool first_layer = true;
     CRGBA pixel;
     static uint8_t i = 0;
     while (true) {
       if (layers[i] != nullptr) {
         if (layers[i]->_ltype == Image_t) {
-          // it is possible the image may never load, so after so many attempts the image is
+          // it is possible the image may never load, so after so many attempts the image was
           // marked as broken (-1) by get_image_status()
           int8_t image_status = layers[i]->get_image_status();
           if (image_status == -1) {
             continue; // skip showing the image, but show the rest of the layers.
           }
         }
-        CRGB bg_mask = CRGB::White; // when White, then bgpixel is leds[j]
         if (first_layer) {
           first_layer = false;
           refresh_now = false;
-          // data in leds[] is written to a black background for first layer
-          // faster than FastLED.clear() ? one loop instead of two.
-          bg_mask = CRGB::Black; // when Black, then bgpixel is black
+          // data in leds[] is written to a black background for first layer draw on top of
+          // tried white and black bitmasks but clear() is around 10-50 microseconds faster
+          FastLED.clear();
         }
         for (uint16_t j = 0; j < NUM_LEDS; j++) {
           pixel = layers[i]->get_pixel(j);
-          CRGB bgpixel = leds[j] & bg_mask;
+          CRGB bgpixel = leds[j];
           leds[j] = nblend(bgpixel, (CRGB)pixel, pixel.a);
         }
         refresh_interval = layers[i]->display_duration;
