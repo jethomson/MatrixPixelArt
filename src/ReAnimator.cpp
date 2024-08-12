@@ -177,7 +177,7 @@ void ReAnimator::setup(LayerType ltype, int8_t id) {
     // images use an id of -2 because real image ids (paths) are more complicated and it is unnecessary to clear since a new image should completely overwrite leds[]
     // in practice there is probably no observable difference between -2 and -1 for images.
     // could possibly get an interesting effect with -2 if the new image does not write to all of leds[] and part of the previous image remains.
-    if (id == -1 || (_ltype != ltype && _id != id)) {
+    if (id == -1 || !(_ltype == ltype && _id == id)) {
         _ltype = ltype;
         _id = id;
 
