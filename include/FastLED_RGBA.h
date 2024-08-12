@@ -68,7 +68,7 @@ struct CRGBA  {
     this->r = c.r;
     this->g = c.g;
     this->b = c.b;
-    //this->a = 255;
+    this->a = 255; // must set alpha when setting color with CRGB otherwise color will be completely transaparent
   }
   
   // setting with HTMLColorCode (e.g. CRGB::White, CRGB::Red, 0x00FF00) can call this
@@ -105,7 +105,7 @@ struct CRGBA  {
     this->r = c.r;
     this->g = c.g;
     this->b = c.b;
-    this->a = 255; // necessary?
+    this->a = 255;
   }
 
   inline CRGBA& operator= (const CHSV& rhs) __attribute__((always_inline)) {
@@ -114,7 +114,7 @@ struct CRGBA  {
     this->r = c.r;
     this->g = c.g;
     this->b = c.b;
-    this->a = 255; // necessary?
+    this->a = 255;
     return *this;
   }
 
@@ -129,10 +129,22 @@ struct CRGBA  {
   inline CRGBA& fadeToBlackBy (uint8_t fadefactor) {
     nscale8x3(r, g, b, 255 - fadefactor);
     a = scale8(a, 255 - fadefactor);
-    //a = 255;
     return *this;
   }
 
+  // when color substitution is involved we do not want to alter the proxy color
+  // so fade by decreasing the transparency.
+  // this will mostly look the same as fadeToBlackBy() but can lead to overlapping
+  // colors look more white than they would if fadeToBlackBy() is used.
+  inline CRGBA& fadeToTransparentBy (uint8_t fadefactor) {
+    a = scale8(a, 255 - fadefactor);
+    if (a == 0) {
+      this->r = 0;
+      this->g = 0;
+      this->b = 0;
+    }
+    return *this;
+  }
 
   inline CRGBA& operator|= (const CRGB& rhs) {
     if (rhs.r > r) r = rhs.r;
@@ -152,7 +164,7 @@ struct CRGBA  {
 
   typedef enum {
     Transparent=0x00000000,
-    OpaqueBlaCK=0XFF000000,
+    OpaqueBlack=0XFF000000,
     AliceBlue=0xFFF0F8FF,
     Amethyst=0xFF9966CC,
     AntiqueWhite=0xFFFAEBD7,

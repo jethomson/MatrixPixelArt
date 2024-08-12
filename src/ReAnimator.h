@@ -93,8 +93,8 @@ class ReAnimator {
     class Freezer {
         ReAnimator &parent;
         const uint16_t m_after_all_black_pause = 500;
-        const uint16_t m_failsafe_timeout = 3000;
-        bool m_all_black = false;
+        const uint16_t m_failsafe_timeout = 6000; // max time to stay frozen
+        bool m_all_black = false; // if all leds are black before m_frozen_duration elapses then unfreeze
         uint16_t m_frozen_duration = m_failsafe_timeout;
         bool m_frozen = false;
         uint32_t m_frozen_previous_millis = 0;
@@ -102,7 +102,7 @@ class ReAnimator {
 
       public:
         Freezer(ReAnimator &r);
-        void timer(uint16_t freeze_interval);
+        void timer(uint16_t freeze_interval); // controls how often a freeze happens
         bool is_frozen();
     };
 
@@ -288,6 +288,7 @@ class ReAnimator {
     void flicker(uint16_t interval);
     void glitter(uint16_t chance_of_glitter);
     void fade_randomly(uint8_t chance_of_fade, uint8_t decay);
+    void vanish_randomly(uint8_t chance_of_fade, uint8_t decay);
 
 
 // ++++++++++++++++++++++++++++++
@@ -314,7 +315,7 @@ class ReAnimator {
 // ++++++++++ HELPERS +++++++++++
 // ++++++++++++++++++++++++++++++
     void fadeToBlackBy(CRGBA* leds, uint16_t num_leds, uint8_t fadeBy);
-    void fill_solid(struct CRGBA* targetArray, int numToFill, const struct CRGB& color);
+    void fill_solid(CRGBA* leds, uint16_t num_leds, const CRGB& color);
 
     uint16_t forwards(uint16_t index);
     uint16_t backwards(uint16_t index);

@@ -717,9 +717,8 @@ void ReAnimator::reanimate() {
     //print_dt();
 }
 
+
 CRGBA ReAnimator::get_pixel(uint16_t i) {
-    static uint8_t b1 = 0;
-    static uint8_t b2 = 0;
     //CRGBA pixel_out = 0xFF000000; // if black with no transparency is used it creates a sort of spotlight effect
     CRGBA pixel_out = CRGBA::Transparent;
     uint16_t ti = mover(i);
@@ -733,7 +732,8 @@ CRGBA ReAnimator::get_pixel(uint16_t i) {
         //if ( _ltype == Image_t && proxy_color_set && (abs(pixel_out.r - proxy_color.r) + abs(pixel_out.g - proxy_color.g) + abs(pixel_out.b - proxy_color.b) < 7) ) {
         // a workaround was found for the converter page such that the data does not get farbled.
         if ( _ltype == Image_t && proxy_color_set && pixel_out == proxy_color ) {
-          pixel_out = *rgb;
+            pixel_out = *rgb;
+            pixel_out.a = leds[ti].alpha;
         }
 
         // because setBrightness() will effect the brightness of every led in every layer nscale8x3 is used instead.
@@ -895,7 +895,7 @@ int8_t ReAnimator::apply_overlay(Overlay overlay) {
         case FROZEN_DECAY:
             freezer.timer(7000);
             if (freezer.is_frozen()) {
-                fade_randomly(7, 100);
+                vanish_randomly(7, 130);
                 image_clean = false;
             }
             break;
@@ -965,30 +965,31 @@ void ReAnimator::orbit(uint16_t draw_interval, int8_t delta) {
         }
 
         leds[pos] = *rgb;
+        // debugging unexpected colors/transparency
+/*
+        Serial.print("*rgb: ");
+        Serial.print((*rgb).r, HEX);
+        Serial.print((*rgb).g, HEX);
+        Serial.print((*rgb).b, HEX);
+        Serial.print(" :: (uint32_t)*rgb: ");
+        Serial.print((uint32_t)*rgb, HEX);
+        Serial.print(" :: leds[pos]: ");
+        Serial.print(leds[pos].a, HEX);
+        Serial.print(leds[pos].r, HEX);
+        Serial.print(leds[pos].g, HEX);
+        Serial.print(leds[pos].b, HEX);
+        Serial.print(" :: (uint32_t)leds[pos]: ");
+        Serial.println((uint32_t)leds[pos], HEX);
+*/
         pos = pos + delta;
 
         loop_num = (pos == MTX_NUM_LEDS) ? loop_num+1 : loop_num; 
     }
 }
 
-/*
-void ReAnimator::theater_chase_old(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
-    static uint16_t delta = 0;
 
-    if (is_wait_over(draw_interval)) {
-        fadeToBlackBy(leds, MTX_NUM_LEDS, 230);
-
-        for (uint16_t i = 0; i+delta < MTX_NUM_LEDS; i=i+3) {
-            leds[(this->*dfp)(i+delta)] = CHSV(hue, 255, 255);
-        }
-
-        delta = (delta + 1) % 3;
-    }
-}
-*/
-
-
-//3 is confusing
+// i=i+N
+//N = 3 is confusing
 //2 gives a checkerboard
 //4 is OK
 //16, 128 are cool
@@ -1742,6 +1743,14 @@ void ReAnimator::fade_randomly(uint8_t chance_of_fade, uint8_t decay) {
 }
 
 
+void ReAnimator::vanish_randomly(uint8_t chance_of_fade, uint8_t decay) {
+    for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) {
+        if (chance_of_fade > random8()) {
+            leds[i].fadeToTransparentBy(decay);
+        }
+    }
+}
+
 // ++++++++++++++++++++++++++++++
 // +++++++++++ IMAGE ++++++++++++
 // ++++++++++++++++++++++++++++++
@@ -2141,7 +2150,9 @@ uint16_t ReAnimator::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8
         ti = cart2serp(p2);
     }
 
-    if (i == MTX_NUM_LEDS-1 && !freezer.is_frozen()) {
+    // not sure if I like stopping movement when frozen.
+    //if (i == MTX_NUM_LEDS-1 && !freezer.is_frozen()) {
+    if (i == MTX_NUM_LEDS-1) {
         dx += abs(sx%MTX_NUM_COLS);
         dy += abs(sy%MTX_NUM_COLS);
         // need to track when input has entered into view for the first time
@@ -2274,9 +2285,9 @@ void ReAnimator::fadeToBlackBy(CRGBA leds[], uint16_t num_leds, uint8_t fadeBy) 
     }
 }
 
-void ReAnimator::fill_solid(struct CRGBA* targetArray, int numToFill, const struct CRGB& color) {
-    for( int i = 0; i < numToFill; ++i) {
-        targetArray[i] = color;
+void ReAnimator::fill_solid(CRGBA leds[], uint16_t num_leds, const CRGB& color) {
+    for(uint16_t i = 0; i < num_leds; ++i) {
+        leds[i] = color;
     }
 }
 
@@ -2432,7 +2443,7 @@ bool ReAnimator::Freezer::is_frozen() {
             }
         }
         if (m_all_black && ((m_frozen_previous_millis + m_failsafe_timeout) - millis()) > m_after_all_black_pause) {
-            // after all the LEDs after found to be dark unfreeze after a short pause
+            // after all the LEDs are found to be dark unfreeze after a short pause
             m_frozen_previous_millis = millis();
             m_frozen_duration = m_after_all_black_pause;
         }
