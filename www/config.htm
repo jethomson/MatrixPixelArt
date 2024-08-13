@@ -144,7 +144,9 @@
 
   <script src="js/template_variables.js"></script>
   <script>
-    // t_ssid is defined in a separate file so it can be run through the webserver's template processor
+    // NOTE: using encodeURIComponent() on the ssid or password field is unnecessary. Special characters like % and & will make it through without being encoded.
+    
+    //t_ssid is defined in a separate file so it can be run through the webserver's template processor
     // gzipped html cannot be run through the template processor, so it is necessary for t_ssid to be separate
     if (t_ssid.replaceAll("~", "") === "SSID") {
       t_ssid = "";

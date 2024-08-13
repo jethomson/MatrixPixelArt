@@ -328,7 +328,7 @@ function upload_status(json) {
 async function save() {
   let comp_dict = {};
   let type = "cm";
-  let cmid = document.getElementById("cmid").value;
+  let cmid = encodeURIComponent(document.getElementById("cmid").value); // composite file names can have special characters, so need to encode them.
 
   comp_dict["t"] = type;
   comp_dict["l"] = [];
@@ -353,7 +353,7 @@ async function save() {
             ltype = opt.parentElement.id;
           }
           if (ltype !== "e") {
-            value = opt.value;
+            value = encodeURIComponent(opt.value); // layer id. images can have special characters in file name, so need to encode them.
           }
         }
 
@@ -395,7 +395,7 @@ async function save() {
 
         // writing
         if (ltype === "t" && key === "w") {
-          value = el_key.value;
+          value = encodeURIComponent(el_key.value); // text can have special characters, so need to encode them.
         }
 
         if (value) {

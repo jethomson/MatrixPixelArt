@@ -383,11 +383,9 @@ async function fetch_source() {
 
 async function save() {
   const type = "pl";
-  let plid = document.getElementById("plid").value;
+  let plid = encodeURIComponent(document.getElementById("plid").value);
   let li = ul_playlist.getElementsByTagName("li");
-  
-  console.log(plid);
-    
+
   if (plid && li.length > 0) {
     let o = {};
     o.t = type;
@@ -397,16 +395,13 @@ async function save() {
       if (isNaN(v) || v < 0.200) {
         v = 0.200;
       }
-      o.pl.push({"t": li[i].getAttribute("data-type"), "id": li[i].getAttribute("data-id"), "d": "!!"+(1000*v)+"!!"})
+      o.pl.push({"t": li[i].getAttribute("data-type"), "id": encodeURIComponent(li[i].getAttribute("data-id")), "d": "!!"+(1000*v)+"!!"})
     }
     let json = JSON.stringify(o);
     //stringify() wraps numbers in quotes so wrap numbers in !! to make it easy to remove the quotes
     const regex = /"!!(-?[0-9]+\.{0,1}[0-9]*)!!"/g 
     json = json.replace(regex, '$1')
-    console.log(json);
     
-    console.log(`t=${type}&id=${plid}&json=` + json);
-
     let success = false;
     try {
       const t = await fetch(base_url+"/save", {

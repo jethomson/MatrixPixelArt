@@ -120,7 +120,7 @@
           let label_text = files[i];
           if (label_text.indexOf(tab) > -1) {
             label_anchor.classList.add("span-regular-file");
-            label_href = base_url+label_text.substring(0, label_text.indexOf(tab));
+            label_href = base_url+encodeURIComponent(label_text.substring(0, label_text.indexOf(tab))).replaceAll("%2F", "/");
             label_anchor.href = label_href;
             //label_text = "├──"+label_text;
             //label_text = "\\___"+label_text;

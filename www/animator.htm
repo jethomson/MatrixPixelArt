@@ -224,7 +224,7 @@ function populate_effects(list) {
 async function save() {
   let comp_dict = {};
   let type = "an";
-  let anid = document.getElementById("anid").value;
+  let anid = encodeURIComponent(document.getElementById("anid").value);
 
   comp_dict["t"] = type;
   comp_dict["l"] = [];
