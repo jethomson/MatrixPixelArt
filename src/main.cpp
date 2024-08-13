@@ -1398,9 +1398,6 @@ void setup() {
   xTaskCreatePinnedToCore(ReAnimator::load_image_from_queue, "Task1", 10000, NULL, 1, &Task1, 0);
 
   load_file(F("pl"), "startup");
-  //load_file(F("im"), "bottle_magic");
-
-  //load_file(F("an"), "nyan");
 }
 
 
