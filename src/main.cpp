@@ -841,8 +841,8 @@ bool load_from_playlist(String id) {
         DeserializationError error = deserializeJson(gpldoc, bufferedFile);
         file.close();
         if (error) {
-          Serial.print("deserializeJson() failed: ");
-          Serial.println(error.c_str());
+          DEBUG_PRINT("deserializeJson() failed: ");
+          DEBUG_PRINTLN(error.c_str());
           playlist_enabled = false;
           return refresh_needed;
         }
@@ -1069,12 +1069,21 @@ void web_server_station_setup(void) {
     String type = request->getParam("t", true)->value();
     String id = request->getParam("id", true)->value();
     String json = request->getParam("json", true)->value();
+    String load = "true";
+    if (request->hasParam("load", true)) {
+      // only the call to /save from the restore page sets the load parameter
+      // restore sets it to false to prevent loading the file to display after saving
+      // since the restore process saves many files at once
+      load = request->getParam("load", true)->value();
+    }
 
     if (id != "") {
       String fs_path = form_path(type, id);
       if (save_data(fs_path, json, &message)) {
-        ui_request.type = type;
-        ui_request.id = id;
+        if (load == "true") {
+          ui_request.type = type;
+          ui_request.id = id;
+        }
         gfile_list_needs_refresh = true;
         rc = 200;
       }
@@ -1322,8 +1331,8 @@ void show(bool refresh_now) {
 #endif
     // safety measure while testing
     //if (homogenized_brightness > 128) {
-    //  Serial.print("homogenized_brightness > 128: ");
-    //  Serial.println(homogenized_brightness);
+    //  DEBUG_PRINT("homogenized_brightness > 128: ");
+    //  DEBUG_PRINTLN(homogenized_brightness);
     //  homogenized_brightness = 128;
     //}
     FastLED.setBrightness(homogenized_brightness);
@@ -1334,7 +1343,7 @@ void show(bool refresh_now) {
 
 
 void setup() {
-  Serial.begin(115200);
+  DEBUG_BEGIN(115200);
 
   preferences.begin("config", false);
   NUM_ROWS = preferences.getUChar("rows", DEFAULT_NUM_ROWS);
@@ -1402,12 +1411,14 @@ void setup() {
 
 
 void loop() {
-  //static uint32_t pm = 0;
-  //if ((millis()-pm) > 2000) {
-  //  pm = millis();
-  //  Serial.print("heap free: ");
-  //  Serial.println(esp_get_free_heap_size());
-  //}
+#ifdef DEBUG_CONSOLE
+  static uint32_t pm = 0;
+  if ((millis()-pm) > 2000) {
+    pm = millis();
+    DEBUG_PRINT("heap free: ");
+    DEBUG_PRINTLN(esp_get_free_heap_size());
+  }
+#endif
 
   if (dns_up) {
     dnsServer.processNextRequest();
