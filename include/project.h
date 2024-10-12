@@ -40,14 +40,16 @@
   #define DEBUG_BEGIN(x)     DEBUG_CONSOLE.begin (x)
   #define DEBUG_PRINT(x)     DEBUG_CONSOLE.print (x)
   #define DEBUG_PRINTDEC(x)     DEBUG_PRINT (x, DEC)
+  #define DEBUG_PRINTHEX(x)     DEBUG_PRINT (x, HEX)
   #define DEBUG_PRINTLN(x)  DEBUG_CONSOLE.println (x)
   #define DEBUG_PRINTF(...) DEBUG_CONSOLE.printf(__VA_ARGS__)
-//#else
-//  #define DEBUG_BEGIN(x)
-//  #define DEBUG_PRINT(x)
-//  #define DEBUG_PRINTDEC(x)
-//  #define DEBUG_PRINTLN(x)
-//  #define DEBUG_PRINTF(...)
+#else
+  #define DEBUG_BEGIN(x)
+  #define DEBUG_PRINT(x)
+  #define DEBUG_PRINTDEC(x)
+  #define DEBUG_PRINTHEX(x)
+  #define DEBUG_PRINTLN(x)
+  #define DEBUG_PRINTF(...)
 #endif
 
 #define SOUND_VALUE_GAIN_INITIAL 2
