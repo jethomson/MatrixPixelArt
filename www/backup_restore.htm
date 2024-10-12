@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
   <meta http-equiv="Cache-Control" content="private, no-store" />
-  <title>Backup/Restore</title>
+  <title>Back Up/Restore</title>
   <style>
   html {
-    touch-action: manipulation
+    touch-action: manipulation;
     overflow: auto;
   }
 
@@ -24,75 +24,130 @@
   #return_main_menu {
     float: left;
   }
+  
+  #main_div {
+    max-width: 1400px;
+    margin: auto;
+  }
 
   .grid-container {
     display: grid;
-    width: 95vw;
+    grid-template-columns: repeat(2, minmax(20px, 120px)); /*fixes select element overflow grid width problem in chrome*/
+    grid-column-gap: 2vw;
+    grid-auto-rows: 1fr;
+    grid-row-gap: 5px;
+    width: 1000px;
+    max-width: 95vw;
+    justify-content: center;
+    margin: 5px auto;
+    padding: 5px;
+    border-style: solid;
+  }
+
+  .item-a {
+    grid-column-start: 1;
+  }
+  /* this allows children element of section to be displayed as if they were direct children of the div grid */
+  section {
+    display: contents;
+  }
+
+  .button-container {
+    display: flex;
+    padding-bottom: 10px;
+    padding-top: 10px;
     max-width: 600px;
-    max-height: 800px;
+    margin: 5px auto;
+  }
+  .buttonclass {
+    flex:1;
+    padding-top:5px;
+    padding-bottom:5px;
+  }
+
+  input.filename{
+    flex-grow: 1;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    background: #222;
+    border: 1px solid #333;
+    padding-inline: 5px;
+    max-width: 225px;
+    border-radius: 7px;
+    font-family: Arial,sans-serif;
+    font-size: 15px;
+    color: #ddd;
+    display: flex;
     align-items: center;
-    margin: 0 auto;
+    justify-content: center;
   }
-  .grid-checkbox-row {
-    text-align: left;
-    width: 100%;
-    display: block;
-    white-space: nowrap;
-  }
-  .grid-item-button {
-    font-weight: bold;
-    text-align: center;
-    width: 100%;
-    align-items: center;
-  }
-  .grid-item:active {
-    background: #0e70a4;
-  }
-  .span-regular-file {
-    padding-left: 1em;
+
+  .gap {
+    width:10px;
   }
 
   button {
-    border: 0;
-    border-radius: 0.3rem;
-    color: #faffff;
-    background: #1fa3ec;
-    line-height: 2.4rem;
-    font-size: 1.2rem;
+    background: #222;
+    border: 1px solid #333;
+    padding-inline: 5px;
     width: 100%;
-    transition-duration: 0.4s;
-    cursor: pointer;
-    margin: 5px 0px;
+    border-radius: 24px;
+    font-family: Arial, sans-serif;
+    font-size: 1em;
+    color: #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor:pointer;
   }
-  
-  button:hover {
+  /*
+  button:hover,
+  input[type="button"]:hover {
     background: #0e70a4;
+  }
+  */
+
+  .buttonclass {
+    flex: 1;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
+  .svg-icon {
+    vertical-align: middle;
+  }
+
+  .header {
+    text-align: center;
+  }
+
+  input[type="color"] {
+    margin: auto;
   }
   </style>
 </head>
 <body>
-  <a id="return_main_menu" href="./index.htm"><svg height="24px" width="24px" viewBox="0 0 16 16" id="Layer_1" version="1.1" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path fill="white" d="M15.45,7L14,5.551V2c0-0.55-0.45-1-1-1h-1c-0.55,0-1,0.45-1,1v0.553L9,0.555C8.727,0.297,8.477,0,8,0S7.273,0.297,7,0.555  L0.55,7C0.238,7.325,0,7.562,0,8c0,0.563,0.432,1,1,1h1v6c0,0.55,0.45,1,1,1h3v-5c0-0.55,0.45-1,1-1h2c0.55,0,1,0.45,1,1v5h3  c0.55,0,1-0.45,1-1V9h1c0.568,0,1-0.437,1-1C16,7.562,15.762,7.325,15.45,7z"/></svg></a>
+  <a id="return_main_menu" href="index.htm">
+    <svg height="24px" width="24px" viewBox="0 0 16 16" id="Layer_1">
+      <path fill="white" d="M15.45,7L14,5.551V2c0-0.55-0.45-1-1-1h-1c-0.55,0-1,0.45-1,1v0.553L9,0.555C8.727,0.297,8.477,0,8,0S7.273,0.297,7,0.555  L0.55,7C0.238,7.325,0,7.562,0,8c0,0.563,0.432,1,1,1h1v6c0,0.55,0.45,1,1,1h3v-5c0-0.55,0.45-1,1-1h2c0.55,0,1,0.45,1,1v5h3  c0.55,0,1-0.45,1-1V9h1c0.568,0,1-0.437,1-1C16,7.562,15.762,7.325,15.45,7z"/>
+    </svg>
+  </a>
 
-  <h3>Backup your art collection to a single file.</h3>
-  <form id="backup" onsubmit="event.preventDefault(); backup_art(this['filename'].value)">
-    <input type="text" name="filename" value="pixelart_backup.json" autocomplete="off" />
-    <p></p>
-    <input type="submit" value="Backup" />
-  </form>
-
-  <h3>Restore your art collection from a single file.</h3>
-  <form id="restore" onsubmit="event.preventDefault(); restore_art(this['filename'])">
-    <input id="file" type="file" name="filename" accept=".json" autocomplete="off" />
-    <p></p>
-    <input type="submit" value="Restore" />
-  </form>
-  <div id="container" class="grid-container">
-
-    <!--div class="grid-item-button">
-      <button id="delete_btn" type="submit" form="delete_form">Queue File(s) For Deletion</button>
-    </div-->
+  <h3>Back Up and Restore your art collection with a single file.</h3>
+  <h5>When restoring...<br>Files on the device of the same name and type as those in the backup file will be overwritten.<br>Files unique to the device will not be modified.<br>Files unique to the backup file will be created.</h5>
+  <div class="grid_container">
+    <div class="button-container">
+      <input type="text" id="backup_filename" class="filename" value="pixelart_backup.json" placeholder="Enter filename for backup here."  autocomplete="off" />
+      <div id="gap1" class="gap"></div>
+      <button id="btn_back_up" class="buttonclass" onclick="back_up_art()"><svg class="svg-icon" style="width:36px;height:36px" viewBox="0 -960 960 960"><path id="backupSvg" fill="currentColor" d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg> &nbsp; <span id="btn_back_up_text" data-num-dots="0">Save to backup file</span> </button>
+    </div>
+    <div class="button-container">
+      <input type="file" id="restore_filename" class="filename" accept=".json" autocomplete="off" />
+      <div id="gap1" class="gap"></div>
+      <button id="btn_restore" class="buttonclass" onclick="restore_art()"><svg class="svg-icon" style="width:36px;height:36px" viewBox="0 -960 960 960"> <path id="saveSvg" fill="currentColor" d="M440-320v-326L336-542l-56-58 200-200 200 200-56 58-104-104v326h-80ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg> &nbsp; <span id="btn_restore_text" data-num-dots="0">Restore from backup file</span> </button>
+    </div>
   </div>
-
+  
   <script>
   base_url = "";
   if (window.location.protocol == "file:") {
@@ -102,11 +157,23 @@
     base_url = "http://pixelart.local";
   }
 
+  function update_button_text(el) {
+    let num_dots = parseInt(el.getAttribute("data-num-dots"));
+    let text = el.innerText;
+    text = "." + text + '.';
+    if (num_dots === 0) {
+      text = text.replaceAll(".", "");
+    }
+    num_dots = (num_dots+1)%4;
+    el.setAttribute("data-num-dots", num_dots);
+    el.innerText = text;
+  }
 
   // backup functions
   let backup_data = {};
   backup_data.files = [];
   async function add_file_to_backup(type, id) {
+    let success = false;
     let data;
     try {
       // it is best to await response so we make one request at a time to prevent crashing the server
@@ -117,14 +184,22 @@
 
       data = await response.json();
       //console.log(data);
+      success = true;
     }
     catch(e) {
       console.error(e);
     }
     backup_data.files.push({"t":type,"id":id,"data":data})
+  
+    return success;
   }
 
-  async function backup_art(filename) {
+  async function back_up_art() {
+    let el_btn_back_up_text = document.getElementById('btn_back_up_text');
+    let btn_text = el_btn_back_up_text.innerText;
+    let sb = document.getElementById("backupSvg");
+  
+    let filename = document.getElementById("backup_filename").value;
     let data;
     try {
       const response = await fetch(base_url+"/file_list.json");
@@ -137,29 +212,58 @@
     catch(e) {
       console.error(e);
     }
+
+    if (!data) {
+      sb.setAttribute("fill", "#6b050c"); // failed
+      el_btn_back_up_text.innerText = "Error";
+      return;
+    }
+
+    let interval_id;
+    el_btn_back_up_text.innerText = "Backing Up";
+    interval_id = setInterval(function(){update_button_text(el_btn_back_up_text)}, 750);
   
     for (let i in data) {
-      await add_file_to_backup(data[i].t, data[i].id);
+      let success = await add_file_to_backup(data[i].t, data[i].id);
+      if (!success) {
+        sb.setAttribute("fill", "#6b050c"); // failed
+        clearInterval(interval_id);
+        el_btn_back_up_text.innerText = "Error";
+        return;
+      }
+      if (i == 20) {
+        break;
+      }
     }
 
-    if (backup_data.files && backup_data.files.length) {
-      let element = document.createElement("a");
-      element.setAttribute("href", "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup_data)));
-      element.setAttribute("download", filename);
+    clearInterval(interval_id);
 
-      element.style.display = "none";
-      document.body.appendChild(element);
-
-      element.click();
-
-      document.body.removeChild(element);
+    if (!backup_data.files || !backup_data.files.length) {
+      sb.setAttribute("fill", "#6b050c"); // failed
+      el_btn_back_up_text.innerText = "Error";
+      return;
     }
 
+    let element = document.createElement("a");
+    element.setAttribute("href", "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup_data)));
+    element.setAttribute("download", filename);
+
+    element.style.display = "none";
+    document.body.appendChild(element);
+
+    element.click();
+
+    document.body.removeChild(element);
+
+    sb.setAttribute("fill", "#056b0a");
+    el_btn_back_up_text.innerText = "Backup Completed";
+    setTimeout(function(){el_btn_back_up_text.innerText = btn_text;}, 1000);
   }
 
 
   // restore functions
   async function save_to_device(type, id, json) {
+    let success = false;
     try {
       let response = await fetch(base_url+"/save", {
         method: "POST",
@@ -173,23 +277,64 @@
       }
       let data = await response.json();
       //console.log(data);
+      success = true;
     }
     catch(e) {
       console.error(e);
     }
-  
+    return success; 
   }
   
   async function process_restore_file(e) {
+    let sb = document.getElementById("saveSvg");
+    let el_btn_restore_text = document.getElementById('btn_restore_text');
+  
     let lines = e.target.result;
-    let data = JSON.parse(lines);
-    for (let file of data["files"]) {
-      await save_to_device(file.t, file.id, JSON.stringify(file.data));
+    let data;
+  
+    try {
+      data = JSON.parse(lines);
     }
+    catch(e) {
+      console.error(e);
+    }
+
+    if (!data || !data["files"]) {
+      sb.setAttribute("fill", "#6b050c"); // failed
+      el_btn_restore_text.innerText = "Error";
+      return;
+    }
+
+    let interval_id;
+    let btn_text = el_btn_restore_text.innerText;
+    el_btn_restore_text.innerText = "Restoring";
+    interval_id = setInterval(function(){update_button_text(el_btn_restore_text)}, 750);
+
+    //let success_all = true;
+    //for (let file of data["files"]) {
+    //  let success = await save_to_device(file.t, file.id, JSON.stringify(file.data));
+    //  success_all = success_all && success;
+    //}
+
+    for (let file of data["files"]) {
+      let success = await save_to_device(file.t, file.id, JSON.stringify(file.data));
+      if (!success) {
+        sb.setAttribute("fill", "#6b050c"); // failed
+        clearInterval(interval_id);
+        el_btn_restore_text.innerText = "Error";
+        return;
+      }
+    }
+
+    clearInterval(interval_id);
+    sb.setAttribute("fill", "#056b0a");
+    el_btn_restore_text.innerText = "Restore Completed";
+    setTimeout(function(){el_btn_restore_text.innerText = btn_text;}, 1000);
   }
 
 
-  function restore_art(el_file) {
+  function restore_art() {
+    let el_file = document.getElementById("restore_filename");
     if (el_file.files.length == 1) {
       let restore_file = el_file.files[0];
       if (restore_file.type == "application/json") {
