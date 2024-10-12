@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+  <meta http-equiv="Cache-Control" content="private, no-store" />
+  <title>Backup/Restore</title>
+  <style>
+  html {
+    touch-action: manipulation
+    overflow: auto;
+  }
+
+  body {
+    font-family: Arial, sans-serif;
+    color: #faffff;
+    background: #111;
+    font-size: 17px;
+    text-align: center;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #return_main_menu {
+    float: left;
+  }
+
+  .grid-container {
+    display: grid;
+    width: 95vw;
+    max-width: 600px;
+    max-height: 800px;
+    align-items: center;
+    margin: 0 auto;
+  }
+  .grid-checkbox-row {
+    text-align: left;
+    width: 100%;
+    display: block;
+    white-space: nowrap;
+  }
+  .grid-item-button {
+    font-weight: bold;
+    text-align: center;
+    width: 100%;
+    align-items: center;
+  }
+  .grid-item:active {
+    background: #0e70a4;
+  }
+  .span-regular-file {
+    padding-left: 1em;
+  }
+
+  button {
+    border: 0;
+    border-radius: 0.3rem;
+    color: #faffff;
+    background: #1fa3ec;
+    line-height: 2.4rem;
+    font-size: 1.2rem;
+    width: 100%;
+    transition-duration: 0.4s;
+    cursor: pointer;
+    margin: 5px 0px;
+  }
+  
+  button:hover {
+    background: #0e70a4;
+  }
+  </style>
+</head>
+<body>
+  <a id="return_main_menu" href="./index.htm"><svg height="24px" width="24px" viewBox="0 0 16 16" id="Layer_1" version="1.1" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path fill="white" d="M15.45,7L14,5.551V2c0-0.55-0.45-1-1-1h-1c-0.55,0-1,0.45-1,1v0.553L9,0.555C8.727,0.297,8.477,0,8,0S7.273,0.297,7,0.555  L0.55,7C0.238,7.325,0,7.562,0,8c0,0.563,0.432,1,1,1h1v6c0,0.55,0.45,1,1,1h3v-5c0-0.55,0.45-1,1-1h2c0.55,0,1,0.45,1,1v5h3  c0.55,0,1-0.45,1-1V9h1c0.568,0,1-0.437,1-1C16,7.562,15.762,7.325,15.45,7z"/></svg></a>
+
+  <h3>Backup your art collection to a single file.</h3>
+  <form id="backup" onsubmit="event.preventDefault(); backup_art(this['filename'].value)">
+    <input type="text" name="filename" value="pixelart_backup.json" autocomplete="off" />
+    <p></p>
+    <input type="submit" value="Backup" />
+  </form>
+
+  <h3>Restore your art collection from a single file.</h3>
+  <form id="restore" onsubmit="event.preventDefault(); restore_art(this['filename'])">
+    <input id="file" type="file" name="filename" accept=".json" autocomplete="off" />
+    <p></p>
+    <input type="submit" value="Restore" />
+  </form>
+  <div id="container" class="grid-container">
+
+    <!--div class="grid-item-button">
+      <button id="delete_btn" type="submit" form="delete_form">Queue File(s) For Deletion</button>
+    </div-->
+  </div>
+
+  <script>
+  base_url = "";
+  if (window.location.protocol == "file:") {
+    // makes for easier debugging.
+    // if html is loaded locally, can see the results of editing more easily.
+    // otherwise every change to html would require uploading new version to microcontroller.
+    base_url = "http://pixelart.local";
+  }
+
+
+  // backup functions
+  let backup_data = {};
+  backup_data.files = [];
+  async function add_file_to_backup(type, id) {
+    let data;
+    try {
+      // it is best to await response so we make one request at a time to prevent crashing the server
+      const response = await fetch(`${base_url}/files/${type}/${id}.json`);
+      if (!(response.ok)) {
+        throw new Error(`Error fetching ${base_url}/files/${type}/${id}.json`);
+      }
+
+      data = await response.json();
+      //console.log(data);
+    }
+    catch(e) {
+      console.error(e);
+    }
+    backup_data.files.push({"t":type,"id":id,"data":data})
+  }
+
+  async function backup_art(filename) {
+    let data;
+    try {
+      const response = await fetch(base_url+"/file_list.json");
+      if (!(response.ok)) {
+        throw new Error('Error fetching file_list.json');
+      }
+      data = await response.json();
+      //console.log(data);
+    }
+    catch(e) {
+      console.error(e);
+    }
+  
+    for (let i in data) {
+      await add_file_to_backup(data[i].t, data[i].id);
+    }
+
+    if (backup_data.files && backup_data.files.length) {
+      let element = document.createElement("a");
+      element.setAttribute("href", "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup_data)));
+      element.setAttribute("download", filename);
+
+      element.style.display = "none";
+      document.body.appendChild(element);
+
+      element.click();
+
+      document.body.removeChild(element);
+    }
+
+  }
+
+
+  // restore functions
+  async function save_to_device(type, id, json) {
+    try {
+      let response = await fetch(base_url+"/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: `t=${type}&id=${id}&json=${json}&load=false`
+      });
+      if (!(response.ok)) {
+        throw new Error(`Error saving ${id}`);
+      }
+      let data = await response.json();
+      //console.log(data);
+    }
+    catch(e) {
+      console.error(e);
+    }
+  
+  }
+  
+  async function process_restore_file(e) {
+    let lines = e.target.result;
+    let data = JSON.parse(lines);
+    for (let file of data["files"]) {
+      await save_to_device(file.t, file.id, JSON.stringify(file.data));
+    }
+  }
+
+
+  function restore_art(el_file) {
+    if (el_file.files.length == 1) {
+      let restore_file = el_file.files[0];
+      if (restore_file.type == "application/json") {
+        let fr = new FileReader();
+        fr.onload = process_restore_file;
+        fr.readAsText(restore_file);
+      }
+    }
+  }
+
+  </script>
+</body>
+</html>
