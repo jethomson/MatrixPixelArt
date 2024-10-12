@@ -56,7 +56,7 @@ const char* timezone = "EST5EDT,M3.2.0,M11.1.0";
 QueueHandle_t ReAnimator::qimages = xQueueCreate(NUM_LAYERS+1, sizeof(Image));
 
 inline void cb_dbg_print(uint32_t i) {
-  Serial.println(i);
+  DEBUG_PRINTLN(i);
 }
 
 ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
@@ -555,22 +555,6 @@ void ReAnimator::load_image_from_queue(void* parameter) {
     vTaskDelete(NULL);
 }
 
-/*
-int8_t ReAnimator::get_image_status() {
-    if (!image_loaded) {
-        // this approach does not really work because images are queued pretty at almost the same time but dequeuing/loading takes about 100 ms per image
-        // so this approach will work for maybe the first couple of images but any others in the queue will be considered broken.
-        if ((millis() - image_queued_time) > 200) {
-            Serial.println("bad image");
-            return -1; // taking too long to load, image is considered broken
-        }
-        return 0; // image has not finished loading yet
-    }
-    return 1;
-}
-*/
-
-
 
 int8_t ReAnimator::get_image_status() {
     // if image was never queued this code will not work correctly, image will never be determined to be broken.
@@ -578,7 +562,7 @@ int8_t ReAnimator::get_image_status() {
         if (image_loaded) {
             return 1; // image loaded successfully into leds[]
         }
-        Serial.println("bad image");
+        DEBUG_PRINTLN("bad image");
         return -1; // image is broken
     }
     return 0; // still waiting for image to be dequeued
@@ -967,19 +951,20 @@ void ReAnimator::orbit(uint16_t draw_interval, int8_t delta) {
         leds[pos] = *rgb;
         // debugging unexpected colors/transparency
 /*
-        Serial.print("*rgb: ");
-        Serial.print((*rgb).r, HEX);
-        Serial.print((*rgb).g, HEX);
-        Serial.print((*rgb).b, HEX);
-        Serial.print(" :: (uint32_t)*rgb: ");
-        Serial.print((uint32_t)*rgb, HEX);
-        Serial.print(" :: leds[pos]: ");
-        Serial.print(leds[pos].a, HEX);
-        Serial.print(leds[pos].r, HEX);
-        Serial.print(leds[pos].g, HEX);
-        Serial.print(leds[pos].b, HEX);
-        Serial.print(" :: (uint32_t)leds[pos]: ");
-        Serial.println((uint32_t)leds[pos], HEX);
+        DEBUG_PRINT("*rgb: ");
+        DEBUG_PRINTHEX((*rgb).r);
+        DEBUG_PRINTHEX((*rgb).g);
+        DEBUG_PRINTHEX((*rgb).b);
+        DEBUG_PRINT(" :: (uint32_t)*rgb: ");
+        DEBUG_PRINTHEX((uint32_t)*rgb);
+        DEBUG_PRINT(" :: leds[pos]: ");
+        DEBUG_PRINTHEX(leds[pos].a);
+        DEBUG_PRINTHEX(leds[pos].r);
+        DEBUG_PRINTHEX(leds[pos].g);
+        DEBUG_PRINTHEX(leds[pos].b);
+        DEBUG_PRINT(" :: (uint32_t)leds[pos]: ");
+        DEBUG_PRINTHEX((uint32_t)leds[pos], HEX);
+        DEBUG_PRINTLN("");
 */
         pos = pos + delta;
 
@@ -2465,8 +2450,8 @@ int ReAnimator::compare(const void *a, const void *b) {
 /*
 void ReAnimator::print_dt() {
     static uint32_t pm = 0; // previous millis
-    Serial.print("dt: ");
-    Serial.println(millis() - pm);
+    DEBUG_PRINT("dt: ");
+    DEBUG_PRINTLN(millis() - pm);
     pm = millis();
 }
 */
