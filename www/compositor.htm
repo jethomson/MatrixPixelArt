@@ -32,11 +32,12 @@
 
   .grid-container {
     display: grid;
-    grid-template-columns: repeat(9, minmax(20px, 120px)); /*fixes select element overflow grid width problem in chrome*/
+    /*grid-template-columns: repeat(6, minmax(20px, 170px));*/ /*fixes select element overflow grid width problem in chrome*/
+    grid-template-columns: repeat(6, auto);
     grid-column-gap: 2vw;
     grid-auto-rows: 1fr;
     grid-row-gap: 5px;
-    width: 1000px;
+    /*width: 1000px;*/
     max-width: 95vw;
     justify-content: center;
     margin: 5px auto;
@@ -65,7 +66,8 @@
     padding-bottom:5px;
   }
 
-  input#cmid{
+  select#cm_list,
+  input#cm_id {
     flex-grow: 1;
     padding-top: 5px;
     padding-bottom: 5px;
@@ -137,26 +139,24 @@
 
   <div id="main_div">
     <div id="button-container">
-      <input type="text" id="cmid" maxlength=26 placeholder="Enter filename here." value="" autocomplete="off" />
-      <div id="gap1" class="gap"></div>
+      <select id="cm_list" onchange="load_composite(this)" autocomplete="off">
+        <option disabled selected value> -- load composite -- </option>
+      </select>
+      <div class="gap"></div>
+      <input type="text" id="cm_id" maxlength=26 placeholder="Enter filename here." value="" autocomplete="off" />
+      <div class="gap"></div>
       <button id="btn_save" class="buttonclass" onclick="save()"><svg class="svg-icon" style="width:36px;height:36px" viewBox="0 -960 960 960"> <path id="saveSvg" fill="currentColor" d="M440-320v-326L336-542l-56-58 200-200 200 200-56 58-104-104v326h-80ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>&nbsp; Save</button>
     </div>
-    <div id="layer_container" class="grid-container">
-        <section>
-            <label class="item-a">Layer</label>
+    <div id="layers_container" class="grid-container">
+        <section id="title_row">
+            <label class="item-a">Reorder</label>
             <label>Effect</label>
             <label>Accent</label>
-            <label>Dynamic Color 1</label>
-            <label>Dynamic Color 2</label>
-            <label>Fixed Color</label>
             <label>Color Chooser</label>
             <label>Movement</label>
             <label>Text</label>
         </section>
     </div>
-    <!--div id="main_button" class="grid-item">
-      <a href="./"><button name="">Main Menu</button></a>
-    </div-->
   </div>
 
 <script src="js/template_variables.js"></script>
@@ -170,68 +170,368 @@ if (window.location.protocol == "file:") {
 }
 
 
-function enable_disable_color_input(dradio, id) {
-  let el = document.getElementById(id);
-  if (el) {
-    if (dradio.checked && dradio.value == 2) {
-      //el.style.display = "none";
-      el.disabled = false;
+
+async function save() {
+  let comp_dict = {};
+  let type = "cm";
+  let cm_id = encodeURIComponent(document.getElementById("cm_id").value); // composite file names can have special characters, so need to encode them.
+
+  comp_dict["t"] = type;
+  comp_dict["l"] = [];
+
+  if (cm_id) {
+    let layers = document.querySelectorAll("section[data-layer]");
+    for (let i = layers.length-1; i >= 0; i--) {
+      let layer = layers[i];
+      let el_keys = layer.querySelectorAll("[data-key]");
+      let ltype = "e";
+      let lobj = {};
+      lobj["t"] = ltype; // default: e indicates the layer is empty
+      for (let j = 0; j < el_keys.length; j++) {
+        let el_key = el_keys[j];
+
+        let key = el_key.getAttribute("data-key");
+        let value;
+        if (key === "id") {
+          let opt = el_key.options[el_key.selectedIndex];
+          if (opt.parentElement.tagName === "OPTGROUP") {
+            ltype = opt.parentElement.id;
+          }
+          if (ltype !== "e") {
+            value = encodeURIComponent(opt.value); // layer id. images can have special characters in file name, so need to encode them.
+          }
+        }
+
+        if (key === "a") {
+          let opt = el_key.options[el_key.selectedIndex];
+          if (ltype !== "e") {
+            value = opt.value;
+          }
+        }
+
+        // move
+        if ((ltype === "im" || ltype === "p" || ltype === "a" || ltype === "n") && key === "m") {
+          let opt = el_key.options[el_key.selectedIndex];
+          value = opt.value;
+        }
+
+        //stringify() wraps numbers in quotes so wrap numbers in !! to make it easy to remove the quotes.
+        //any number that you want to represented as a number in json should have the value set above here. 
+        if (value && !isNaN(value)) {
+          value = "!!"+value+"!!";
+        }
+
+        // color
+        if (ltype !== "e" && key === "c") {
+          value = "1";
+          let opt = el_key.options[el_key.selectedIndex];
+          if (opt) {
+            value = opt.value;
+          }
+        }
+
+        // writing
+        if (ltype === "w" && key === "w") {
+          value = encodeURIComponent(el_key.value); // text can have special characters, so need to encode them.
+        }
+
+        if (value) {
+          lobj[key] = value;
+        }
+      }
+      lobj["t"] = ltype;
+      comp_dict["l"].push(lobj);
+    }
+    let json = JSON.stringify(comp_dict);
+    const regex = /"!!(-?[0-9]+\.{0,1}[0-9]*)!!"/g 
+    json = json.replace(regex, '$1')
+
+    console.log(`t=${type}&id=${cm_id}&json=` + json);
+
+
+    let success = false;
+    try {
+      const t = await fetch(base_url+"/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: `t=${type}&id=${cm_id}&json=` + json
+      }),
+      reply = await t.json();
+      console.log(reply);
+      success = true;
+    }
+    catch(e) {
+      console.error(e);
+      success = false;
+    }
+
+    let sb = document.getElementById("saveSvg");
+    if (success) {
+      sb.setAttribute("fill", "#056b0a");
+      setTimeout(function(){sb.setAttribute("fill", "#eee")}, 1000);
     }
     else {
-      //el.style.display = "";
-      el.disabled = true;
+      sb.setAttribute("fill", "#6b050c");
+      setTimeout(function(){sb.setAttribute("fill", "#777")}, 1000);
     }
+
   }
 }
 
 
-function enable_disable_settings(el_select) {
+function handle_reorder(id_num, direction) {
+  let section = document.getElementById(`l${id_num}`);
+  let selects = section.querySelectorAll("select");
+  let selected_indexes = [];
+  for (let select of selects) {
+    selected_indexes.push(select.selectedIndex);
+  }
+  let color_select = document.getElementById(`l${id_num}c`);
+  let new_section = document.createDocumentFragment();
+  new_section.appendChild(section.cloneNode(true));
+  selects = new_section.querySelectorAll("select");
+  for (let i in selects) {
+    selects[i].selectedIndex = selected_indexes[i];
+  }
+  let layers_container = document.getElementById("layers_container");
+  if (direction === "up") {
+    if (section.previousElementSibling.id != "title_row") {
+      layers_container.insertBefore(new_section, section.previousElementSibling);
+      section.remove();
+    }
+  }
+  else if (direction === "down" && section.nextElementSibling) {
+    layers_container.insertBefore(new_section, section.nextElementSibling.nextElementSibling);
+    section.remove();
+  }
+}
+
+
+function enable_disable_settings(el_select, id_num) {
   let opt = el_select.options[el_select.selectedIndex];
   let type = "e"; // need to set to e in order to disable all settings when empty layer is chosen.
   if (opt.parentElement.tagName === "OPTGROUP") {
     type = opt.parentElement.id;
   }
 
-  let id = el_select.id;
-  let els = document.querySelectorAll(`[id^="${id}"][data-setting-for]`);
-  for (el of els) {
-    //let dnew = "none";
+  let els = document.querySelectorAll(`[id^="l${id_num}"][data-setting-for]`);
+  for (let el of els) {
     let dnew = true;
     let enabled_for_types = el.getAttribute("data-setting-for").split(",");
     if (enabled_for_types.includes(type)) {
-      //dnew = "";
       dnew = false;
-      // since the radio buttons enable/disable color picker its state should remain unchanged here
-      if (el.getAttribute("data-key") === "c") {
-        dnew = el.disabled;
-      }
     }
     else {
-      // set to defaults - maybe should create a function for this that can be called on page load
       if (el.getAttribute("data-key") == "a") {
         el.selectedIndex = 0;
-        el.disabled = false;
       }
 
-      if (el.getAttribute("data-key") == "ct") {
-        el.checked = (el.value == 0) ? true : false;
+      if (el.getAttribute("data-key") == "cp") {
+        el.value = "#FFFFFF";
+        el.dispatchEvent(new Event('input'));
       }
-      if (el.type == "color") {
-        el.value = "#3584e4";
+
+      if (el.getAttribute("data-key") == "c") {
+        el.selectedIndex = 0;
+        el.dispatchEvent(new Event('change'));
       }
+
       el.selected = false;
+
       if (el.type == "text") {
         el.value = "";
       }
     }
-    //el.style.display = dnew;
     el.disabled = dnew;
   }
 }
 
 
-function populate_effects(list) {
-  let files = list["files"];
+async function load_composite(el_select) {
+  let id = el_select.options[el_select.selectedIndex].label;
+  let url = `${base_url}${el_select.options[el_select.selectedIndex].value}`;
+  console.log(url);
+
+  let data;
+  try {
+    let response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Error fetching ${id}`);
+    }
+    data = await response.json();
+    //console.log(data);
+  }
+  catch(e) {
+    console.error(e);
+  }
+
+  if (!data || !data["t"] || !data["l"]) {
+    return;
+  }
+
+  document.getElementById("cm_id").value = id;
+
+  for (i in data["l"]) {
+    console.log("-----");
+    let layer = data["l"][i];
+    console.log(i);
+    console.log(layer["t"]);
+
+    if (layer["t"] === "e") {
+      let id_select = document.getElementById(`l${i}id`);
+      id_select.selectedIndex = 0;
+      id_select.dispatchEvent(new Event('change'));
+      continue;
+    }
+  
+    if (layer["id"] != "" || !isNaN(layer["id"])) {
+      let id_select = document.getElementById(`l${i}id`);
+      for (let j = 0; j < id_select.options.length; j++) {
+        let option = id_select.options[j];
+        if (option.value.indexOf(layer["id"]) != -1 && (option.parentElement.id === layer["t"] || layer["t"] === "e")) {
+          option.selected = true;
+          id_select.dispatchEvent(new Event('change'));
+          console.log(`id_select value: ${option.value}`);
+          break;
+        }
+      }
+    }
+
+    if (!isNaN(layer["a"])) {
+      let accent_select = document.getElementById(`l${i}a`);
+      for (let j = 0; j < accent_select.options.length; j++) {
+        let option = accent_select.options[j];
+        if (option.value.indexOf(layer["a"]) != -1) {
+          option.selected = true;
+          console.log(`accent_select value: ${option.value}`);
+          break;
+        }
+      }
+    }
+
+
+    //if (!isNaN(layer["c"])) {
+    //  let color_picker = document.getElementById(`l${i}cp`);
+    //  let color_select = document.getElementById(`l${i}c`);
+
+    //  let color = layer["c"];
+    //  let color_type = (color >> 24) & 0xFF;
+    //  color = color & 0x00FFFFFF;
+    //  color = "#" + color.toString(16);
+    //  console.log(`color_type: ${color_type}, color: ${color}`);
+
+    //  color_picker.value = color;
+    //  color_picker.dispatchEvent(new Event('input'));
+
+    //  color_select.selectedIndex = color_type;
+    //  color_select.dispatchEvent(new Event('change'));
+    //  console.log(`color_select selected: ${color_select.selectedIndex}`);
+    //  if (color_select.selectedIndex === 0) {
+    //    console.log(`color_picker value: ${color_picker.value}`);
+    //  }
+    //}
+
+
+    if (!isNaN(layer["c"])) {
+      let color_picker = document.getElementById(`l${i}cp`);
+      let color_select = document.getElementById(`l${i}c`);
+
+      let color = layer["c"];
+      let color_type = 1;
+      if (color.indexOf("0x") === 0) {
+        color_type = 0;
+        color = "#" + color.toString(16);
+      }
+      else {
+        color_type = color;
+        color = "#000000";
+      }
+      console.log(`color_type: ${color_type}, color: ${color}`);
+
+      color_picker.value = color;
+      color_picker.dispatchEvent(new Event('input'));
+
+      color_select.selectedIndex = color_type;
+      color_select.dispatchEvent(new Event('change'));
+      console.log(`color_select selected: ${color_select.selectedIndex}`);
+      if (color_select.selectedIndex === 0) {
+        console.log(`color_picker value: ${color_picker.value}`);
+      }
+    }
+
+
+    if (!isNaN(layer["m"])) {
+      let movement_select = document.getElementById(`l${i}m`);
+      for (let j = 0; j < movement_select.options.length; j++) {
+        let option = movement_select.options[j];
+        if (option.value.indexOf(layer["m"]) != -1) {
+          option.selected = true;
+          console.log(`movement_select value: ${option.value}`);
+          break;
+        }
+      }
+    }
+
+    if (typeof layer["w"] === "string") {
+      let writing = document.getElementById(`l${i}w`);
+      writing.value = layer["w"];
+    }
+  }
+}
+
+
+async function populate_composite_list() {
+  let data;
+  try {
+    let response = await fetch(`${base_url}/file_list.json`);
+    if (!(response.ok)) {
+      throw new Error(`Error fetching ${id}`);
+    }
+    data = await response.json();
+    //console.log(data);
+  }
+  catch(e) {
+    console.error(e);
+  }
+
+  if (!data) {
+    return;
+  }
+
+  let cm_select = document.getElementById("cm_list");
+  for (let i in data) {
+    let type = data[i]["t"]; 
+    let id = data[i]["id"];
+    if(type === "cm" && id) {
+      cm_select.insertAdjacentHTML("beforeend", `<option value="/files/${type}/${id}.json">${id}</option>`)
+    }
+  }
+
+}
+
+
+async function populate_effects() {
+  let data;
+  try {
+    let response = await fetch(`${base_url}/options.json`);
+    if (!(response.ok)) {
+      throw new Error(`Error fetching options.json`);
+    }
+    data = await response.json();
+    //console.log(data);
+  }
+  catch(e) {
+    console.error(e);
+  }
+
+  //let data = JSON.parse('{"files":[{"t":"im","id":"blinky","name":"blinky"},{"t":"im","id":"inky","name":"inky"},{"t":"im","id":"pinky","name":"pinky"},{"t":"im","id":"clyde","name":"clyde"}],"patterns":[{"id":0,"name":"Rainbow"},{"id":1,"name":"Solid"},{"id":2,"name":"Riffle"},{"id":3,"name":"Puck-Man"}],"accents":[{"id":0,"name":"None"},{"id":1,"name":"Breathing"},{"id":2,"name":"Flicker"},{"id":3,"name":"Frozen Decay"}]}');
+
+  if (!data) {
+    return;
+  }
+  let files = data["files"];
   if (files) {
     let el_selects = document.querySelectorAll('select[data-key="id"]');
     for (el_select of el_selects) {
@@ -250,7 +550,7 @@ function populate_effects(list) {
     }
   }
 
-  let patterns = list["patterns"];
+  let patterns = data["patterns"];
   if (patterns) {
     let el_selects = document.querySelectorAll('select[data-key="id"]');
     for (el_select of el_selects) {
@@ -267,7 +567,7 @@ function populate_effects(list) {
     }
   }
 
-  let accents = list["accents"];
+  let accents = data["accents"];
   if (accents) {
     for (let i = 0; i < accents.length; i++) {
       let id = accents[i].id;
@@ -283,13 +583,13 @@ function populate_effects(list) {
   if (texts) {
     let el_selects = document.querySelectorAll('select[data-key="id"]');
     for (el_select of el_selects) {
-      el_select.insertAdjacentHTML("beforeend", '<optgroup id="t" label="Text">');
+      el_select.insertAdjacentHTML("beforeend", '<optgroup id="w" label="Text">');
     }
   
     for (let i = 0; i < texts.length; i++) {
       let id = i;
       let name = texts[i];
-      let el_optgroups = document.querySelectorAll('optgroup[id="t"]');
+      let el_optgroups = document.querySelectorAll('optgroup[id="w"]');
       for (el_optgroup of el_optgroups) {
         el_optgroup.insertAdjacentHTML("beforeend", `<option value="${id}">${name}</option>`);
       }
@@ -315,170 +615,94 @@ function populate_effects(list) {
 }
 
 
-/*
-function upload_status(json) {
-  if (json["upload_status"] == 0) {
-    //console.log("File uploaded successfully.");
-    document.getElementById("btn_save").textContent = "Update Successful!";
+function handle_color_picker(el_changed, id_num) {
+  let color_select = document.getElementById(`l${id_num}c`);
+  let custom_option = color_select.options[0];
+  let color = el_changed.value.replace("#", "").toUpperCase();
+  console.log(`handle_color_picker: ${color}`);
+  custom_option.innerHTML = `Custom (${el_changed.value.toUpperCase()})`
+  custom_option.value = `0x${color}`
+  custom_option.selected = true;
+  color_select.dispatchEvent(new Event('change'));
+}
+
+
+function handle_color_select(el_changed, id_num) {
+  let color = `#${el_changed.value.slice(2)}`;
+  let color_picker = document.getElementById(`l${id_num}cp`);
+  color_picker.value = color;
+  let overlay_color = document.getElementById(`l${id_num}ol`);
+  overlay_color.innerText = ""; 
+  if (el_changed.selectedOptions[0].innerHTML === "Dynamic 1") {
+    overlay_color.style.backgroundImage = "linear-gradient(90deg, red, orange, yellow, green, aqua, blue, purple)";
+  }
+  else if (el_changed.selectedOptions[0].innerHTML === "Dynamic 2") {
+    // to get Dynamic 2, subtract the colors in the Dynamic 1 color spectrum from #FFFFFF. for example, #FFFFFF - #FF0000 (red) = #00FFFF (aqua)
+    // these do not represent the actual colors used by Dynamic 2. they are meant to visually convey that Dynamic 2 is the complement of Dynamic 1.
+    //                                                             red,  orange, yellow,   green, aqua,   blue,  purple
+    overlay_color.style.backgroundImage = "linear-gradient(90deg, aqua, #005AFF,   blue, magenta,  red, yellow, #008000)";
   }
   else {
-    //console.log("File upload failed.");
-    document.getElementById("btn_save").textContent = "Update Failed :(";
-  }
-}
-*/
-
-
-async function save() {
-  let comp_dict = {};
-  let type = "cm";
-  let cmid = encodeURIComponent(document.getElementById("cmid").value); // composite file names can have special characters, so need to encode them.
-
-  comp_dict["t"] = type;
-  comp_dict["l"] = [];
-
-  if (cmid) {
-    let layers = document.querySelectorAll("section[data-layer]");
-    for (let i = layers.length-1; i >= 0; i--) {
-      let layer = layers[i];
-      let el_keys = layer.querySelectorAll("[data-key]");
-      let ltype = "e";
-      let lobj = {};
-      lobj["t"] = ltype; // default: e indicates the layer is empty
-      let save_color = false;
-      for (let j = 0; j < el_keys.length; j++) {
-        let el_key = el_keys[j];
-
-        let key = el_key.getAttribute("data-key");
-        let value;
-        if (key === "id") {
-          let opt = el_key.options[el_key.selectedIndex];
-          if (opt.parentElement.tagName === "OPTGROUP") {
-            ltype = opt.parentElement.id;
-          }
-          if (ltype !== "e") {
-            value = encodeURIComponent(opt.value); // layer id. images can have special characters in file name, so need to encode them.
-          }
-        }
-
-        if (key === "a") {
-          let opt = el_key.options[el_key.selectedIndex];
-          if (ltype !== "e") {
-            value = opt.value;
-          }
-        }
-
-        // move
-        if ((ltype === "im" || ltype === "p" || ltype === "a" || ltype === "n") && key === "m") {
-        //if (ltype !== "e" && key === "m") {
-          let opt = el_key.options[el_key.selectedIndex];
-          value = opt.value;
-        }
-
-        if (ltype !== "e" && key === "ct") {
-          value = null;
-          if (el_key.checked === true) {
-            value = el_key.value;
-          }
-          if (value == 2) {
-            save_color = true;
-          }
-        }
-
-        //stringify() wraps numbers in quotes so wrap numbers in !! to make it easy to remove the quotes.
-        //any number that you want to represented as a number in json should have the value set above here. 
-        if (value && !isNaN(value)) {
-          value = "!!"+value+"!!";
-        }
-
-        // color
-        if (ltype !== "e" && key === "c" && save_color) {
-          // convert to C format hex. keep below the !! wrap because we want to keep this as a string. 
-          value = el_key.value.replace("#", "0x");
-        }
-
-        // writing
-        if (ltype === "t" && key === "w") {
-          value = encodeURIComponent(el_key.value); // text can have special characters, so need to encode them.
-        }
-
-        if (value) {
-          lobj[key] = value;
-        }
-      }
-      lobj["t"] = ltype;
-      comp_dict["l"].push(lobj);
-    }
-    let json = JSON.stringify(comp_dict);
-    const regex = /"!!(-?[0-9]+\.{0,1}[0-9]*)!!"/g 
-    json = json.replace(regex, '$1')
-
-    console.log(`t=${type}&id=${cmid}&json=` + json);
-
-    let success = false;
-    try {
-      const t = await fetch(base_url+"/save", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: `t=${type}&id=${cmid}&json=` + json
-      }),
-      reply = await t.json();
-      console.log(reply);
-      success = true;
-    }
-    catch(e) {
-      console.error(e);
-      success = false;
-    }
-
-    let sb = document.getElementById("saveSvg");
-    if (success) {
-      sb.setAttribute("fill", "#056b0a");
-      setTimeout(function(){sb.setAttribute("fill", "#eee")}, 1000);
-    }
-    else {
-      sb.setAttribute("fill", "#6b050c");
-      setTimeout(function(){sb.setAttribute("fill", "#777")}, 1000);
-    }
-
+    overlay_color.style.background = "none";
   }
 }
 
 
-async function fetch_options() {
-  const t = await fetch(base_url+"/options.json");
-  let reply = await t.json();
-  //let reply = JSON.parse('{"files":[{"type":"file","path":"/files/im/blinky.json","name":"blinky"},{"type":"file","path":"/files/im/inky.json","name":"inky"},{"type":"file","path":"/files/im/pinky.json","name":"pinky"},{"type":"file","path":"/files/im/clyde.json","name":"clyde"}],"patterns":[{"id":0,"name":"Rainbow"},{"id":1,"name":"Solid"},{"id":2,"name":"Riffle"},{"id":3,"name":"Puck-Man"}],"accents":[{"id":0,"name":"None"},{"id":1,"name":"Breathing"},{"id":2,"name":"Flicker"},{"id":3,"name":"Frozen Decay"}]}');
-  populate_effects(reply);
+function create_color_options() {
+  let color_options_html = "";
+  //let color_names = ["Custom", "Dynamic 1", "Dynamic 2", "Black", "White", "Red", "Yellow", "Orange", "Green", "Aqua", "Blue", "Purple", "Pink"];
+  // CSS Purple is #800080 but that is too dark so use #A020F0 instead?
+  //let color_values = ["0xFFFFFF", "1", "2", "0x000000", "0xFFFFFF", "0xFF0000", "0xFFFF00", "0xFFA500", "0x00FF00", "0x00FFFF", "0x0000FF", "0xA020F0", "0xFFC0CB"];
+
+  // complementary colors are placed next to each other
+  let color_names = [     "Custom",  "Dynamic 1",  "Dynamic 2",      "White",      "Black",        "Red",       "Aqua",      "Green",    "Magenta",       "Blue",     "Yellow",     "Orange", "Ultramarine",       "Pink",       "Mint"];
+  let color_values = ["0xFFFFFF", "1", "2", "0xFFFFFF", "0x000000", "0xFF0000", "0x00FFFF", "0x00FF00", "0xFF00FF", "0x0000FF", "0xFFFF00", "0xFFA500",  "0x005AFF", "0xFFC0CB", "0xC0FFF4"];
+  color_options_html += `      <optgroup label="From Color Picker"><option value="${color_values[0]}">${color_names[0]} (${color_values[0].replace('0x00', '#')})</option></optgroup>\r\n`
+  color_options_html += `      <optgroup label="Predefined">\r\n`
+  //color_options_html += `      <option value="${color_values[1]}" selected="true">${color_names[1]}</option>\r\n`
+  for (let i = 1; i < color_names.length; i++) {
+    color_options_html += `      <option value="${color_values[i]}">${color_names[i]}</option>\r\n`
+  }
+
+  color_options_html += `      </optgroup>\r\n`
+  return color_options_html;
 }
 
 
 function create_layers_ui() {
-  let num_layers;
+  let color_options_html = create_color_options();
+
   // t_num_layers is defined in a separate file so it can be run through the webserver's template processor
   // gzipped html cannot be run through the template processor, so it is necessary for t_num_layers to be separate
   if (t_num_layers.replaceAll("~", "") === "NUM_LAYERS") {
     t_num_layers = "6";
   }
-  num_layers = parseInt(t_num_layers);
-  let layer_container = document.getElementById("layer_container");
-  while (num_layers) {
-    num_layers--;
+
+  let layer_id_num = parseInt(t_num_layers);
+  let layers_container = document.getElementById("layers_container");
+  while (layer_id_num) {
+    layer_id_num--;
     let layer = `
-<section data-layer="l${num_layers}">
-    <label class="item-a">${num_layers}</label>
-    <select id="l${num_layers}" data-key="id" onchange="enable_disable_settings(this)">
+<section id="l${layer_id_num}" data-layer="l${layer_id_num}">
+    <div class="item-a">
+      <input type="button" value="↑" onclick="handle_reorder(${layer_id_num}, 'up')" />
+      <input type="button" value="↓" onclick="handle_reorder(${layer_id_num}, 'down')" />
+    </div>
+    <select id="l${layer_id_num}id" data-key="id" onchange="enable_disable_settings(this, ${layer_id_num})">
       <option value="0">Empty</option>
     </select>
-    <select id="l${num_layers}a" data-setting-for="im,p,t,n" data-key="a" autocomplete="off" disabled >
+    <select id="l${layer_id_num}a" data-setting-for="im,p,w,n" data-key="a" autocomplete="off" disabled >
     </select>
-    <input type="radio" id="l${num_layers}rdc" name="l${num_layers}cc" data-setting-for="im,p,t,n" data-key="ct" value="0" autocomplete="off" onchange="enable_disable_color_input(this, 'l${num_layers}c')" disabled checked />
-    <input type="radio" id="l${num_layers}rcdc" name="l${num_layers}cc" data-setting-for="im,p,t,n" data-key="ct" value="1" autocomplete="off" onchange="enable_disable_color_input(this, 'l${num_layers}c')" disabled />
-    <input type="radio" id="l${num_layers}rfc" name="l${num_layers}cc" data-setting-for="im,p,t,n" data-key="ct" value="2" autocomplete="off" onchange="enable_disable_color_input(this, 'l${num_layers}c')" disabled />
-    <input type="color" id="l${num_layers}c" data-key="c" data-setting-for="im,p,t,n" autocomplete="off" value="#3584e4" disabled />
-    <select id="l${num_layers}m" data-setting-for="im,p,a,n" data-key="m" autocomplete="off" disabled />
+    <div style="display:flex; width: 100%">
+      <div style="position:relative; contain: paint">
+        <input id="l${layer_id_num}cp" type="color" data-key="cp" data-setting-for="im,p,w,n" autocomplete="off" value="#FFFFFF" oninput="handle_color_picker(this, ${layer_id_num})" disabled />
+        <div id="l${layer_id_num}ol" style="position: absolute; top: 0; left: 0; margin: 0; border: none; width: 100%; height: 100%; pointer-events: none; color: black; display: flex; justify-content: center; align-content: center; flex-direction: column;"></div>
+      </div>
+      <select id="l${layer_id_num}c" data-key="c" data-setting-for="im,p,w,n" autocomplete="off" style="flex-grow:1" onchange="handle_color_select(this, ${layer_id_num})" disabled >
+${color_options_html}
+      </select>
+    </div>
+    <select id="l${layer_id_num}m" data-setting-for="im,p,a,n" data-key="m" autocomplete="off" disabled />
       <option value="0">Still</option>
       <option value="1">↑</option>
       <option value="2">↗</option>
@@ -489,21 +713,21 @@ function create_layers_ui() {
       <option value="7">←</option>
       <option value="8">↖</option>
     </select>
-    <input type="text" id="l${num_layers}t" data-setting-for="t" data-key="w" autocomplete="off" disabled />
+    <input type="text" id="l${layer_id_num}w" data-setting-for="w" data-key="w" autocomplete="off" disabled />
 </section>`;
-    layer_container.insertAdjacentHTML("beforeend", layer);
+    layers_container.insertAdjacentHTML("beforeend", layer);
   }
 }
 
+
 function run() {
   create_layers_ui();
-  fetch_options();
-}
-
-// trigger onchange for dynamic color radio so previous or default selection takes effect
-let els = document.querySelectorAll('input[type="radio"][data-key="ct"]');
-for (el of els) {
-  el.dispatchEvent(new Event("change"));
+  //let color_selects = document.querySelectorAll('select[data-key="c"]');
+  //for (color_select of color_selects) {
+  //  color_select.dispatchEvent(new Event('change'));
+  //}
+  populate_effects();
+  populate_composite_list();
 }
 
 window.addEventListener("load", run);

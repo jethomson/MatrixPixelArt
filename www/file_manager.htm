@@ -81,7 +81,6 @@
   <form id="delete_form" method="POST" action="delete"></form>
   <div id="container" class="grid-container">
     <div id="checkbox_div"></div>
-    <div id="wget_div"></div>
 
     <div class="grid-item-button">
       <button id="delete_btn" type="submit" form="delete_form">Queue File(s) For Deletion</button>
@@ -128,11 +127,15 @@
             label_anchor.classList.add("span-regular-file");
             label_href = base_url+encodeURIComponent(label_text.substring(0, label_text.indexOf(tab))).replaceAll("%2F", "/");
             label_anchor.href = label_href;
-            url_string += label_href + " ";
             //label_text = "├──"+label_text;
             //label_text = "\\___"+label_text;
             label_text = label_text.replace(tab, tab+"(");
             label_text += " bytes)";
+
+            if (!base_url) {
+              url_string += `http://${location.hostname}`
+            }
+            url_string += `${label_href} `
           }
 
           label_anchor.appendChild(document.createTextNode(label_text));
@@ -141,8 +144,9 @@
           checkbox_div.appendChild(row);
         }
       }
+      // alternate method of backing up data by downloading each json file individually
       if (url_string) {
-        console.log("wget --force-directories --wait=5 --limit-rate=20k "+url_string);
+        console.log("wget --force-directories --wait=2 --limit-rate=20k "+url_string);
       }
     }
     else {

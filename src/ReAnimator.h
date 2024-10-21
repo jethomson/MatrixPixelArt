@@ -307,7 +307,6 @@ class ReAnimator {
 // ++++++++++++++++++++++++++++++
 // ++++++++++++ INFO ++++++++++++
 // ++++++++++++++++++++++++++++++
-    void setup_clock();
     void refresh_date_time(uint16_t draw_interval);
 
 

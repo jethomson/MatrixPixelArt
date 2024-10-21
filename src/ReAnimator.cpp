@@ -49,7 +49,7 @@
 //LV_FONT_DECLARE(ascii_sector_12); //OR use extern lv_font_t ascii_sector_12;
 extern lv_font_t ascii_sector_12;
 
-const char* timezone = "EST5EDT,M3.2.0,M11.1.0";
+//const char* timezone = "EST5EDT,M3.2.0,M11.1.0";
 
 // set queue size to NUM_LAYERS+1 because every layer of a composite could be an image, with the +1 for a little safety margin
 // since xQueueSend has xTicksToWait set to 0 (i.e. do not wait for empty queue slot if queue is full).
@@ -595,24 +595,23 @@ void ReAnimator::set_text(String s) {
 
 void ReAnimator::set_info(Info type) {
   _id = type;
-  switch(type) {
-    default:
-      // fall through to next case
-      case TIME_12HR:
-      case TIME_24HR:
-      case DATE_MMDD:
-      case DATE_DDMM:
-      case TIME_12HR_DATE_MMDD:
-      case TIME_24HR_DATE_DDMM:
-        setup_clock();
-        break;
-      //case 6:
-        // maybe do scrolling count down here
-        //break;
-      //case 7:
-        // maybe do weather info
-        //break;
-  }
+  //switch(type) {
+  //  default:
+  //    // fall through to next case
+  //    case TIME_12HR:
+  //    case TIME_24HR:
+  //    case DATE_MMDD:
+  //    case DATE_DDMM:
+  //    case TIME_12HR_DATE_MMDD:
+  //    case TIME_24HR_DATE_DDMM:
+  //      break;
+  //    //case 6:
+  //      // maybe do scrolling count down here
+  //      //break;
+  //    //case 7:
+  //      // maybe do weather info
+  //      //break;
+  //}
 }
 
 
@@ -1917,11 +1916,6 @@ bool ReAnimator::shift_char(uint32_t c, uint32_t nc) {
 // ++++++++++++++++++++++++++++++
 // ++++++++++++ INFO ++++++++++++
 // ++++++++++++++++++++++++++++++
-void ReAnimator::setup_clock() {
-    configTzTime(timezone, "pool.ntp.org");
-}
-
-
 void ReAnimator::refresh_date_time(uint16_t draw_interval) {
     static uint8_t get_time_fails = 5; // initially shows all dashes if time is not available on the first call to getLocalTime()
     if (is_wait_over(draw_interval)) {
@@ -1929,7 +1923,8 @@ void ReAnimator::refresh_date_time(uint16_t draw_interval) {
         struct tm local_now = {0};
         // the second argument of getLocalTime indicates how long it should loop waiting for the time to be received from ntp
         // since getLocalTime() is already being called around every 200 ms (via the if above) there is no need for getLocalTime()
-        // to loop, so set the second argument to 0. using 0 also keeps the other animations from being getLocalTime() looping.
+        // to loop its code, so set the second argument to 0. using 0 also keeps the other animations from being delayed by 
+        // getLocalTime() looping.
         // calling it like this does not spam the ntp server.
         char ts[nd+1] = {'-', '-', '-', '-', '\0'};
         if (getLocalTime(&local_now, 0)) {
@@ -2225,8 +2220,12 @@ void ReAnimator::ntranslate(CRGBA in[], CRGBA out[], int8_t xi, int8_t yi, int8_
 
 uint16_t ReAnimator::mover(uint16_t i) {
     uint16_t ti;
-    const int8_t s = 1; // to be replaced by speed option in the future.
-    //int8_t s = random8(1, 4); // testing out variable speed.
+    // to be replaced by speed option in the future.
+    int8_t s = 1;
+    // add a bit of variability to the speed so moving objects do not always overlap in the same spot
+    if (random8(1, 11) > 8) {
+        s = 2;
+    }
     switch (heading) {
         default:
         case 0:

@@ -45,6 +45,17 @@ AsyncWebServer web_server(80);
 
 DNSServer dnsServer;
 
+struct Timezone {
+  // TZ is only set at boot, so it is possible for iana_tz and posix_tz to have been updated from default values, but not put into effect yet.
+  // therefore we use a separate variable to track if the default timezone is in use instead of trying to do something like compare iana_tz or posix_tz to "" (empty string)
+  bool is_default_tz;
+  String iana_tz;
+  // input from frontend, passed to timezoned.rop.nl for verification and fetching corresponding posix_tz
+  // a separate varible is used instead of iana_tz to prevent losing previous data if verify_timezone() fails for some reason (e.g. unverified_iana_tz is an invalid timezone).
+  String unverified_iana_tz; 
+  String posix_tz;
+} tz;
+
 Preferences preferences;
 
 bool restart_needed = false;
@@ -109,12 +120,16 @@ bool load_collection(String type, String id);
 bool load_from_playlist(String id = "");
 bool load_file(String type, String id);
 void handle_ui_request(void);
+void write_log(String log_msg);
 
+bool verify_timezone(const String iana_tz);
+void esp_delay(uint32_t ms);
 bool attempt_connect(void);
 String get_ip(void);
 String get_mdns_addr(void);
 void wifi_AP(void);
 bool wifi_connect(void);
+void mdns_setup(void);
 void web_server_station_setup(void);
 void web_server_ap_setup(void);
 void web_server_initiate(void);
@@ -616,7 +631,7 @@ bool is_valid_layer_json(JsonVariant layer_json) {
   if (layer_json[F("id")].isNull()) {
     return false;
   }
-  if (layer_json[F("t")] == "t" && layer_json[F("w")].isNull()) {
+  if (layer_json[F("t")] == "w" && layer_json[F("w")].isNull()) {
     return false;
   }
   if (layer_json[F("t")] == "im" && !image_exists(layer_json[F("id")])) {
@@ -627,7 +642,7 @@ bool is_valid_layer_json(JsonVariant layer_json) {
 
 
 bool load_layer(uint8_t lnum, JsonVariant layer_json) {
-  //if ( layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull() || (layer_json[F("t")] == "t" && layer_json[F("w")].isNull()) || (layer_json[F("t")] == "im" && !image_exists(layer_json[F("id")])) ) {
+  //if ( layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull() || (layer_json[F("t")] == "w" && layer_json[F("w")].isNull()) || (layer_json[F("t")] == "im" && !image_exists(layer_json[F("id")])) ) {
   if (!is_valid_layer_json(layer_json)) {
     if (layers[lnum] != nullptr) {
       delete layers[lnum];
@@ -643,8 +658,8 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
   // sane defaults in case data is missing.
   // if this data is missing json is perhaps it is better to not show the layer at all.
   uint8_t accent_id = 0;
-  uint8_t color_type = 0; // dynamic color
-  std::string color = "0xFFFF00"; // yellow as a warning
+  uint8_t color_type = 1; // dynamic color
+  uint32_t color = 0x000000;
   uint8_t movement = 0; // no movement
   uint32_t image_duration = REFRESH_INTERVAL;
 
@@ -652,22 +667,33 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     accent_id = layer_json[F("a")];
   }
 
-  // color is not yet used for images. may be implemented in the future to change color palettes.
-  if (!layer_json[F("ct")].isNull()) {
-    color_type = layer_json[F("ct")];
+  if (!layer_json[F("c")].isNull()) {
+    if (layer_json[F("c")].is<const char*>()) {
+      // fixed colors are stored as RGB hex in a string
+      const char* cs = layer_json[F("c")].as<const char*>();
+      if (strlen(cs) == 8 && cs[1] == 'x') {
+        color_type = 0;
+        color = strtoul(cs, NULL, 16);
+      }
+    }
+    else if (layer_json[F("c")].is<uint8_t>()) {
+      // dynamic colors are indicated by a number.
+      // might be able to use other number to indicate a particular color palette should be used.
+      color_type = layer_json[F("c")].as<uint8_t>();
+    }
   }
+  
+  // the color setting of a layer is used for setting the color of a pattern and text
+  // but it is also used to replace the proxy color of an image
+
   if (color_type == 0) {          
-    layers[lnum]->set_color(&gdynamic_rgb);
+    layers[lnum]->set_color(color);
   }
-  else if (color_type == 1) {          
+  else if (color_type == 2) {
     layers[lnum]->set_color(&gdynamic_comp_rgb);
   }
   else {
-    if (!layer_json[F("c")].isNull()) {
-      color = layer_json[F("c")].as<std::string>();
-    }
-    uint32_t fixed_color = std::stoul(color, nullptr, 16);
-    layers[lnum]->set_color(fixed_color);
+    layers[lnum]->set_color(&gdynamic_rgb);
   }
 
   if (!layer_json[F("m")].isNull()) {
@@ -708,7 +734,7 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     layers[lnum]->set_overlay(static_cast<Overlay>(accent_id), true);
     layers[lnum]->set_heading(movement);
   }
-  else if (layer_json[F("t")] == "t") {
+  else if (layer_json[F("t")] == "w") {
     layers[lnum]->setup(Text_t, -1);
     layers[lnum]->set_text(layer_json[F("w")]);
     layers[lnum]->set_overlay(static_cast<Overlay>(accent_id), true);
@@ -927,10 +953,125 @@ void handle_ui_request(void) {
     ui_request.id = "";
   }
 }
+
+
+void write_log(String log_msg) {
+  File f = LittleFS.open("/files/debug_logC.txt", "r");
+  if (f) {
+    size_t fsize = f.size();
+    f.close();
+    //if fsize is too big the debug log will include garbage
+    //if (fsize > 2000) { // corruption.
+    //if (fsize > 1900) { // seems ok
+    // if full, rotate log files
+    if (fsize > 1750) { // about 100 lines, no corruption.
+      LittleFS.remove("/files/debug_logP.txt");
+      LittleFS.rename("/files/debug_logC.txt", "/files/debug_logP.txt");
+    }
+  }
+
+  f = LittleFS.open("/files/debug_logC.txt", "a");
+  if (f) {
+    struct tm local_now = {0};
+    getLocalTime(&local_now, 0);
+    char ts[23];
+    snprintf(ts, sizeof ts, "%d/%02d/%02d %02d:%02d:%02d - ", local_now.tm_year+1900, local_now.tm_mon+1, local_now.tm_mday, local_now.tm_hour, local_now.tm_min, local_now.tm_sec);
+    
+    //noInterrupts(); // causes crash
+    f.print(ts);
+    f.print(log_msg);
+    f.print("\n");
+    delay(1); //works without this. need it?? makes sure access time is changed??
+    f.close();
+    //interrupts();
+  }
+}
+
+
 //////////////////////////////////////////////
 //////////////////////////////////////////////
 //////////////////////////////////////////////
 //////////////////////////////////////////////
+
+// the following code is taken from the ezTime library
+// https://github.com/ropg/ezTime
+/*
+MIT License
+
+Copyright (c) 2018 R. Gonggrijp
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+#define TIMEZONED_REMOTE_HOST	"timezoned.rop.nl"
+#define TIMEZONED_REMOTE_PORT	2342
+#define TIMEZONED_LOCAL_PORT	2342
+#define TIMEZONED_TIMEOUT		2000			// milliseconds
+String _server_error = "";
+
+// instead of just the IANA timezone, technically a country code or empty string can also be input
+// if an empty string is used a geolocate is done on the IP address
+// however country codes and IP geolocates do not work for countries spanning multiple timezones
+// so for simplicity we only input IANA timezones
+bool verify_timezone(const String iana_tz) {
+  tz.unverified_iana_tz = "";
+  WiFiUDP udp;
+  
+  udp.flush();
+  udp.begin(TIMEZONED_LOCAL_PORT);
+  unsigned long started = millis();
+  udp.beginPacket(TIMEZONED_REMOTE_HOST, TIMEZONED_REMOTE_PORT);
+  udp.write((const uint8_t*)iana_tz.c_str(), iana_tz.length());
+  udp.endPacket();
+  
+  // Wait for packet or return false with timed out
+  while (!udp.parsePacket()) {
+    delay (1);
+    if (millis() - started > TIMEZONED_TIMEOUT) {
+      udp.stop();  
+      Serial.println("verify_timezone(): fetch timezone timed out.");
+      return false;
+    }
+  }
+
+  // Stick result in String recv 
+  String recv;
+  recv.reserve(60);
+  while (udp.available()) recv += (char)udp.read();
+  udp.stop();
+  Serial.print(F("verify_timezone(): (round-trip "));
+  Serial.print(millis() - started);
+  Serial.println(F(" ms)  "));
+  if (recv.substring(0,6) == "ERROR ") {
+    _server_error = recv.substring(6);
+    return false;
+  }
+  if (recv.substring(0,3) == "OK ") {
+    //tz.is_default_tz = false; // TZ value is only set on boot, so default is still in effect until timezone is saved on config page and restart occurs
+    tz.iana_tz = recv.substring(3, recv.indexOf(" ", 4));
+    tz.posix_tz = recv.substring(recv.indexOf(" ", 4) + 1);
+    return true;
+  }
+  Serial.println("verify_timezone(): timezone not found.");
+  return false;
+}
+// end ezTime MIT licensed code
+
 
 class CaptiveRequestHandler : public AsyncWebHandler {
 public:
@@ -949,7 +1090,7 @@ public:
   }
 };
 
-void espDelay(uint32_t ms) {
+void esp_delay(uint32_t ms) {
   esp_sleep_enable_timer_wakeup(ms * 1000);
   esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
   esp_light_sleep_start();
@@ -1194,7 +1335,47 @@ void web_server_initiate(void) {
     request->send(LittleFS, "/www/restart.htm");
   });
 
-  web_server.on("/saveconfig", HTTP_POST, [](AsyncWebServerRequest *request) {
+  web_server.on("/verify_timezone", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("iana_tz", true)) {
+      AsyncWebParameter* p = request->getParam("iana_tz", true);
+      if (!p->value().isEmpty()) {
+        tz.unverified_iana_tz = p->value().c_str();
+      }
+    }
+    request->send(200);
+  });
+
+  web_server.on("/get_timezone", HTTP_GET, [](AsyncWebServerRequest *request) {
+    //char timezone_json[53];
+    //snprintf(timezone_json, sizeof(timezone_json), " occurred at %i hours, %i minutes, and %i seconds.", datetime.tm_hour, datetime.tm_min, datetime.tm_sec);
+    String timezone = "{\"is_default_tz\":";
+    String str_is_default_tz = (tz.is_default_tz) ? "true" : "false";
+    timezone += str_is_default_tz;
+    timezone += ",\"iana_tz\":\"";
+    timezone += tz.iana_tz;
+    timezone += "\",\"posix_tz\":\"";
+    timezone += tz.posix_tz;
+    timezone += "\"}";
+    request->send(200, "application/json", timezone);
+  });
+
+  web_server.on("/get_config", HTTP_GET, [](AsyncWebServerRequest *request) {
+    preferences.begin("config", true);
+    String config = "{\"ssid\":\"";
+    config += preferences.getString("ssid", "");
+    config += "\",\"mdns_host\":\"";
+    config += preferences.getString("mdns_host", "");
+    config += "\",\"rows\":\"";
+    config += preferences.getUChar("rows", DEFAULT_NUM_ROWS);
+    config += "\",\"columns\":\"";
+    config += preferences.getUChar("columns", DEFAULT_NUM_ROWS);
+    config += "\"}";
+    preferences.end();
+    Serial.println(config);
+    request->send(200, "application/json", config);
+  });
+
+  web_server.on("/save_config", HTTP_POST, [](AsyncWebServerRequest *request) {
     preferences.begin("config", false);
 
     if (request->hasParam("ssid", true)) {
@@ -1237,6 +1418,20 @@ void web_server_initiate(void) {
       }
     }
 
+    if (request->hasParam("iana_tz", true)) {
+      AsyncWebParameter* p = request->getParam("iana_tz", true);
+      if (!p->value().isEmpty()) {
+        preferences.putString("iana_tz", p->value().c_str());
+      }
+    }
+
+    if (request->hasParam("posix_tz", true)) {
+      AsyncWebParameter* p = request->getParam("posix_tz", true);
+      if (!p->value().isEmpty()) {
+        preferences.putString("posix_tz", p->value().c_str());
+      }
+    }
+
     preferences.putBool("create_ap", false);
 
     preferences.end();
@@ -1244,6 +1439,36 @@ void web_server_initiate(void) {
     request->redirect("/restart.htm");
   });
 
+  // WiFi scanning code taken from ESPAsyncW3ebServer examples
+  // https://github.com/me-no-dev/ESPAsyncWebServer?tab=readme-ov-file#scanning-for-available-wifi-networks
+  // Copyright (c) 2016 Hristo Gochkov. All rights reserved.
+  // This WiFi scanning code snippet is under the GNU Lesser General Public License.
+  web_server.on("/scan", HTTP_GET, [](AsyncWebServerRequest *request){
+    String json = "[";
+    int n = WiFi.scanComplete();
+    if (n == -2) {
+      WiFi.scanNetworks(true, true); // async scan, show hidden
+    } else if (n) {
+      for (int i = 0; i < n; ++i) {
+        if (i) json += ",";
+        json += "{";
+        json += "\"rssi\":"+String(WiFi.RSSI(i));
+        json += ",\"ssid\":\""+WiFi.SSID(i)+"\"";
+        json += ",\"bssid\":\""+WiFi.BSSIDstr(i)+"\"";
+        json += ",\"channel\":"+String(WiFi.channel(i));
+        json += ",\"secure\":"+String(WiFi.encryptionType(i));
+        //json += ",\"hidden\":"+String(WiFi.isHidden(i)?"true":"false"); // ESP32 does not support isHidden()
+        json += "}";
+      }
+      WiFi.scanDelete();
+      if(WiFi.scanComplete() == -2){
+        WiFi.scanNetworks(true);
+      }
+    }
+    json += "]";
+    request->send(200, "application/json", json);
+    json = String();
+  });
 
   if (ON_STA_FILTER) {
     web_server_station_setup();
@@ -1254,6 +1479,7 @@ void web_server_initiate(void) {
 
   web_server.begin();
 }
+// end WiFi scanning code taken from ESPAsyncW3ebServer examples
 
 
 void show(bool refresh_now) {
@@ -1350,13 +1576,48 @@ void setup() {
   NUM_COLS = preferences.getUChar("columns", DEFAULT_NUM_COLS);
   //NUM_ROWS = 12; //testing
   //NUM_COLS = 12;
-  preferences.end();
   NUM_LEDS = NUM_ROWS*NUM_COLS;
   leds = (CRGB*)malloc(NUM_ROWS*NUM_COLS*sizeof(CRGB));
 
   for (uint8_t i = 0; i < NUM_LAYERS; i++) {
     layers[i] = nullptr;
   }
+
+  //The format is TZ = local_timezone,date/time,date/time.
+  //Here, date is in the Mm.n.d format, where:
+  //    Mm (1-12) for 12 months
+  //    n (1-5) 1 for the first week and 5 for the last week in the month
+  //    d (0-6) 0 for Sunday and 6 for Saturday
+
+  //https://www.di-mgt.com.au/wclock/help/wclo_tzexplain.html
+  //[America/New_York]
+  //TZ=EST5EDT,M3.2.0/2,M11.1.0
+  //
+  //EST = designation for standard time when daylight saving is not in force
+  //5 = offset in hours = 5 hours west of Greenwich meridian (i.e. behind UTC)
+  //EDT = designation when daylight saving is in force (if omitted there is no daylight saving)
+  //, = no offset number between code and comma, so default to one hour ahead for daylight saving
+  //M3.2.0 = when daylight saving starts = the 0th day (Sunday) in the second week of month 3 (March)
+  ///2, = the local time when the switch occurs = 2 a.m. in this case
+  //M11.1.0 = when daylight saving ends = the 0th day (Sunday) in the first week of month 11 (November). No time is given here so the switch occurs at 02:00 local time.
+  //
+  //So daylight saving starts on the second Sunday in March and finishes on the first Sunday in November. The switch occurs at 02:00 local time in both cases. This is the default switch time, so the /2 isn't strictly needed. 
+  //
+  // ESP32 time.h library does not support setting TZ to IANA timezones. POSIX timezones (i.e. proleptic format) are required.
+  tz.is_default_tz = false;
+  tz.iana_tz = preferences.getString("iana_tz", "");
+  tz.unverified_iana_tz = "";
+  tz.posix_tz = preferences.getString("posix_tz", "");
+  if (tz.posix_tz == "") {
+    tz.is_default_tz = true;
+    // US eastern timezone for TESTING
+    //tz.iana_tz = "America/New_York";
+    //tz.posix_tz = "EST5EDT,M3.2.0,M11.1.0";
+    tz.iana_tz = "Etc/UTC";
+    tz.posix_tz = "UTC0"; // "" has the same effect as UTC0
+  }
+  preferences.end();
+
 
   // setMaxPowerInVoltsAndMilliamps() should not be used if homogenize_brightness_custom() is used
   // since setMaxPowerInVoltsAndMilliamps() uses the builtin LED power usage constants 
@@ -1378,10 +1639,13 @@ void setup() {
     while (1) yield(); // cannot proceed without filesystem
   }
 
+  // scanNetworks() only returns results the second time it is called, so call it here so when it is called again by the config page results will be returned
+  WiFi.scanNetworks(false, true); // synchronous scan, show hidden
+
   if (attempt_connect()) {
   	if (!wifi_connect()) {
 	  	// failure to connect will result in creating AP
-      espDelay(2000);
+      esp_delay(2000);
   		wifi_AP();
 	  }
   }
@@ -1391,6 +1655,38 @@ void setup() {
 
   mdns_setup();
   web_server_initiate();
+
+
+  Serial.print("Attempting to fetch time from ntp server.");
+  configTzTime(tz.posix_tz.c_str(), "pool.ntp.org");
+  //configTzTime(tz.posix_tz.c_str(), "192.168.1.99");
+  struct tm local_now = {0};
+  uint8_t attempt_cnt = 0;
+  // we want the code to give up because have the time is not essential
+  // the time is needed if a composite has a time effect but there is no guarantee a time effect is used
+  // having the correct time is also useful debug logging but not essential
+  // if a time effect is used getLocalTime() will be called which may yet result in fetching the ntp time
+  // even after this block has given up.
+  uint8_t give_up_after = 2; // seconds (approximately)
+  while (true) {
+    time_t now;
+    time(&now);
+    localtime_r(&now, &local_now);
+    if(local_now.tm_year > (2016 - 1900)){
+      break;
+    }
+    delay(10);
+    attempt_cnt++;
+    if (attempt_cnt == 100) {
+      attempt_cnt = 0;
+      Serial.print(".");
+      give_up_after--;
+      if (!give_up_after) {
+        break;
+      }
+    }
+  }
+  Serial.printf("\n***** local time: %d/%02d/%02d %02d:%02d:%02d *****\n", local_now.tm_year+1900, local_now.tm_mon+1, local_now.tm_mday, local_now.tm_hour, local_now.tm_min, local_now.tm_sec);
 
   handle_file_list(); // refresh file list before starting loop() because refreshing is slow
 
@@ -1405,18 +1701,26 @@ void setup() {
 
   // use core 0 to load images to prevent lag
   xTaskCreatePinnedToCore(ReAnimator::load_image_from_queue, "Task1", 10000, NULL, 1, &Task1, 0);
-
+  
   load_file(F("pl"), "startup");
+
+  write_log("setup finished");
 }
 
 
 void loop() {
 #ifdef DEBUG_CONSOLE
+  static uint8_t hp_cnt = 0;
   static uint32_t pm = 0;
   if ((millis()-pm) > 2000) {
     pm = millis();
-    DEBUG_PRINT("heap free: ");
-    DEBUG_PRINTLN(esp_get_free_heap_size());
+    char heap_free[18];
+    snprintf(heap_free, sizeof(heap_free), "heap free: %lu", esp_get_free_heap_size());
+    DEBUG_PRINTLN(heap_free);
+    if (hp_cnt == 0) {
+      write_log(heap_free);
+    }
+    hp_cnt++;
   }
 #endif
 
@@ -1436,4 +1740,7 @@ void loop() {
   handle_delete_list();
   handle_ui_request();
 
+  if (tz.unverified_iana_tz != "") {
+    verify_timezone(tz.unverified_iana_tz);
+  }
 }

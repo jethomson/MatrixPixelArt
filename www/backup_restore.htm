@@ -190,6 +190,7 @@
       console.error(e);
     }
     backup_data.files.push({"t":type,"id":id,"data":data})
+    console.log(`${type} ${id}`);
   
     return success;
   }
@@ -198,6 +199,7 @@
     let el_btn_back_up_text = document.getElementById('btn_back_up_text');
     let btn_text = el_btn_back_up_text.innerText;
     let sb = document.getElementById("backupSvg");
+    sb.setAttribute("fill", "currentColor");
   
     let filename = document.getElementById("backup_filename").value;
     let data;
@@ -230,9 +232,6 @@
         clearInterval(interval_id);
         el_btn_back_up_text.innerText = "Error";
         return;
-      }
-      if (i == 20) {
-        break;
       }
     }
 
@@ -286,8 +285,9 @@
   }
   
   async function process_restore_file(e) {
-    let sb = document.getElementById("saveSvg");
     let el_btn_restore_text = document.getElementById('btn_restore_text');
+    let sb = document.getElementById("saveSvg");
+    sb.setAttribute("fill", "currentColor");
   
     let lines = e.target.result;
     let data;

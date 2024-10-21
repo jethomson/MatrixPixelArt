@@ -96,6 +96,17 @@
   button:hover {
     background: #0e70a4;
   }
+
+  .w3r-offscreen {
+    border: 0; /* Comment: Removes any border */
+    clip: rect(0 0 0 0); /* Comment: Clips the element to be invisible */
+    height: 1px; /* Comment: Sets the height of the element to 1 pixel */
+    margin: -1px; /* Comment: Offsets the element by -1 pixel to hide it from view */
+    overflow: hidden; /* Comment: Hides any overflowing content */
+    padding: 0; /* Comment: Removes padding */
+    position: absolute; /* Comment: Positions the element absolutely */
+    width: 1px; /* Comment: Sets the width of the element to 1 pixel */
+  }
   </style>
 </head>
 
@@ -107,15 +118,23 @@
   </a>
 
   <h3>Enter your configuration data here.</h3>
-  <h5>If a field is left blank the previously saved value for that field will not be overwritten.</h5>
+  <h5>
+  If a field is left blank the previously saved value for that field will not be overwritten by Save.<br>
+  Setting the timezone will be easier after your device is connected to the WiFi.<br>
+  If the IANA Timezone is blank it will be filled in automatically based on your IP address.<br>
+  The POSIX Timezone is derived from the IANA Timezone.
+  </h5>
 
-  <form id="saveconfig" action="/saveconfig" method="post"></form>
+  <form id="save_config" action="/save_config" method="post"></form>
   <div class="grid-container">
+  
     <label class="item-a">SSID</label>
-    <input id="ssid" class="wide-input" form="saveconfig" placeholder="type WiFi network name here" name="ssid" maxlength="32" >
+    <input id="ssid" type="text" class="wide-input" form="save_config" name="ssid" placeholder="enter WiFi name here" list="ssids" maxlength="32" >
+    <datalist id="ssids"></datalist>
 
     <label class="item-a">Password</label>
-    <input id="password" class="wide-input" form="saveconfig" name="password" placeholder="type WiFi password here" type="password" maxlength="63">
+    <!--have to use -webkit-text-security instead of type="password" to prevent "connection is not secure" warning that breaks SSID input functionality-->
+    <input id="password" type="text" class="wide-input" form="save_config" name="password" placeholder="enter WiFi password here" maxlength="63" autocomplete="off" data-hide="true" style="-webkit-text-security: disc;">
     <input id="show" type="checkbox" onclick="sp()" name="" style="position: absolute; opacity: 0; width: 0; height: 0;">
     <label class="item-e" id="show_lbl" for="show">
       <svg id="pwd_visible" class="svg-icon" width="20px" height="20px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -132,20 +151,27 @@
 
     <label class="item-a">mDNS address</label>
     <label>http://</label>
-    <input id="mdns_host" form="saveconfig" name="mdns_host" type="text" autocapitalize="none" maxlength="30">
+    <input id="mdns_host" type="text" form="save_config" name="mdns_host" autocapitalize="none" maxlength="30" autocomplete="off">
     <label>.local</label>
     
     <label class="item-a">Matrix Size</label>
     <section id="dimensions" style="text-align:left">
-    <input id="rows" form="saveconfig" name="rows" type="number" pattern="[0-9]*" min=1 maxlength="4" title="Number of rows or height of matrix">
+    <input id="rows" type="number" form="save_config" name="rows" pattern="[0-9]*" min=1 maxlength="4" title="Number of rows or height of matrix">
     <label> x </label>
-    <input id="columns" form="saveconfig" name="columns" type="number" pattern="[0-9]*" min=1 maxlength="4" title="Number of columns or width of matrix">
+    <input id="columns" type="number" form="save_config" name="columns" pattern="[0-9]*" min=1 maxlength="4" title="Number of columns or width of matrix">
     <label>(rows x columns)</label>
     </section>
+    <label class="item-a">IANA Timezone</label>
+    <input id="iana_tz" class="wide-input" form="save_config" name="iana_tz" placeholder="enter IANA timezone here" onchange="handle_iana_tz_change(false)" autocomplete="off">
 
-    <button form="saveconfig" type="submit" value="Save">Save</button>
+    <label class="item-a">POSIX Timezone</label>
+    <input id="posix_tz" class="wide-input" form="save_config" name="posix_tz" placeholder="enter POSIX timezone here" autocomplete="off">
+
+
+    <button form="save_config" type="submit" value="Save">Save</button>
   </div>
 
+<!--
   <script src="js/template_variables.js"></script>
   <script>
     // NOTE: using encodeURIComponent() on the ssid or password field is unnecessary. Special characters like % and & will make it through without being encoded.
@@ -183,6 +209,154 @@
         document.getElementById("pwd_hidden").style.display = "none";
       }
     }
+  </script>
+-->
+  <script>
+
+base_url = "";
+if (window.location.protocol == "file:") {
+  // makes for easier debugging.
+  // if html is loaded locally, can see the results of editing more easily.
+  // otherwise every change to html would require uploading new version to microcontroller.
+  base_url = "http://pixelart.local";
+}
+
+async function handle_iana_tz_change(fetch_iana) {
+  // for the time.h functions to work correctly (and automatically) with DST we must set TZ with the proper POSIX timezone string.
+  // unfortunately APIs that return a POSIX timezone string are extremely rare.
+  // the service (timezoned.rop.nl from the ezTime library) we use requires an IANA timezone to return the POSIX timezone.
+  // this service does have the ability to geolocate IP addresses, but it only works for countries with one timezone.
+  // therefore we use a separate service to get our IANA timezone by geolocating our IP address.
+  // all of this could be done behind the scenes without exposing IANA and POSIX timezone inputs to the user; however geolocating
+  // IP addresses is not 100% reliable, so we need to give the user the option to manually enter data in these fields.
+  let iana_tz = document.getElementById("iana_tz").value;
+  if (fetch_iana || iana_tz === "") {
+    try {
+      const response = await fetch("http://worldtimeapi.org/api/ip"); // returns local time based on location of IP address
+      const datetime_json = await response.json();
+      iana_tz = datetime_json["timezone"];
+      document.getElementById("iana_tz").value = iana_tz;
+    }
+    catch(e) {
+      console.error(e);
+    }
+  }
+
+  if (iana_tz != "") {
+    let success = false;
+    try {
+      const response = await fetch(base_url+"/verify_timezone", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: "iana_tz=" + iana_tz
+      });
+      // TODO: need to check response code, might not be 200 !!!
+      success = true;
+    }
+    catch(e) {
+      console.error(e);
+      success = false;
+    }
+    if (success) {
+      setTimeout(get_timezone, 2000);
+    }
+  }
+}
+
+async function get_timezone() {
+  let is_default_tz = true;
+  try {
+    const response = await fetch(base_url+"/get_timezone");
+    const timezone = await response.json();
+    console.log(timezone);
+    is_default_tz = timezone["is_default_tz"];
+    let iana_tz = timezone["iana_tz"];
+    let posix_tz = timezone["posix_tz"];
+
+    let el_iana_tz = document.getElementById("iana_tz");
+    el_iana_tz.value = iana_tz;
+    document.getElementById("posix_tz").value = posix_tz;
+  }
+  catch(e) {
+    console.error(e);
+  }
+  return is_default_tz;
+}
+
+function sp() {
+  let pf = document.getElementById("password");
+  if (pf.getAttribute("data-hide") === "true") {
+    pf.setAttribute("data-hide", "false");
+    pf.style.setProperty("-webkit-text-security","");
+    document.getElementById("pwd_hidden").style.display = "block";
+    document.getElementById("pwd_visible").style.display = "none";
+  }
+  else {
+    pf.setAttribute("data-hide", "true");
+    pf.style.setProperty("-webkit-text-security","disc");
+    document.getElementById("pwd_visible").style.display = "block";
+    document.getElementById("pwd_hidden").style.display = "none";
+  }
+}
+
+async function get_wifi_networks() {
+  try {
+    const response = await fetch(base_url+"/scan");
+    if (!response.ok) {
+      throw new Error('Error fetching getting WiFi networks');
+    }
+    let data = await response.json();
+    if (!data && !data.length) {
+      return
+    }
+
+    console.log(data);
+    let options_html =  "";
+    let set = new Set();
+    for (object of data) {
+      if (object.ssid) {
+        if (!set.has(object.ssid)) {
+          set.add(object.ssid)
+          options_html += `<option>${object.ssid}</option>`;
+        }
+      }
+    }
+    let datalist_ssid = document.getElementById("ssids");
+    datalist_ssid.innerHTML = options_html;
+  }
+  catch(e) {
+    console.error(e);
+  }
+}
+
+async function get_config() {
+  try {
+    const response = await fetch(base_url+"/get_config");
+    const config = await response.json();
+    console.log(config);
+    document.getElementById("ssid").value = config["ssid"];
+    document.getElementById("mdns_host").value = config["mdns_host"];
+    document.getElementById("rows").value = config["rows"];
+    document.getElementById("columns").value = config["columns"];
+  }
+  catch(e) {
+    console.error(e);
+  }
+}
+
+async function run() {
+  get_wifi_networks();
+  get_config(); 
+
+  let is_default_tz = await get_timezone();
+  if (is_default_tz) {
+    handle_iana_tz_change(true);
+  }
+}
+
+window.addEventListener("load", run);
   </script>
 </body>
 </html>
