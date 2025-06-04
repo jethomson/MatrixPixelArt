@@ -171,46 +171,6 @@
     <button form="save_config" type="submit" value="Save">Save</button>
   </div>
 
-<!--
-  <script src="js/template_variables.js"></script>
-  <script>
-    // NOTE: using encodeURIComponent() on the ssid or password field is unnecessary. Special characters like % and & will make it through without being encoded.
-    
-    //t_ssid is defined in a separate file so it can be run through the webserver's template processor
-    // gzipped html cannot be run through the template processor, so it is necessary for t_ssid to be separate
-    if (t_ssid.replaceAll("~", "") === "SSID") {
-      t_ssid = "";
-    }
-    if (t_mdns_host.replaceAll("~", "") === "MDNS_HOST") {
-      t_mdns_host = "";
-    }
-    if (t_num_rows.replaceAll("~", "") === "NUM_ROWS") {
-      t_num_rows = "16";
-    }
-    if (t_num_cols.replaceAll("~", "") === "NUM_COLS") {
-      t_num_cols = "16";
-    }
-
-    document.getElementById("ssid").value = t_ssid;
-    document.getElementById("mdns_host").value = t_mdns_host;
-    document.getElementById("rows").value = parseInt(t_num_rows);
-    document.getElementById("columns").value = parseInt(t_num_cols);
-  
-    function sp(){
-      let pf = document.getElementById("password");
-      if (pf.type === "password") {
-        pf.type = "text";
-        document.getElementById("pwd_hidden").style.display = "block";
-        document.getElementById("pwd_visible").style.display = "none";
-      }
-      else {
-        pf.type = "password";
-        document.getElementById("pwd_visible").style.display = "block";
-        document.getElementById("pwd_hidden").style.display = "none";
-      }
-    }
-  </script>
--->
   <script>
 
 base_url = "";
@@ -231,19 +191,28 @@ async function handle_iana_tz_change(fetch_iana) {
   // IP addresses is not 100% reliable, so we need to give the user the option to manually enter data in these fields.
   let iana_tz = document.getElementById("iana_tz").value;
   if (fetch_iana || iana_tz === "") {
+    let data;
     try {
       const response = await fetch("http://worldtimeapi.org/api/ip"); // returns local time based on location of IP address
-      const datetime_json = await response.json();
-      iana_tz = datetime_json["timezone"];
-      document.getElementById("iana_tz").value = iana_tz;
+      if (!response.ok) {
+        throw new Error("Error fetching IANA timezone.");
+      }
+      data = await response.json();
+      if (!data["timezone"]) {
+        throw new Error("Error IANA timezone response is invalid.");
+      }
     }
     catch(e) {
       console.error(e);
+      return;
     }
+
+    iana_tz = data["timezone"];
+    document.getElementById("iana_tz").value = iana_tz;
   }
 
+
   if (iana_tz != "") {
-    let success = false;
     try {
       const response = await fetch(base_url+"/verify_timezone", {
         method: "POST",
@@ -252,36 +221,45 @@ async function handle_iana_tz_change(fetch_iana) {
         },
         body: "iana_tz=" + iana_tz
       });
-      // TODO: need to check response code, might not be 200 !!!
-      success = true;
+      if (!response.ok) {
+        throw new Error("Error POSTing to /verify_timezone.");
+      }
     }
     catch(e) {
       console.error(e);
-      success = false;
+      return;
     }
-    if (success) {
-      setTimeout(get_timezone, 2000);
-    }
+
+    setTimeout(get_timezone, 2000);
   }
 }
 
 async function get_timezone() {
   let is_default_tz = true;
+  let data;
   try {
     const response = await fetch(base_url+"/get_timezone");
-    const timezone = await response.json();
-    console.log(timezone);
-    is_default_tz = timezone["is_default_tz"];
-    let iana_tz = timezone["iana_tz"];
-    let posix_tz = timezone["posix_tz"];
-
-    let el_iana_tz = document.getElementById("iana_tz");
-    el_iana_tz.value = iana_tz;
-    document.getElementById("posix_tz").value = posix_tz;
+    if (!response.ok) {
+      throw new Error("Error fetching from /get_timezone.");
+    }
+    data = await response.json();
+    if (!data["posix_tz"]) {
+      throw new Error("Error /get_timezone response is invalid.");
+    }
   }
   catch(e) {
     console.error(e);
+    return is_default_tz;
   }
+
+  is_default_tz = data["is_default_tz"];
+  let iana_tz = data["iana_tz"];
+  let posix_tz = data["posix_tz"];
+
+  let el_iana_tz = document.getElementById("iana_tz");
+  el_iana_tz.value = iana_tz;
+  document.getElementById("posix_tz").value = posix_tz;
+
   return is_default_tz;
 }
 
@@ -302,48 +280,57 @@ function sp() {
 }
 
 async function get_wifi_networks() {
+  let data;
   try {
     const response = await fetch(base_url+"/scan");
     if (!response.ok) {
-      throw new Error('Error fetching getting WiFi networks');
+      throw new Error("Error getting WiFi networks.");
     }
-    let data = await response.json();
-    if (!data && !data.length) {
-      return
+    data = await response.json();
+    if (!data.length) {
+      throw new Error("Error WiFi scan results are invalid.");
     }
-
-    console.log(data);
-    let options_html =  "";
-    let set = new Set();
-    for (object of data) {
-      if (object.ssid) {
-        if (!set.has(object.ssid)) {
-          set.add(object.ssid)
-          options_html += `<option>${object.ssid}</option>`;
-        }
-      }
-    }
-    let datalist_ssid = document.getElementById("ssids");
-    datalist_ssid.innerHTML = options_html;
   }
   catch(e) {
     console.error(e);
+    return;
   }
+
+  let options_html =  "";
+  let set = new Set();
+  for (object of data) {
+    if (object.ssid) {
+      if (!set.has(object.ssid)) {
+        set.add(object.ssid)
+        options_html += `<option>${object.ssid}</option>`;
+      }
+    }
+  }
+  let datalist_ssid = document.getElementById("ssids");
+  datalist_ssid.innerHTML = options_html;
 }
 
 async function get_config() {
+  let data;
   try {
     const response = await fetch(base_url+"/get_config");
-    const config = await response.json();
-    console.log(config);
-    document.getElementById("ssid").value = config["ssid"];
-    document.getElementById("mdns_host").value = config["mdns_host"];
-    document.getElementById("rows").value = config["rows"];
-    document.getElementById("columns").value = config["columns"];
+    if (!response.ok) {
+      throw new Error("Error fetching from /get_config.");
+    }
+    data = await response.json();
+    if (!data["rows"]) {
+      throw new Error("Error /get_config results are invalid.");
+    }
   }
   catch(e) {
     console.error(e);
+    return;
   }
+
+  document.getElementById("ssid").value = data["ssid"];
+  document.getElementById("mdns_host").value = data["mdns_host"];
+  document.getElementById("rows").value = data["rows"];
+  document.getElementById("columns").value = data["columns"];
 }
 
 async function run() {
