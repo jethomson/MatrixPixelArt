@@ -108,8 +108,19 @@
     let url_string = ""
     if (responseText != "") {
       let files = responseText.split(newline);
+      files.sort(function (a, b) {
+        let depth_a = (a.split("/").length - 1);
+        let depth_b = (b.split("/").length - 1);
+        if (depth_a === depth_b) {
+          return a.localeCompare(b);
+        }
+        else {
+          return depth_a - depth_b;
+        }
+      });
       for (let i in files) {
         if (files[i] != "") {
+          console.log(files[i]);
           let row = document.createElement("div");
           row.classList.add("grid-checkbox-row");
           let checkbox_input = document.createElement("input");
@@ -158,13 +169,33 @@
     container.style.visibility = "visible"; 
   }
 
-  function pull_file_list() {
-    fetch(base_url+"/file_list")
-      .then(response => response.text())
-      .then(data => insert_file_list(data));
+  async function pull_file_list() {
+    let data = "";
+    try {
+      const response = await fetch(base_url+"/file_list");
+      if (!response.ok) {
+        throw new Error("Error fetching from /file_list.");
+      }
+      data = await response.text();
+      if (!data) {
+        throw new Error("Error response text is invalid.");
+      }
+    }
+    catch(e) {
+      console.error(e);
+      data = "";
+    }
+    return data;
   }
 
-  pull_file_list();
+  async function run() {
+    let data = await pull_file_list();
+    if (data && data.length > 0) {
+      insert_file_list(data);
+    }
+  }
+
+  window.addEventListener("load", run);
 
   </script>
 </body>
