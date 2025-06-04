@@ -131,15 +131,32 @@ if (window.location.protocol == "file:") {
 }
 
 
-function populate_effects(list) {
+async function populate_art() {
+  let data;
+  try {
+    const response = await fetch(base_url+"/file_list.json");
+    if (!response.ok) {
+      throw new Error("Error fetching from /file_list.json.");
+    }
+
+    data = await response.json();
+    if (!data.length) {
+      throw new Error("Error file list is empty.");
+    }
+  }
+  catch(e) {
+    console.error(e);
+    return;
+  }
+
   let im_btns_div = document.getElementById("im_btns");
   let cm_btns_div = document.getElementById("cm_btns");
   let an_btns_div = document.getElementById("an_btns");
   let pl_btns_div = document.getElementById("pl_btns");
   
-  for (let i = 0; i < list.length; i++) {
-    let type = list[i]["t"]; 
-    let id = list[i]["id"];
+  for (let i = 0; i < data.length; i++) {
+    let type = data[i]["t"]; 
+    let id = data[i]["id"];
     if(type && id) { 
       if (type === "im") {
         im_btns_div.insertAdjacentHTML("beforeend", `<input type="button" id="${id}" class="btn image" data-type="im" value="${id}" onclick="load('im', '${id}')">`)
@@ -158,26 +175,27 @@ function populate_effects(list) {
 }
 
 
-async function fetch_source() {
-  const t = await fetch(base_url+"/file_list.json");
-  let reply = await t.json();
-  populate_effects(reply);
-}
-
-
 async function load(type, id) {
-  const t = await fetch(base_url+"/load", {
-    method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body: `t=${type}&id=${id}`
-  }),
-  reply = await t.json();
-  console.log(reply)
+  try {
+    const response = await fetch(base_url+"/load", {
+      method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: `t=${type}&id=${id}`
+    });
+    if (!response.ok) {
+      throw new Error("Error POSTing to /load");
+    }
+  }
+  catch(e) {
+    console.error(e);
+    return;
+  }
+
 }
 
-window.addEventListener("load", fetch_source);
+window.addEventListener("load", populate_art);
 
 </script>
 </body>
