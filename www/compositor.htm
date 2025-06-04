@@ -143,9 +143,9 @@
         <option disabled selected value> -- load composite -- </option>
       </select>
       <div class="gap"></div>
-      <input type="text" id="cm_id" maxlength=26 placeholder="Enter filename here." value="" autocomplete="off" />
+      <input type="text" id="cm_id" onkeyup="(function(key){if(key === 'Enter'){save();}})(event.key);" maxlength=26 placeholder="Enter filename here." value="" autocomplete="off" />
       <div class="gap"></div>
-      <button id="btn_save" class="buttonclass" onclick="save()"><svg class="svg-icon" style="width:36px;height:36px" viewBox="0 -960 960 960"> <path id="saveSvg" fill="currentColor" d="M440-320v-326L336-542l-56-58 200-200 200 200-56 58-104-104v326h-80ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>&nbsp; Save</button>
+      <button id="btn_save" class="buttonclass" onclick="save()"><svg class="svg-icon" style="width:36px;height:36px" viewBox="0 -960 960 960"> <path id="saveSvg" fill="currentColor" d="M440-320v-326L336-542l-56-58 200-200 200 200-56 58-104-104v326h-80ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg> &nbsp; <span id="btn_save_text">Save</span> </button>
     </div>
     <div id="layers_container" class="grid-container">
         <section id="title_row">
@@ -242,6 +242,7 @@ async function save() {
       lobj["t"] = ltype;
       comp_dict["l"].push(lobj);
     }
+
     let json = JSON.stringify(comp_dict);
     const regex = /"!!(-?[0-9]+\.{0,1}[0-9]*)!!"/g 
     json = json.replace(regex, '$1')
@@ -250,16 +251,23 @@ async function save() {
 
 
     let success = false;
+    let sb = document.getElementById("saveSvg");
+    sb.setAttribute("fill", "#cccccc");
+    let el_btn_save_text = document.getElementById('btn_save_text');
+    let btn_text = el_btn_save_text.innerText;
+    el_btn_save_text.innerText = "Saving";
+
     try {
-      const t = await fetch(base_url+"/save", {
+      const response = await fetch(base_url+"/save", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"
         },
         body: `t=${type}&id=${cm_id}&json=` + json
-      }),
-      reply = await t.json();
-      console.log(reply);
+      });
+      if (!response.ok) {
+        throw new Error(`Error saving ${id}`);
+      }
       success = true;
     }
     catch(e) {
@@ -267,17 +275,18 @@ async function save() {
       success = false;
     }
 
-    let sb = document.getElementById("saveSvg");
     if (success) {
       sb.setAttribute("fill", "#056b0a");
-      setTimeout(function(){sb.setAttribute("fill", "#eee")}, 1000);
+      el_btn_save_text.innerText = "Saved";
+      setTimeout(function(){el_btn_save_text.innerText = btn_text;}, 1000);
+      setTimeout(populate_composite_list, 3000);
     }
     else {
       sb.setAttribute("fill", "#6b050c");
-      setTimeout(function(){sb.setAttribute("fill", "#777")}, 1000);
+      el_btn_save_text.innerText = "Error";
     }
-
   }
+
 }
 
 
@@ -288,7 +297,7 @@ function handle_reorder(id_num, direction) {
   for (let select of selects) {
     selected_indexes.push(select.selectedIndex);
   }
-  let color_select = document.getElementById(`l${id_num}c`);
+
   let new_section = document.createDocumentFragment();
   new_section.appendChild(section.cloneNode(true));
   selects = new_section.querySelectorAll("select");
@@ -352,7 +361,6 @@ function enable_disable_settings(el_select, id_num) {
 async function load_composite(el_select) {
   let id = el_select.options[el_select.selectedIndex].label;
   let url = `${base_url}${el_select.options[el_select.selectedIndex].value}`;
-  console.log(url);
 
   let data;
   try {
@@ -361,24 +369,19 @@ async function load_composite(el_select) {
       throw new Error(`Error fetching ${id}`);
     }
     data = await response.json();
-    //console.log(data);
+    if (!(data["t"] === "cm")) {
+      throw new Error("Error JSON data is invalid.");
+    }
   }
   catch(e) {
     console.error(e);
-  }
-
-  if (!data || !data["t"] || !data["l"]) {
     return;
   }
 
   document.getElementById("cm_id").value = id;
 
   for (i in data["l"]) {
-    console.log("-----");
     let layer = data["l"][i];
-    console.log(i);
-    console.log(layer["t"]);
-
     if (layer["t"] === "e") {
       let id_select = document.getElementById(`l${i}id`);
       id_select.selectedIndex = 0;
@@ -393,7 +396,6 @@ async function load_composite(el_select) {
         if (option.value.indexOf(layer["id"]) != -1 && (option.parentElement.id === layer["t"] || layer["t"] === "e")) {
           option.selected = true;
           id_select.dispatchEvent(new Event('change'));
-          console.log(`id_select value: ${option.value}`);
           break;
         }
       }
@@ -405,7 +407,6 @@ async function load_composite(el_select) {
         let option = accent_select.options[j];
         if (option.value.indexOf(layer["a"]) != -1) {
           option.selected = true;
-          console.log(`accent_select value: ${option.value}`);
           break;
         }
       }
@@ -448,17 +449,12 @@ async function load_composite(el_select) {
         color_type = color;
         color = "#000000";
       }
-      console.log(`color_type: ${color_type}, color: ${color}`);
 
       color_picker.value = color;
       color_picker.dispatchEvent(new Event('input'));
 
       color_select.selectedIndex = color_type;
       color_select.dispatchEvent(new Event('change'));
-      console.log(`color_select selected: ${color_select.selectedIndex}`);
-      if (color_select.selectedIndex === 0) {
-        console.log(`color_picker value: ${color_picker.value}`);
-      }
     }
 
 
@@ -468,7 +464,6 @@ async function load_composite(el_select) {
         let option = movement_select.options[j];
         if (option.value.indexOf(layer["m"]) != -1) {
           option.selected = true;
-          console.log(`movement_select value: ${option.value}`);
           break;
         }
       }
@@ -483,24 +478,25 @@ async function load_composite(el_select) {
 
 
 async function populate_composite_list() {
+  let cm_select = document.getElementById("cm_list");
+  cm_select.innerHTML = "<option disabled selected value> -- load composite -- </option>";
   let data;
   try {
     let response = await fetch(`${base_url}/file_list.json`);
-    if (!(response.ok)) {
-      throw new Error(`Error fetching ${id}`);
+    if (!response.ok) {
+      throw new Error("Error fetching /file_list.json");
     }
+
     data = await response.json();
-    //console.log(data);
+    if (!data.length) {
+      throw new Error("Error file list is empty.");
+    }
   }
   catch(e) {
     console.error(e);
-  }
-
-  if (!data) {
     return;
   }
 
-  let cm_select = document.getElementById("cm_list");
   for (let i in data) {
     let type = data[i]["t"]; 
     let id = data[i]["id"];
@@ -512,25 +508,25 @@ async function populate_composite_list() {
 }
 
 
-async function populate_effects() {
+async function populate_layers() {
   let data;
   try {
     let response = await fetch(`${base_url}/options.json`);
-    if (!(response.ok)) {
+    if (!response.ok) {
       throw new Error(`Error fetching options.json`);
     }
     data = await response.json();
-    //console.log(data);
+    if (!data) {
+      throw new Error("Error JSON data is invalid.");
+    }
   }
   catch(e) {
     console.error(e);
+    return;
   }
 
   //let data = JSON.parse('{"files":[{"t":"im","id":"blinky","name":"blinky"},{"t":"im","id":"inky","name":"inky"},{"t":"im","id":"pinky","name":"pinky"},{"t":"im","id":"clyde","name":"clyde"}],"patterns":[{"id":0,"name":"Rainbow"},{"id":1,"name":"Solid"},{"id":2,"name":"Riffle"},{"id":3,"name":"Puck-Man"}],"accents":[{"id":0,"name":"None"},{"id":1,"name":"Breathing"},{"id":2,"name":"Flicker"},{"id":3,"name":"Frozen Decay"}]}');
 
-  if (!data) {
-    return;
-  }
   let files = data["files"];
   if (files) {
     let el_selects = document.querySelectorAll('select[data-key="id"]');
@@ -619,7 +615,6 @@ function handle_color_picker(el_changed, id_num) {
   let color_select = document.getElementById(`l${id_num}c`);
   let custom_option = color_select.options[0];
   let color = el_changed.value.replace("#", "").toUpperCase();
-  console.log(`handle_color_picker: ${color}`);
   custom_option.innerHTML = `Custom (${el_changed.value.toUpperCase()})`
   custom_option.value = `0x${color}`
   custom_option.selected = true;
@@ -726,7 +721,7 @@ function run() {
   //for (color_select of color_selects) {
   //  color_select.dispatchEvent(new Event('change'));
   //}
-  populate_effects();
+  populate_layers();
   populate_composite_list();
 }
 

@@ -32,7 +32,7 @@
 
   .grid-container {
     display: grid;
-    grid-template-columns: repeat(3, minmax(20px, 1fr));
+    grid-template-columns: repeat(2, minmax(20px, 1fr));
     grid-column-gap: 5px;
     width: 1000px;
     max-width: 95vw;
@@ -59,7 +59,8 @@
     padding-bottom:5px;
   }
 
-  input#plid{
+  select#pl_list,
+  input#pl_id{
     flex-grow: 1;
     padding-top: 5px;
     padding-bottom: 5px;
@@ -132,10 +133,6 @@
     cursor: pointer;
   }
   
-  li {
-
-  }
-
   #savebtn {
     background: #1fa3ec;
   }
@@ -173,6 +170,10 @@
 
   .playlist {
     background: #8888bb;
+  }
+
+  .legend {
+    padding: 0px 5px;
   }
 
   input[type="number"],
@@ -230,18 +231,27 @@
     </svg>
   </a>
 
-  <h3>Click an item in Saved Art or Saved Playlists to load it into the Edit Playlist area. Drag and drop to rearrange items, adjust play time, and save to make a playlist.</h3>
+  <h3>Click an item in Saved Art to load it into the Edit Playlist area. Drag and drop to rearrange items, adjust play time, and save to make a playlist.</h3>
   <h5>If you name your playlist <b>startup</b> it will be automatically loaded when the device starts.</h5>
 
   <div id="main_div">
     <div id="button-container">
-      <input type="text" id="plid" maxlength=26 placeholder="Enter filename here." value="" autocomplete="off" />
-      <div id="gap1" class="gap"></div>
-      <button id="btn_save" class="buttonclass" onclick="save()"><svg class="svg-icon" style="width:36px;height:36px" viewBox="0 -960 960 960"> <path id="saveSvg" fill="currentColor" d="M440-320v-326L336-542l-56-58 200-200 200 200-56 58-104-104v326h-80ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>&nbsp; Save</button>
+      <select id="pl_list" onchange="load_playlist(this)" autocomplete="off">
+        <option disabled selected value> -- load playlist -- </option>
+      </select>
+      <div class="gap"></div>
+      <input type="text" id="pl_id" onkeyup="(function(key){if(key === 'Enter'){save();}})(event.key);" maxlength=26 placeholder="Enter filename here." value="" autocomplete="off" />
+      <div class="gap"></div>
+      <button id="btn_save" class="buttonclass" onclick="save()"><svg class="svg-icon" style="width:36px;height:36px" viewBox="0 -960 960 960"> <path id="saveSvg" fill="currentColor" d="M440-320v-326L336-542l-56-58 200-200 200 200-56 58-104-104v326h-80ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg> &nbsp; <span id="btn_save_text">Save</span> </button>
     </div>
     <div class="grid-container">
       <div>
-        <h4>Saved Art</h4>
+        <section>
+          <h4 style="margin-bottom: 0px;">Saved Art</h4>
+          <span class="legend animation">A: animation</span>
+          <span class="legend image">I: image</span>
+          <span class="legend composite">C: composite</span>
+        </section>
         <!--ul was used here instead a div of buttons to get better alignment with the elements in ul_playlist-->
         <ul id="art_ul">
         </ul>
@@ -249,11 +259,6 @@
       <div class="dropzone">
         <h4>Edit Playlist <input type="button" value="&#10006;" class="rmbutton" onclick="clear_playlist_work()"/></h4>
         <ul id="ul_playlist">
-        </ul>
-      </div>
-      <div>
-        <h4>Saved Playlists</h4>
-        <ul id="pl_ul">
         </ul>
       </div>
     </div>
@@ -271,12 +276,6 @@ if (window.location.protocol == "file:") {
 }
 
 let ul_playlist = document.getElementById("ul_playlist");
-
-
-function add(item, value) {
-    item.insertAdjacentHTML("beforeend", `<input title="seconds" type="number" onfocusout="(function(e){e.reportValidity();})(this);" min="0.2" step="0.1" value="${value}"/>`)
-    item.insertAdjacentHTML("beforeend", '<input type="button" value="&#10006;" class="rmbutton"/>')
-}
 
 let playlist = new Sortable(ul_playlist, {
   group: {
@@ -300,97 +299,12 @@ let playlist = new Sortable(ul_playlist, {
 });
 
 
-async function load_effect_into_dropzone(type, id) {
-  if (type === "im") {
-    ul_playlist.insertAdjacentHTML("beforeend", `<li class="image" data-type="${type}" data-id="${id}"><label>${id}</label></li>`);
-    add(ul_playlist.lastElementChild, 20);
-  }
-  else if (type === "cm") {
-    ul_playlist.insertAdjacentHTML("beforeend", `<li class="composite" data-type="${type}" data-id="${id}"><label>${id}</label></li>`);
-    add(ul_playlist.lastElementChild, 20);
-  }
-  else if (type === "an") {
-    ul_playlist.insertAdjacentHTML("beforeend", `<li class="animation" data-type="${type}" data-id="${id}"><label>${id}</label></li>`);
-    add(ul_playlist.lastElementChild, 20);
-  }
-}
-
-
-async function load_playlist_into_dropzone(path, id) {
-  const t = await fetch(base_url+path);
-  let list = await t.json();
-  if (list) {
-    let items = list["pl"];
-    console.log(list);
-    for (let i = 0; i < items.length; i++) {
-      let type = items[i]["t"]; 
-      let id = items[i]["id"];
-      let d = items[i]["d"];
-      if (type === "im") { 
-        ul_playlist.insertAdjacentHTML("beforeend", `<li class="image" data-type="${type}" data-id="${id}"><label>${id}</label></li>`);
-        // not sure why this doesn't work
-        //let event = new Event('add', { bubbles: true });
-        //ul_playlist.lastElementChild.dispatchEvent(event);
-        add(ul_playlist.lastElementChild, d/1000);
-      }
-      else if (type === "cm") { 
-        ul_playlist.insertAdjacentHTML("beforeend", `<li class="composite" data-type="${type}" data-id="${id}"><label>${id}</label></li>`);
-        add(ul_playlist.lastElementChild, d/1000);
-      }
-      else if (type === "an") { 
-        ul_playlist.insertAdjacentHTML("beforeend", `<li class="animation" data-type="${type}" data-id="${id}"><label>${id}</label></li>`);
-        add(ul_playlist.lastElementChild, d/1000);
-      }
-    }
-    document.getElementById("plid").value = id;
-  }
-}
-
-function clear_playlist_work() {
-  document.getElementById("ul_playlist").innerHTML = "";
-}
-
-function populate_effects(list) {
-  let art_ul = document.getElementById("art_ul");
-  let pl_ul = document.getElementById("pl_ul");
-  art_ul.innerHTML = "";
-  pl_ul.innerHTML = "";
-  for (let i = 0; i < list.length; i++) {
-    let type = list[i]["t"];
-    let path = list[i]["p"];
-    let id = list[i]["id"];
-    if (type && id) { 
-      if (type == "im") {
-        art_ul.insertAdjacentHTML("beforeend", `<li class="image" onclick="load_effect_into_dropzone('${type}', '${id}')">${id}</li>`)
-      }
-      else if (type == "cm") {
-        art_ul.insertAdjacentHTML("beforeend", `<li class="composite" onclick="load_effect_into_dropzone('${type}', '${id}')">${id}</li>`)
-      }
-      else if (type == "an") {
-        art_ul.insertAdjacentHTML("beforeend", `<li class="animation" onclick="load_effect_into_dropzone('${type}', '${id}')">${id}</li>`)
-      }
-      else if (type == "pl") {
-        pl_ul.insertAdjacentHTML("beforeend", `<li class="playlist" onclick="load_playlist_into_dropzone('${path}', '${id}')">${id}</li>`)
-      }
-    }
-    ul_playlist.style.minHeight = art_ul.offsetHeight;
-  }
-}
-
-
-async function fetch_source() {
-  const t = await fetch(base_url+"/file_list.json");
-  let reply = await t.json();
-  populate_effects(reply);
-}
-
-
 async function save() {
   const type = "pl";
-  let plid = encodeURIComponent(document.getElementById("plid").value);
+  let pl_id = encodeURIComponent(document.getElementById("pl_id").value);
   let li = ul_playlist.getElementsByTagName("li");
 
-  if (plid && li.length > 0) {
+  if (pl_id && li.length > 0) {
     let o = {};
     o.t = type;
     o.pl = [];
@@ -407,40 +321,203 @@ async function save() {
     json = json.replace(regex, '$1')
     
     let success = false;
+    let sb = document.getElementById("saveSvg");
+    sb.setAttribute("fill", "#cccccc");
+    let el_btn_save_text = document.getElementById('btn_save_text');
+    let btn_text = el_btn_save_text.innerText;
+    el_btn_save_text.innerText = "Saving";
+
     try {
-      const t = await fetch(base_url+"/save", {
+      const response = await fetch(base_url+"/save", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"
         },
-        body: `t=${type}&id=${plid}&json=` + json
-      }),
-      reply = await t.json();
-      console.log(reply);
+        body: `t=${type}&id=${pl_id}&json=` + json
+      });
+      if (!response.ok) {
+        throw new Error(`Error fetching from ${path}.`);
+      }
       success = true;
     }
     catch(e) {
       console.error(e);
       success = false;
     }
-    
-    let sb = document.getElementById("saveSvg");
+
     if (success) {
       sb.setAttribute("fill", "#056b0a");
-      setTimeout(function(){sb.setAttribute("fill", "#eee"); fetch_source();}, 1000);
+      el_btn_save_text.innerText = "Saved";
+      setTimeout(function(){el_btn_save_text.innerText = btn_text;}, 1000);
+      setTimeout(populate_playlist_list, 3000);
     }
     else {
       sb.setAttribute("fill", "#6b050c");
-      setTimeout(function(){sb.setAttribute("fill", "#777")}, 1000);
+      el_btn_save_text.innerText = "Error";
     }
-    
   }
   else {
     console.log("Missing Playlist ID or playlist is empty.");
   }
+
 }
 
-window.addEventListener("load", fetch_source);
+
+function add(item, value) {
+    item.insertAdjacentHTML("beforeend", `<input title="seconds" type="number" onfocusout="(function(e){e.reportValidity();})(this);" min="0.2" step="0.1" value="${value}"/>`)
+    item.insertAdjacentHTML("beforeend", '<input type="button" value="&#10006;" class="rmbutton"/>')
+}
+
+
+async function load_effect_into_dropzone(type, id) {
+  if (type === "an") {
+    ul_playlist.insertAdjacentHTML("beforeend", `<li class="animation" data-type="${type}" data-id="${id}"><label>A: ${id}</label></li>`);
+    add(ul_playlist.lastElementChild, 20);
+  }
+  else if (type === "cm") {
+    ul_playlist.insertAdjacentHTML("beforeend", `<li class="composite" data-type="${type}" data-id="${id}"><label>C: ${id}</label></li>`);
+    add(ul_playlist.lastElementChild, 20);
+  }
+  else if (type === "im") {
+    ul_playlist.insertAdjacentHTML("beforeend", `<li class="image" data-type="${type}" data-id="${id}"><label>I: ${id}</label></li>`);
+    add(ul_playlist.lastElementChild, 20);
+  }
+}
+
+
+function clear_playlist_work() {
+  document.getElementById("ul_playlist").innerHTML = "";
+}
+
+
+async function load_playlist(el_select) {
+  clear_playlist_work();
+
+  let id = el_select.options[el_select.selectedIndex].label;
+  let url = `${base_url}${el_select.options[el_select.selectedIndex].value}`;
+  console.log(url);
+
+  let data;
+  try {
+    let response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Error fetching ${id}`);
+    }
+    data = await response.json();
+    if (!data) {
+      throw new Error("Error JSON data is invalid.");
+    }
+  }
+  catch(e) {
+    console.error(e);
+    return;
+  }
+
+  document.getElementById("pl_id").value = id;
+
+  let items = data["pl"];
+  for (let i = 0; i < items.length; i++) {
+    let type = items[i]["t"];
+    let id = items[i]["id"];
+    let d = items[i]["d"];
+    if (type === "an") {
+      // not sure why this doesn't work
+      //let event = new Event('add', { bubbles: true });
+      //ul_playlist.lastElementChild.dispatchEvent(event);
+      ul_playlist.insertAdjacentHTML("beforeend", `<li class="animation" data-type="${type}" data-id="${id}"><label>A: ${id}</label></li>`);
+      add(ul_playlist.lastElementChild, d/1000);
+    }
+    else if (type === "cm") {
+      ul_playlist.insertAdjacentHTML("beforeend", `<li class="composite" data-type="${type}" data-id="${id}"><label>C: ${id}</label></li>`);
+      add(ul_playlist.lastElementChild, d/1000);
+    }
+    else if (type === "im") {
+      ul_playlist.insertAdjacentHTML("beforeend", `<li class="image" data-type="${type}" data-id="${id}"><label>I: ${id}</label></li>`);
+      add(ul_playlist.lastElementChild, d/1000);
+    }
+  }
+  document.getElementById("pl_id").value = id;
+}
+
+
+async function populate_playlist_list() {
+  let pl_select = document.getElementById("pl_list");
+  pl_select.innerHTML = "<option disabled selected value> -- load playlist -- </option>";
+
+  let data;
+  try {
+    let response = await fetch(`${base_url}/file_list.json`);
+    if (!response.ok) {
+      throw new Error(`Error fetching ${id}`);
+    }
+
+    data = await response.json();
+    if (!data || !data.length) {
+      throw new Error("Error file list is invalid or empty.");
+    }
+  }
+  catch(e) {
+    console.error(e);
+    return;
+  }
+
+  for (let i in data) {
+    let type = data[i]["t"];
+    let id = data[i]["id"];
+    if(type === "pl" && id) {
+      pl_select.insertAdjacentHTML("beforeend", `<option value="/files/${type}/${id}.json">${id}</option>`)
+    }
+  }
+
+}
+
+
+async function populate_art_list() {
+  let data;
+  try {
+    const response = await fetch(base_url+"/file_list.json");
+    if (!response.ok) {
+      throw new Error("Error fetching /file_list.json.");
+    }
+
+    data = await response.json();
+    if (!data || !data.length) {
+      throw new Error("Error file list is invalid or empty.");
+    }
+  }
+  catch(e) {
+    console.error(e);
+    return;
+  }
+
+  let art_ul = document.getElementById("art_ul");
+  art_ul.innerHTML = "";
+  for (let i = 0; i < data.length; i++) {
+    let type = data[i]["t"];
+    let path = data[i]["p"];
+    let id = data[i]["id"];
+    if (type && id) {
+      if (type === "an") {
+        art_ul.insertAdjacentHTML("beforeend", `<li class="animation" onclick="load_effect_into_dropzone('${type}', '${id}')">A: ${id}</li>`)
+      }
+      else if (type === "cm") {
+        art_ul.insertAdjacentHTML("beforeend", `<li class="composite" onclick="load_effect_into_dropzone('${type}', '${id}')">C: ${id}</li>`)
+      }
+      else if (type === "im") {
+        art_ul.insertAdjacentHTML("beforeend", `<li class="image" onclick="load_effect_into_dropzone('${type}', '${id}')">I: ${id}</li>`)
+      }
+    }
+    ul_playlist.style.minHeight = art_ul.offsetHeight;
+  }
+}
+
+
+function run() {
+  populate_art_list();
+  populate_playlist_list();
+}
+
+window.addEventListener("load", run);
 
 </script>
 </body>
