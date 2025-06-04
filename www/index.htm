@@ -63,6 +63,8 @@
 </head>
 
 <body>
+  <span id="ip"></span>
+
   <details>
     <summary>Instructions</summary>
     <b>Play: load images, composites, or playlists.</b>
@@ -108,5 +110,41 @@
       <a href="./restart.htm"><button class="bred">Restart</button></a>
     </div>
   </div>
+
+<script>
+
+let base_url = "";
+if (window.location.protocol == "file:") {
+  // makes for easier debugging.
+  // if html is loaded locally, can see the results of editing more easily.
+  // otherwise every change to html would require uploading new version to microcontroller.
+  base_url = "http://pixelart.local";
+}
+
+async function get_ip() {
+  let data;
+  try {
+    const response = await fetch(base_url+"/get_ip");
+    if (!response.ok) {
+      throw new Error('Error determining local IP address');
+    }
+    data = await response.json();
+    if (!data["IP"]) {
+      throw new Error("Error JSON data is invalid.");
+    }
+  }
+  catch(e) {
+    console.error(e);
+    return
+  }
+
+    console.log(data);
+    let el_ip = document.getElementById("ip");
+    el_ip.innerHTML = data["IP"];
+}
+
+window.addEventListener("load", get_ip);
+</script>
+
 </body>
 </html>
