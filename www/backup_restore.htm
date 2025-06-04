@@ -173,26 +173,27 @@
   let backup_data = {};
   backup_data.files = [];
   async function add_file_to_backup(type, id) {
-    let success = false;
     let data;
     try {
       // it is best to await response so we make one request at a time to prevent crashing the server
       const response = await fetch(`${base_url}/files/${type}/${id}.json`);
-      if (!(response.ok)) {
-        throw new Error(`Error fetching ${base_url}/files/${type}/${id}.json`);
+      if (!response.ok) {
+        throw new Error(`Error fetching ${base_url}/files/${type}/${id}.json.`);
       }
 
       data = await response.json();
-      //console.log(data);
-      success = true;
+      if (!(data["t"] === type)) {
+        throw new Error("Error JSON data is invalid.");
+      }
     }
     catch(e) {
       console.error(e);
+      return false;
     }
+
     backup_data.files.push({"t":type,"id":id,"data":data})
     console.log(`${type} ${id}`);
-  
-    return success;
+    return true;
   }
 
   async function back_up_art() {
@@ -205,17 +206,17 @@
     let data;
     try {
       const response = await fetch(base_url+"/file_list.json");
-      if (!(response.ok)) {
-        throw new Error('Error fetching file_list.json');
+      if (!response.ok) {
+        throw new Error("Error fetching from /file_list.json.");
       }
+
       data = await response.json();
-      //console.log(data);
+      if (!data.length) {
+        throw new Error("Error file list is invalid or empty.");
+      }
     }
     catch(e) {
       console.error(e);
-    }
-
-    if (!data) {
       sb.setAttribute("fill", "#6b050c"); // failed
       el_btn_back_up_text.innerText = "Error";
       return;
@@ -262,7 +263,6 @@
 
   // restore functions
   async function save_to_device(type, id, json) {
-    let success = false;
     try {
       let response = await fetch(base_url+"/save", {
         method: "POST",
@@ -271,17 +271,15 @@
         },
         body: `t=${type}&id=${id}&json=${json}&load=false`
       });
-      if (!(response.ok)) {
+      if (!response.ok) {
         throw new Error(`Error saving ${id}`);
       }
-      let data = await response.json();
-      //console.log(data);
-      success = true;
     }
     catch(e) {
       console.error(e);
+      return false;
     }
-    return success; 
+    return true; 
   }
   
   async function process_restore_file(e) {
@@ -309,12 +307,6 @@
     let btn_text = el_btn_restore_text.innerText;
     el_btn_restore_text.innerText = "Restoring";
     interval_id = setInterval(function(){update_button_text(el_btn_restore_text)}, 750);
-
-    //let success_all = true;
-    //for (let file of data["files"]) {
-    //  let success = await save_to_device(file.t, file.id, JSON.stringify(file.data));
-    //  success_all = success_all && success;
-    //}
 
     for (let file of data["files"]) {
       let success = await save_to_device(file.t, file.id, JSON.stringify(file.data));
