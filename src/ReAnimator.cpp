@@ -43,8 +43,6 @@
 // pushing a right arrow button moves a pattern backward from left to right, and pushing a left arrow button moves a 
 // pattern forward from right to left.
 #define LEFT_TO_RIGHT_IS_FORWARD true
-//#define MIC_PIN    A1  // sound reactive is not implemented yet
-
 
 //LV_FONT_DECLARE(ascii_sector_12); //OR use extern lv_font_t ascii_sector_12;
 extern lv_font_t ascii_sector_12;
@@ -89,7 +87,7 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
     flipflop_enabled = false;
 
     pattern = NO_PATTERN;
-    last_pattern_ran = NO_PATTERN;
+    last_pattern = NO_PATTERN;
     transient_overlay = NO_OVERLAY;
     persistent_overlay = NO_OVERLAY;
 
@@ -134,6 +132,21 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
     pm_speed_jump_cnt = 0;
 
     dr_delta = 0;
+    o_pos = MTX_NUM_LEDS;
+    gc_delta = 0;
+    rl_delta = 0;
+    ss_start_pos = random16(0, MTX_NUM_LEDS/4);
+    ss_stop_pos = random16(MTX_NUM_LEDS/2, MTX_NUM_LEDS);
+    ss_cdi_pm = 0; // cool_down_interval_previous_millis
+    ss_pos = 0;
+    c_pos = 0;
+    c_delta = 1;
+    p_t = 0;
+    f_t = 0;
+    r_t = 0;
+    w_pos = 0;
+    adp_draw_interval = 0;
+    adp_delta = 0;
 
     image_dequeued = false;
     image_loaded = false;
@@ -275,6 +288,10 @@ int8_t ReAnimator::set_pattern(Pattern pattern_in, bool reverse_in, bool disable
         default:
             retval = INT8_MIN;
             // fall through to next case
+        case DYNAMIC_RAINBOW:
+            pattern_out = DYNAMIC_RAINBOW;
+            overlay_out = NO_OVERLAY;
+            break;
         case ORBIT:
             pattern_out = ORBIT;
             overlay_out = NO_OVERLAY;
@@ -319,73 +336,33 @@ int8_t ReAnimator::set_pattern(Pattern pattern_in, bool reverse_in, bool disable
             pattern_out = RIFFLE;
             overlay_out = NO_OVERLAY;
             break;
-        case MITOSIS:
-            pattern_out = MITOSIS;
-            overlay_out = NO_OVERLAY;
-            break;
-        case BUBBLES:
-            pattern_out = BUBBLES;
-            overlay_out = NO_OVERLAY;
-            break;
         case SPARKLE:
             pattern_out = SPARKLE;
-            overlay_out = NO_OVERLAY;
-            break;
-        case MATRIX:
-            clear();
-            pattern_out = MATRIX;
             overlay_out = NO_OVERLAY;
             break;
         case WEAVE:
             pattern_out = WEAVE;
             overlay_out = NO_OVERLAY;
             break;
-        case STARSHIP_RACE:
-            pattern_out = STARSHIP_RACE;
-            overlay_out = NO_OVERLAY;
-            break;
         case PUCK_MAN:
             pattern_out = PUCK_MAN;
             overlay_out = NO_OVERLAY;
             break;
-        case BALLS:
-            pattern_out = BALLS;
+        case RAIN:
+            pattern_out = RAIN;
             overlay_out = NO_OVERLAY;
             break;
-        case HALLOWEEN_FADE:
-            pattern_out = HALLOWEEN_FADE;
-            overlay_out = NO_OVERLAY;
-            break;
-        case HALLOWEEN_ORBIT:
-            pattern_out = HALLOWEEN_ORBIT;
+        case WATERFALL:
+            pattern_out = WATERFALL;
             overlay_out = NO_OVERLAY;
             break;
         case NO_PATTERN:
             pattern_out = NO_PATTERN;
             overlay_out = NO_OVERLAY;
             break;
-        //case SOUND_RIBBONS:
-        //    pattern_out = SOUND_RIBBONS;
-        //    overlay_out = NO_OVERLAY;
-        //    break;
-        //case SOUND_RIPPLE:
-        //    pattern_out = SOUND_RIPPLE;
-        //    overlay_out = NO_OVERLAY;
-        //    break;
-        //case SOUND_ORBIT:
-        //    pattern_out = SOUND_ORBIT;
-        //    overlay_out = NO_OVERLAY;
-        //    break;
-        //case SOUND_BLOCKS:
-        //    pattern_out = SOUND_BLOCKS;
-        //    overlay_out = NO_OVERLAY;
-        //    break;
-        case DYNAMIC_RAINBOW:
-            pattern_out = DYNAMIC_RAINBOW;
-            overlay_out = NO_OVERLAY;
-            break;
     }
 
+    last_pattern = pattern;
     pattern = pattern_out;
     set_overlay(overlay_out, false);
 
@@ -432,12 +409,6 @@ int8_t ReAnimator::set_overlay(Overlay overlay_in, bool is_persistent) {
         case NO_OVERLAY:
             overlay_out = NO_OVERLAY;
             break;
-        //case GLITTER:
-        //    overlay_out = GLITTER;
-        //    break;
-        //case CONFETTI:
-        //    overlay_out = CONFETTI;
-        //    break;
         case BREATHING:
             overlay_out = BREATHING;
             break;
@@ -645,12 +616,6 @@ void ReAnimator::set_heading(uint8_t h) {
 }
 
 
-//void ReAnimator::set_sound_value_gain(uint8_t gain) {
-//    sound_value_gain = gain;
-//}
-
-
-
 void ReAnimator::clear() {
     for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) {
         leds[i] = CRGBA::Transparent;
@@ -671,8 +636,6 @@ void ReAnimator::reanimate() {
         flipflop();
     }
 
-    //process_sound();
-
     if (!freezer.is_frozen()) {
         if (_ltype == Image_t && image_loaded && !image_clean) {
             // frozen_decay changed image, so refresh the image.
@@ -684,7 +647,7 @@ void ReAnimator::reanimate() {
         }
         else if (_ltype == Pattern_t) {
             run_pattern(pattern);
-            last_pattern_ran = pattern;
+            last_pattern = pattern;
         }
         else if (_ltype == Text_t) {
             refresh_text(200);
@@ -747,6 +710,10 @@ int8_t ReAnimator::run_pattern(Pattern pattern) {
         default:
             retval = INT8_MIN;
             // fall through to next case
+        case DYNAMIC_RAINBOW:
+            //accelerate_decelerate_pattern(30, 2, 1000, &ReAnimator::dynamic_rainbow, dfp);
+            dynamic_rainbow(50, dfp);
+            break;
         case ORBIT:
             orbit(20, orbit_delta);
             break;
@@ -799,54 +766,23 @@ int8_t ReAnimator::run_pattern(Pattern pattern) {
         case RIFFLE:
             riffle();
             break;
-        case MITOSIS:
-            mitosis(50, 1);
-            break;
-        case BUBBLES:
-            bubbles(100, dfp);
-            break;
         case SPARKLE:
             sparkle(20, false, 32);
-            break;
-        case MATRIX:
-            matrix(50);
             break;
         case WEAVE:
             weave(60);
             break;
-        case STARSHIP_RACE:
-            starship_race(88, dfp);
-            break;
         case PUCK_MAN:
             puck_man(150, dfp);
             break;
-        case BALLS:
-            bouncing_balls(40, dfp);
+        case RAIN:
+            rain(100);
             break;
-        case HALLOWEEN_FADE:
-            halloween_colors_fade(50);
-            break;
-        case HALLOWEEN_ORBIT:
-            halloween_colors_orbit(20, orbit_delta);
+        case WATERFALL:
+            waterfall(100);
             break;
         case NO_PATTERN:
             //fill_solid(leds, MTX_NUM_LEDS, CRGBA::Transparent);
-            break;
-        //case SOUND_RIBBONS:
-        //    sound_ribbons(30);
-        //    break;
-        //case SOUND_RIPPLE:
-        //    sound_ripple(100, (sample_peak==1));
-        //    break;
-        //case SOUND_BLOCKS:
-        //    sound_blocks(50, (sound_value > 32));
-        //    break;
-        //case SOUND_ORBIT:
-        //    sound_orbit(30, dfp);
-        //    break;
-        case DYNAMIC_RAINBOW:
-            //accelerate_decelerate_pattern(30, 2, 1000, &ReAnimator::dynamic_rainbow, dfp);
-            dynamic_rainbow(50, dfp);
             break;
     }
 
@@ -863,12 +799,6 @@ int8_t ReAnimator::apply_overlay(Overlay overlay) {
             // fall through to next case
         case NO_OVERLAY:
             break;
-        //case GLITTER:
-        //    glitter(700);
-        //    break;
-        //case CONFETTI:
-        //    sparkle(20, true, 0);
-        //    break;
         case BREATHING:
             breathing(10);
             break;
@@ -926,103 +856,89 @@ void ReAnimator::refresh_info(uint16_t draw_interval) {
 // ++++++++++ PATTERNS ++++++++++
 // ++++++++++++++++++++++++++++++
 
-void ReAnimator::orbit(uint16_t draw_interval, int8_t delta) {
-    static uint16_t pos = MTX_NUM_LEDS;
-    static uint8_t loop_num = 0;
-
-    if (pattern != last_pattern_ran) {
-        pos = MTX_NUM_LEDS;
-    }
-
+void ReAnimator::dynamic_rainbow(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
     if (is_wait_over(draw_interval)) {
-        fadeToBlackBy(leds, MTX_NUM_LEDS, 20);
-
-        if (delta > 0) {
-            pos = pos % MTX_NUM_LEDS;
-        }
-        else {
-            // pos underflows after it goes below zero
-            if (pos > MTX_NUM_LEDS-1) {
-                pos = MTX_NUM_LEDS-1;
-            }
+        for(uint16_t i = MTX_NUM_LEDS-1; i > 0; i--) {
+            leds[(this->*dfp)(i)] = leds[(this->*dfp)(i-1)];
         }
 
-        leds[pos] = *rgb;
-        // debugging unexpected colors/transparency
-/*
-        DEBUG_PRINT("*rgb: ");
-        DEBUG_PRINTHEX((*rgb).r);
-        DEBUG_PRINTHEX((*rgb).g);
-        DEBUG_PRINTHEX((*rgb).b);
-        DEBUG_PRINT(" :: (uint32_t)*rgb: ");
-        DEBUG_PRINTHEX((uint32_t)*rgb);
-        DEBUG_PRINT(" :: leds[pos]: ");
-        DEBUG_PRINTHEX(leds[pos].a);
-        DEBUG_PRINTHEX(leds[pos].r);
-        DEBUG_PRINTHEX(leds[pos].g);
-        DEBUG_PRINTHEX(leds[pos].b);
-        DEBUG_PRINT(" :: (uint32_t)leds[pos]: ");
-        DEBUG_PRINTHEX((uint32_t)leds[pos], HEX);
-        DEBUG_PRINTLN("");
-*/
-        pos = pos + delta;
+        leds[(this->*dfp)(0)] = CHSV(((MTX_NUM_LEDS-1-dr_delta)*255/MTX_NUM_LEDS), 255, 255);
 
-        loop_num = (pos == MTX_NUM_LEDS) ? loop_num+1 : loop_num; 
+        dr_delta = (dr_delta + 1) % MTX_NUM_LEDS;
     }
 }
 
 
-// i=i+N
-//N = 3 is confusing
-//2 gives a checkerboard
-//4 is OK
-//16, 128 are cool
-void ReAnimator::theater_chase(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
-    static uint16_t delta = 0;
+void ReAnimator::orbit(uint16_t draw_interval, int8_t delta) {
+    if (pattern != last_pattern) {
+        o_pos = MTX_NUM_LEDS;
+    }
 
     if (is_wait_over(draw_interval)) {
-        fadeToBlackBy(leds, MTX_NUM_LEDS, 128);
+        uint16_t fuzz = 1 + random16(3);
+        while (fuzz--) {
+            fadeToTransparentBy(leds, MTX_NUM_LEDS, 20);
+            if (delta > 0) {
+                o_pos = o_pos % MTX_NUM_LEDS;
+            }
+            else {
+                // o_pos underflows after it goes below zero
+                if (o_pos > MTX_NUM_LEDS-1) {
+                    o_pos = MTX_NUM_LEDS-1;
+                }
+            }
 
-        for (uint16_t i = 0; i+delta < MTX_NUM_LEDS; i=i+16) {
-            leds[(this->*dfp)(i+delta)] = *rgb;
+            leds[o_pos] = *rgb;
+            o_pos = o_pos + delta;
         }
-
-        delta = (delta + 1) % 16;
     }
 }
 
 
 void ReAnimator::general_chase(uint16_t draw_interval, uint16_t genparam, uint16_t(ReAnimator::*dfp)(uint16_t)) {
     //genparam represents the number of LEDs involved in a pattern
-    static uint16_t delta = 0;
+    if (pattern != last_pattern) {
+        gc_delta = 0;
+    }
 
     if (is_wait_over(draw_interval)) {
-        fadeToBlackBy(leds, MTX_NUM_LEDS, (255-(genparam*8)));
+        fadeToTransparentBy(leds, MTX_NUM_LEDS, (255-(genparam*8)));
 
-        for (uint16_t i = 0; i+delta < MTX_NUM_LEDS; i=i+genparam) {
-            leds[(this->*dfp)(i+delta)] = *rgb;
+        // i=i+genparam
+        //genparam = 3 is confusing
+        //2 gives a checkerboard
+        //4 is OK
+        //16, 128 are cool
+        for (uint16_t i = 0; i+gc_delta < MTX_NUM_LEDS; i=i+genparam) {
+            leds[(this->*dfp)(i+gc_delta)] = *rgb;
         }
 
-        delta = (delta + 1) % genparam;
+        gc_delta = (gc_delta + 1) % genparam;
     }
 }
 
 
 void ReAnimator::running_lights(uint16_t draw_interval, uint16_t genparam, uint16_t(ReAnimator::*dfp)(uint16_t)) {
     //genparam represents the number of waves
-    static uint16_t delta = 0;
+    if (pattern != last_pattern) {
+        rl_delta = 0;
+    }
 
     if (is_wait_over(draw_interval)) {
-        for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) {
-            uint16_t a = genparam*(i+delta)*255/(MTX_NUM_LEDS-1);
-            // this pattern normally runs from right-to-left, so flip it by using negative indexing
-            uint16_t ni = (MTX_NUM_LEDS-1) - i;
-            CRGBA light = *rgb;
-            nscale8x3(light.r, light.g, light.b, 255-sin8(a));
-            leds[(this->*dfp)(ni)] = light;
-        }
+        uint16_t fuzz = 1 + random16(3);
+        while (fuzz--) {
+            for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) {
+                uint16_t a = genparam*(i+rl_delta)*255/(MTX_NUM_LEDS-1);
+                // this pattern normally runs from right-to-left, so flip it by using negative indexing
+                uint16_t ni = (MTX_NUM_LEDS-1) - i;
+                CRGBA light = *rgb;
+                //nscale8x3(light.r, light.g, light.b, 255-sin8(a));
+                light.fadeToTransparentBy(255-sin8(a));
+                leds[(this->*dfp)(ni)] = light;
+            }
 
-        delta = (delta + 1) % (MTX_NUM_LEDS/genparam);
+            rl_delta = (rl_delta + 1) % (MTX_NUM_LEDS/genparam);
+        }
     }
 }
 
@@ -1031,38 +947,32 @@ void ReAnimator::running_lights(uint16_t draw_interval, uint16_t genparam, uint1
 //star_trail_decay - how fast the star trail decays. A larger number makes the tail short and/or disappear faster.
 //spm - stars per minute
 void ReAnimator::shooting_star(uint16_t draw_interval, uint8_t star_size, uint8_t star_trail_decay, uint8_t spm, uint16_t(ReAnimator::*dfp)(uint16_t)) {  
-    static uint16_t start_pos = random16(0, MTX_NUM_LEDS/4);
-    static uint16_t stop_pos = random16(star_size+(MTX_NUM_LEDS/2), MTX_NUM_LEDS);
-
     const uint16_t cool_down_interval = (60000-(spm*MTX_NUM_LEDS*draw_interval))/spm; // adds a delay between creation of new shooting stars
-    static uint32_t cdi_pm = 0; // cool_down_interval_previous_millis
 
-    static uint16_t pos = start_pos;
-
-    if (pattern != last_pattern_ran) {
-        start_pos = random16(0, MTX_NUM_LEDS/4);
-        stop_pos = random16(star_size+(MTX_NUM_LEDS/2), MTX_NUM_LEDS);
-        pos = start_pos;
-        //cdi_pm doesn't need to be reset here because it's a cool down timer
+    if (pattern != last_pattern) {
+        ss_start_pos = random16(0, MTX_NUM_LEDS/4);
+        ss_stop_pos = random16(star_size+(MTX_NUM_LEDS/2), MTX_NUM_LEDS);
+        ss_pos = ss_start_pos;
+        //cdi_pm doesn't need to be reset here because it is a cool down timer
     }
 
     if (is_wait_over(draw_interval)) {
         fade_randomly(128, star_trail_decay);
 
-        if ( (millis() - cdi_pm) > cool_down_interval ) {
+        if ( (millis() - ss_cdi_pm) > cool_down_interval ) {
             for (uint8_t i = 0; i < star_size; i++) {
                 //leds[(this->*dfp)(pos+(star_size-1)-i)] += CHSV(*hue, 255, 255);
-                leds[(this->*dfp)(pos+(star_size-1)-i)] += *rgb;
+                leds[(this->*dfp)(ss_pos+(star_size-1)-i)] += *rgb;
                 // we have to subtract 1 from star_size because one piece goes at pos
                 // example, if star_size = 3: [*]  [*]  [*]
                 //                            pos pos+1 pos+2
             }
-            pos++;
-            if (pos+(star_size-1) >= stop_pos+1) {
-                start_pos = random16(0, MTX_NUM_LEDS/4);
-                stop_pos = random16(star_size+(MTX_NUM_LEDS/2), MTX_NUM_LEDS);
-                pos = start_pos;
-                cdi_pm = millis();
+            ss_pos++;
+            if (ss_pos+(star_size-1) >= ss_stop_pos+1) {
+                ss_start_pos = random16(0, MTX_NUM_LEDS/4);
+                ss_stop_pos = random16(star_size+(MTX_NUM_LEDS/2), MTX_NUM_LEDS);
+                ss_pos = ss_start_pos;
+                ss_cdi_pm = millis();
             }
         }
     }
@@ -1070,22 +980,22 @@ void ReAnimator::shooting_star(uint16_t draw_interval, uint8_t star_size, uint8_
 
 
 void ReAnimator::cylon(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
-    static uint16_t pos = 0;
-    static int8_t delta = 1;
-
-    if (pattern != last_pattern_ran) {
-        pos = 0;
-        delta = 1;
+    if (pattern != last_pattern) {
+        c_pos = 0;
+        c_delta = 1;
     }
 
     if (is_wait_over(draw_interval)) {
-        fadeToBlackBy(leds, MTX_NUM_LEDS, 20);
+        uint16_t fuzz = 1 + random16(3);
+        while (fuzz--) {
+            fadeToTransparentBy(leds, MTX_NUM_LEDS, 20);
 
-        leds[(this->*dfp)(pos)] += *rgb;
+            leds[(this->*dfp)(c_pos)] += *rgb;
 
-        pos = pos + delta;
-        if (pos == 0 || pos == MTX_NUM_LEDS-1) {
-            delta = -delta;
+            c_pos = c_pos + c_delta;
+            if (c_pos == 0 || c_pos == MTX_NUM_LEDS-1) {
+                c_delta = -c_delta;
+            }
         }
     }
 }
@@ -1100,10 +1010,9 @@ void ReAnimator::solid(uint16_t draw_interval) {
 
 // inspired by juggle from FastLED/examples/DemoReel00.ino -Mark Kriegsman, December 2014
 void ReAnimator::pendulum() {
-    static uint32_t t = 0;
     const uint8_t bpm_offset = 56;
     const uint8_t num_columns = MTX_NUM_COLS;
-    fadeToBlackBy(leds, MTX_NUM_LEDS, 15);
+    fadeToTransparentBy(leds, MTX_NUM_LEDS, 15);
     byte ball_hue = hue;
     const uint8_t num_balls = MTX_NUM_COLS;
     for (uint8_t i = 0; i < num_columns; i++) {
@@ -1114,48 +1023,47 @@ void ReAnimator::pendulum() {
         // beatsin16() effectively uses this: uint16_t beat = ((millis() - timebase) * beats_per_minute_88 * 280) >> 16;
         // so to cancel out the effect of millis() use this: timebase = millis()-t
         // redefining the timebase prevents the effect from skipping
-        p.y = beatsin16(i+7, 0, MTX_NUM_COLS-1, millis()-t);
+        p.y = beatsin16(i+7, 0, MTX_NUM_COLS-1, millis()-p_t);
         uint16_t j = cart2serp(p);
         leds[j] |= CHSV(ball_hue, 200, 255);
         ball_hue += 255/num_columns;
     }
-    t+=12;
+    p_t+=12;
 }
 
 
-
 void ReAnimator::funky() {
-    static uint32_t t = 0;
     const uint8_t bpm_offset = 14;
     const uint8_t num_columns = MTX_NUM_COLS;
     byte ball_hue = hue;
+    //fadeToTransparentBy(leds, MTX_NUM_LEDS, 1); // colors are washed out if this is used for this pattern
     fadeToBlackBy(leds, MTX_NUM_LEDS, 1);
     for (uint8_t i = 0; i < num_columns; i++) {
         Point p;
         p.x = i*(MTX_NUM_COLS/num_columns);
-        p.y = beatsin16(i+bpm_offset, 0, MTX_NUM_COLS-1, millis()-t);
+        p.y = beatsin16(i+bpm_offset, 0, MTX_NUM_COLS-1, millis()-f_t);
         uint16_t j = cart2serp(p);
-        p.y = MTX_NUM_COLS-1 - beatsin16(i+bpm_offset, 0, MTX_NUM_COLS-1, millis()-t);
+        p.y = MTX_NUM_COLS-1 - beatsin16(i+bpm_offset, 0, MTX_NUM_COLS-1, millis()-f_t);
         uint16_t k = cart2serp(p);
         leds[j] |= CHSV(ball_hue, 200, 255);
         leds[k] |= CHSV(255-ball_hue, 200, 255);
         ball_hue += 255/num_columns;
     }
-    t+=12;
+    f_t+=12;
 }
 
 
 void ReAnimator::riffle() {
-    static uint32_t t = 0;
     uint8_t ball_hue = hue;
     uint8_t i = 0;
+    //fadeToTransparentBy(leds, MTX_NUM_LEDS, 5); // takes longer for colors to separate and appear distinct if this is used for this pattern
     fadeToBlackBy(leds, MTX_NUM_LEDS, 5);
     while (true) {
         uint16_t high = ((i+1)*16)-1;
         if (high >= MTX_NUM_LEDS/2) {
             break;
         }
-        uint16_t p = beatsin16(3, 0, high, millis()-t);
+        uint16_t p = beatsin16(3, 0, high, millis()-r_t);
         leds[MTX_NUM_LEDS-1-p] |= CHSV(ball_hue, 200, 255);
 
         uint16_t q = (MTX_NUM_COLS*(p/MTX_NUM_COLS)+MTX_NUM_COLS)-1 - p%MTX_NUM_COLS;
@@ -1164,209 +1072,36 @@ void ReAnimator::riffle() {
         i++;
         ball_hue += 32;
     }
-    t+=12;
-}
-
-
-void ReAnimator::mitosis(uint16_t draw_interval, uint8_t cell_size) {
-    const uint16_t start_pos = MTX_NUM_LEDS/2;
-    static uint16_t pos = start_pos;
-
-    if (pattern != last_pattern_ran) {
-        pos = start_pos;
-    }
-
-    if (is_wait_over(draw_interval)) {
-        fadeToBlackBy(leds, MTX_NUM_LEDS, 30);
-
-        for (uint8_t i = 0; i < cell_size; i++) {
-            uint16_t pi = pos+(cell_size-1)-i;
-            uint16_t ni = (MTX_NUM_LEDS-1) - pi;
-            leds[pi] = *rgb;
-            leds[ni] = *rgb;
-        }
-        pos++;
-        if (pos+(cell_size-1) >= MTX_NUM_LEDS) {
-            pos = start_pos;
-        }
-    }
-}
-
-
-void ReAnimator::bubbles(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
-    const uint8_t num_bubbles = 8;
-    static uint8_t bubble_time[num_bubbles] = {};
-
-    if (pattern != last_pattern_ran) {
-        memset(bubble_time, 0, sizeof(bubble_time));
-
-    }
-
-    if (is_wait_over(draw_interval)) {
-        clear();
-
-        for (uint8_t i = 0; i < num_bubbles; i++) {
-            if (bubble_time[i] == 0 && random8(33) == 0) {
-                bubble_time[i] = random8(1, sqrt16(UINT16_MAX/MTX_NUM_LEDS));
-            }
-
-            if (bubble_time[i] > 0) {
-                uint8_t t = bubble_time[i];
-
-                uint16_t d = t*(t+1);
-
-                if (t == UINT8_MAX) {
-                    d = UINT16_MAX;
-                }
-
-                uint16_t pos = lerp16by16(0, MTX_NUM_LEDS-1, d);
-                leds[(this->*dfp)(pos)] += CHSV(i*(256/num_bubbles) + hue, 255, 192);
-                motion_blur((3*pos)/MTX_NUM_LEDS, pos, dfp);
-
-                if (t < UINT8_MAX) {
-                    t+=10;
-                    if (t > bubble_time[i]) { // make sure overflow didn't happen
-                        bubble_time[i] = t;
-                    }
-                    else {
-                        bubble_time[i] = UINT8_MAX;
-                    }
-                }
-                else {
-                    bubble_time[i] = 0;
-                }
-            }        
-        }
-    }
+    r_t += 12;
 }
 
 
 void ReAnimator::sparkle(uint16_t draw_interval, bool random_color, uint8_t fade) {
     CRGB c = (random_color) ? CHSV(random8(), 255, 255) : *rgb;
 
-    // it's necessary to use finished_waiting() here instead of is_wait_over()
-    // because sparkle can be an overlay
-    if (finished_waiting(draw_interval)) {
-        fadeToBlackBy(leds, MTX_NUM_LEDS, fade);
+    if (is_wait_over(draw_interval)) {
+        fadeToTransparentBy(leds, MTX_NUM_LEDS, fade);
         leds[random16(MTX_NUM_LEDS)] = c;
     }
 }
 
 
-// resembles the green code from The Matrix
-void ReAnimator::matrix(uint16_t draw_interval) {
-    if (is_wait_over(draw_interval)) {
-        memmove(&leds[1], &leds[0], (MTX_NUM_LEDS-1)*sizeof(CRGB));
-
-        if (random8() > 205) {
-            leds[0] = CHSV(HUE_GREEN, 255, 255);
-            leds[0] = 0x00FF40; // result of using a HSV to RGB calculator to convert 96 (HUE_GREEN) to RGB. (96/256)*360 = 135. 135, 100%, 100% --> 0x00FF40
-        }
-        else {
-            leds[0] = CRGBA::Transparent;
-        }
-    }
-}
-
-
 void ReAnimator::weave(uint16_t draw_interval) {
-    static uint16_t pos = 0;
-
-    if (pattern != last_pattern_ran) {
-        pos = 0;
+    if (pattern != last_pattern) {
+        w_pos = 0;
     }
 
     if (is_wait_over(draw_interval)) {
-        fadeToBlackBy(leds, MTX_NUM_LEDS, 20);
-        leds[pos] += *rgb;
-        leds[MTX_NUM_LEDS-1-pos] += (CRGBA::White - *rgb);
-        pos = (pos + 2) % MTX_NUM_LEDS;
-    }
-}
-
-
-void ReAnimator::starship_race(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
-    const uint16_t race_distance = (11*UINT8_MAX)/2; // 7/2 -> 3.5 laps
-    const uint8_t total_starships = 5;
-    // UINT8_MAX/MTX_NUM_LEDS is the speed required for a starship to move one LED per redraw
-    const uint8_t range = ceil(static_cast<float>(UINT8_MAX)/MTX_NUM_LEDS);
-    const uint8_t speed_boost_period = 4; // every N redraws speed_boost is increased
-
-    static Starship starships[total_starships];
-    static bool go = true;
-    static uint8_t redraw_count = 0;
-    static uint8_t speed_boost = 0;
-    static uint8_t count_down = 0;
-
-    if (pattern != last_pattern_ran) {
-        for (uint8_t i = 0; i < total_starships; i++) {
-            starships[i].distance = 0;
-            starships[i].color = i*(256/total_starships);
-        }
-        go = true;
-        redraw_count = 0;
-        speed_boost = 0;
-        count_down = 0;
-    }
-
-    if (is_wait_over(draw_interval)) {
-        if (go) {
-            clear();
-
-            for (uint8_t i = 0; i < total_starships; i++) {
-                // current_total_distance = previous_total_distance + speed*delta_time, delta_time is always 1
-                starships[i].distance = starships[i].distance + random8(speed_boost, (range+speed_boost)+1);
-            }
-
-            // sort starships by distance travelled in descending order
-            qsort(starships, total_starships, sizeof(Starship), compare);
-
-            for (uint8_t i = 0; i < total_starships; i++) {
-                uint16_t pos = lerp16by8(0, MTX_NUM_LEDS-1, starships[i].distance);
-
-                // we don't want multiple starships' position to be on the same LED
-                // if an LED is already lit then a starship is already there so
-                // move backwards until we find an unlit LED
-                while (leds[(this->*dfp)(pos)] != CRGBA::Transparent && pos > 0) {
-                    pos--;
-                }
-                leds[(this->*dfp)(pos)] = CHSV(starships[i].color, 255, 255);
-            }
-
-            redraw_count++;
-            if (redraw_count == speed_boost_period) {
-                redraw_count = 0;
-                speed_boost++;
-            }
-        }
-        else {
-            // next race will happen after count_down*draw_interval has elapsed
-            count_down--;
-            if (count_down == 0) {
-                go = true;
-            }
-        }
-
-        if (starships[0].distance >= race_distance) {
-            // race is finished
-            fill_solid(leds, MTX_NUM_LEDS, CHSV(starships[0].color, 255, 255));
-
-            for (uint8_t i = 0; i < total_starships; i++) {
-                starships[i].distance = 0;
-                starships[i].color = i*(256/total_starships);
-            }
-
-            go = false;
-            redraw_count = 0;
-            speed_boost = 0;
-            count_down = 10;
-        }
+        fadeToTransparentBy(leds, MTX_NUM_LEDS, 20);
+        leds[w_pos] += *rgb;
+        leds[MTX_NUM_LEDS-1-w_pos] += (CRGBA::White - *rgb);
+        w_pos = (w_pos + 2) % MTX_NUM_LEDS;
     }
 }
 
 
 void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
-    if (pattern != last_pattern_ran) {
+    if (pattern != last_pattern) {
         pm_puck_man_pos = 0;
     }
 
@@ -1482,205 +1217,58 @@ void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uin
 }
 
 
-// a ball will move one LED when its height changes by (2^16)/MTX_NUM_LEDS
-// the fastest movement will be from led[0] to led[1] and t=0 to t=ball_time_delta
-// we want the fastest movement to take one draw interval so the function isn't called unnecessarily fast
-// therefore we want ball_time_delta to result in h increasing by (2^16)/MTX_NUM_LEDS
-// for 52 LEDS (2^16)/MTX_NUM_LEDS = 1260 and if ball_vi = vi_max = 510
-// -1*t^2 + 510*t - 1260 = 0
-// minimum ball_time_delta = (-510 + sqrt(510^2 - 4*(-1*-1260))/(2*-1) = 2.48
-// increasing ball_time_delta lets you increase the draw_interval therefore decreasing the frequency of redraws
-void ReAnimator::bouncing_balls(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
-    const uint16_t vi_max = 510; // initial velocity, 512 will make h exceed UINT16_MAX
-    const uint8_t blur_length = 3;
-    const uint8_t num_balls = 5;
-    const uint8_t ball_time_delta = 4;
-    static uint16_t ball_time[num_balls] = {};
-    static uint16_t ball_vi[num_balls] = {};
-
-    if (pattern != last_pattern_ran) {
-        memset(ball_time, 0, sizeof(ball_time));
-        memset(ball_vi, 0, sizeof(ball_vi));
-    }
-
+// good for an effect similar to the falling text in The Matrix
+void ReAnimator::rain(uint16_t draw_interval) {
     if (is_wait_over(draw_interval)) {
-        clear();
-
-        for (uint8_t i = 0; i < num_balls; i++) {
-            uint16_t t = ball_time[i];
-
-            uint16_t h = (ball_vi[i] - t)*t;
-            int16_t v = ball_vi[i] - 2*t;
-
-            if (t >= ball_vi[i]) {
-                // the ball has hit the ground
-                h = 0;
-                v = 0;
-                ball_time[i] = 0;
-                ball_vi[i] = random16(vi_max/3, vi_max+1); // vi_max+1 for up to and including vi_max
+        for (uint8_t i = 0; i < MTX_NUM_COLS; i++) {
+            Point p;
+            p.x = i;
+            for (uint8_t j = 1; j < MTX_NUM_ROWS; j++) {
+              p.y = MTX_NUM_ROWS - j;
+              uint16_t idxf = cart2serp(p);
+              p.y = MTX_NUM_ROWS - j - 1;
+              uint16_t idxi = cart2serp(p);
+              leds[idxf] = leds[idxi];
             }
 
-            uint16_t pos = lerp16by16(0, MTX_NUM_LEDS-1, h);
-            leds[(this->*dfp)(pos)] += CHSV(i*(256/num_balls), 255, 192);
-            motion_blur((blur_length*(int32_t)v)/(int32_t)vi_max, pos, dfp);
-
-            ball_time[i] = ball_time[i] + ball_time_delta;
-        }
-    }
-}
-
-
-void ReAnimator::halloween_colors_fade(uint16_t draw_interval) {
-    CRGBPalette16 halloween_colors;
-    halloween_colors = CRGBPalette16(CHSV(HUE_ORANGE, 255, 255),
-                                   CHSV(HUE_PURPLE, 255, 255),
-                                   CHSV(HUE_RED, 255, 255),
-                                   CHSV(HUE_ALIEN_GREEN, 255, 255));
-
-    static uint8_t delta = 0;
-
-    if (is_wait_over(draw_interval)) {
-        //fill_palette(leds, MTX_NUM_LEDS, delta, 6, halloween_colors, 255, LINEARBLEND);
-        for(uint16_t i = 0; i < MTX_NUM_LEDS; i++) {
-            leds[i] = ColorFromPalette(halloween_colors, delta, 255);
-        }
-        delta++;
-    }
-}
-
-
-void ReAnimator::halloween_colors_orbit(uint16_t draw_interval, int8_t delta) {
-    const uint8_t num_hues = 6;
-    static uint8_t hi = 0;
-    uint8_t hues[num_hues] = {HUE_ORANGE, HUE_PURPLE, HUE_ORANGE, HUE_RED, HUE_ORANGE, HUE_ALIEN_GREEN};
-
-    static uint16_t pos = MTX_NUM_LEDS;
-
-    if (pattern != last_pattern_ran) {
-        pos = 0;
-    }
-
-    if (is_wait_over(draw_interval)) {
-        if (delta > 0) {
-            pos = pos % MTX_NUM_LEDS;
-        }
-        else {
-            // pos underflows after it goes below zero
-            if (pos > MTX_NUM_LEDS-1) {
-                pos = MTX_NUM_LEDS-1;
+            p.y = 0;
+            uint16_t idx = cart2serp(p);
+            if (random8() > 245) {
+                leds[idx] = *rgb;
+            }
+            else {
+                leds[idx].fadeToTransparentBy(70);
             }
         }
-
-        leds[pos] = CHSV(hues[hi], 255, 255);
-        pos = pos + delta;
-        if (pos == MTX_NUM_LEDS) {
-            hi = (hi+1) % num_hues;
-        }
     }
 }
 
 
-//void ReAnimator::sound_ribbons(uint16_t draw_interval) {
-//    if (is_wait_over(draw_interval)) {
-//        fadeToBlackBy(leds, MTX_NUM_LEDS, 20);
-//
-//        leds[MTX_NUM_LEDS/2] = CHSV(hue, 255, sound_value);
-//        leds[(MTX_NUM_LEDS/2)-1] = CHSV(hue, 255, sound_value);
-//
-//        fission();
-//    }                                                                                
-//}
-
-
-// derived from this code https://gist.github.com/suhajdab/9716635
-//void ReAnimator::sound_ripple(uint16_t draw_interval, bool trigger) {
-//    static bool enabled = true;
-//    const uint16_t max_delta = 16;
-//    static uint16_t delta = 0;
-//    static uint16_t center = MTX_NUM_LEDS/2;
-//
-//    if (pattern != last_pattern_ran) {
-//        enabled = true;
-//        delta = 0;
-//        center = MTX_NUM_LEDS/2;
-//    }
-//
-//    if (trigger) {
-//        enabled = true;
-//    }
-//
-//    if (is_wait_over(draw_interval)) {
-//        fadeToBlackBy(leds, MTX_NUM_LEDS, 170);
-//
-//        if (enabled) {
-//            // waves created by primary droplet
-//            leds[(MTX_NUM_LEDS+center+delta) % MTX_NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta)*255);
-//            leds[(MTX_NUM_LEDS+center-delta) % MTX_NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta)*255);
-//
-//            if (delta > 3) {
-//                // waves created by rebounded droplet
-//                leds[(MTX_NUM_LEDS+center+(delta-3)) % MTX_NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta - 2)*255);
-//                leds[(MTX_NUM_LEDS+center-(delta-3)) % MTX_NUM_LEDS] = CHSV(hue, 255, pow(0.8, delta - 2)*255);
-//            }
-//
-//            delta++;
-//            if (delta == max_delta) {
-//                delta = 0;
-//                center = random16(MTX_NUM_LEDS);
-//                enabled = false;
-//            }
-//        }
-//    }
-//}
-
-
-//void ReAnimator::sound_orbit(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
-//    if (is_wait_over(draw_interval)) {
-//        for(uint16_t i = MTX_NUM_LEDS-1; i > 0; i--) {
-//            leds[(this->*dfp)(i)] = leds[(this->*dfp)(i-1)];
-//        }
-//
-//        leds[(this->*dfp)(0)] = CHSV(hue, 255, sound_value);
-//    }
-//}
-
-
-//void ReAnimator::sound_blocks(uint16_t draw_interval, bool trigger) {
-//    uint8_t hue = random8();
-//
-//    static bool enabled = true;
-//
-//    if (trigger) {
-//        enabled = true;
-//    }
-//
-//    if (is_wait_over(draw_interval)) {
-//        fadeToBlackBy(leds, MTX_NUM_LEDS, 5);
-//
-//        if (enabled) {
-//            uint16_t block_start = random16(MTX_NUM_LEDS);
-//            uint8_t block_size = random8(3,8);
-//            for (uint8_t i = 0; i < block_size; i++) {
-//                uint16_t pos = (MTX_NUM_LEDS+block_start+i) % MTX_NUM_LEDS;
-//                leds[pos] = CHSV(hue, 255, 255);
-//            }
-//            enabled = false;
-//        }
-//    }
-//}
-
-
-void ReAnimator::dynamic_rainbow(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t)) {
+void ReAnimator::waterfall(uint16_t draw_interval) {
     if (is_wait_over(draw_interval)) {
-        for(uint16_t i = MTX_NUM_LEDS-1; i > 0; i--) {
-            leds[(this->*dfp)(i)] = leds[(this->*dfp)(i-1)];
+        fadeToTransparentBy(leds, MTX_NUM_LEDS, 40);
+        for (uint8_t i = 0; i < MTX_NUM_COLS; i++) {
+            Point p;
+            p.x = i;
+            for (uint8_t j = 1; j < MTX_NUM_ROWS; j++) {
+              p.y = MTX_NUM_ROWS - j;
+              uint16_t idxf = cart2serp(p);
+              p.y = MTX_NUM_ROWS - j - 1;
+              uint16_t idxi = cart2serp(p);
+              leds[idxf] = leds[idxi];
+              leds[idxf].a = 255;
+            }
+
+            p.y = 0;
+            uint16_t idx = cart2serp(p);
+            if (random8() > 175) {
+                leds[idx] = *rgb;
+            }
         }
-
-        leds[(this->*dfp)(0)] = CHSV(((MTX_NUM_LEDS-1-dr_delta)*255/MTX_NUM_LEDS), 255, 255);
-
-        dr_delta = (dr_delta + 1) % MTX_NUM_LEDS;
     }
 }
+
+
 
 
 // ++++++++++++++++++++++++++++++
@@ -1711,13 +1299,6 @@ void ReAnimator::flicker(uint16_t interval) {
 }
 
 
-void ReAnimator::glitter(uint16_t chance_of_glitter) {
-    if (chance_of_glitter > random16()) {
-        leds[random16(MTX_NUM_LEDS)] += CRGBA::White;
-    }
-}
-
-
 void ReAnimator::fade_randomly(uint8_t chance_of_fade, uint8_t decay) {
     for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) {
         if (chance_of_fade > random8()) {
@@ -1734,6 +1315,8 @@ void ReAnimator::vanish_randomly(uint8_t chance_of_fade, uint8_t decay) {
         }
     }
 }
+
+
 
 // ++++++++++++++++++++++++++++++
 // +++++++++++ IMAGE ++++++++++++
@@ -2269,6 +1852,12 @@ void ReAnimator::fadeToBlackBy(CRGBA leds[], uint16_t num_leds, uint8_t fadeBy) 
     }
 }
 
+void ReAnimator::fadeToTransparentBy(CRGBA leds[], uint16_t num_leds, uint8_t fadeBy) {
+    for (uint16_t i = 0; i < num_leds; i++) {
+        leds[i].fadeToTransparentBy(fadeBy);
+    }
+}
+
 void ReAnimator::fill_solid(CRGBA leds[], uint16_t num_leds, const CRGB& color) {
     for(uint16_t i = 0; i < num_leds; ++i) {
         leds[i] = color;
@@ -2316,59 +1905,20 @@ bool ReAnimator::finished_waiting(uint16_t interval) {
 
 
 void ReAnimator::accelerate_decelerate_pattern(uint16_t draw_interval_initial, uint16_t delta_initial, uint16_t update_period, uint16_t genparam, void(ReAnimator::*pfp)(uint16_t, uint16_t, uint16_t(ReAnimator::*dfp)(uint16_t)), uint16_t(ReAnimator::*dfp)(uint16_t)) {
-    static uint16_t draw_interval = draw_interval_initial;
-    static int8_t delta = delta_initial;
-
-    if (pattern != last_pattern_ran) {
-        draw_interval = draw_interval_initial;
-        delta = delta_initial;
+    if (pattern != last_pattern) {
+        adp_draw_interval = draw_interval_initial;
+        adp_delta = delta_initial;
     }
 
     if (finished_waiting(update_period)) {
-        draw_interval = draw_interval - delta;
-        if (draw_interval <= 0 || draw_interval >= draw_interval_initial) {
-            delta = -1*delta;
+        adp_draw_interval = adp_draw_interval - adp_delta;
+        if (adp_draw_interval <= 0 || adp_draw_interval >= draw_interval_initial) {
+            adp_delta = -1*adp_delta;
         }
     }
 
-    (this->*pfp)(draw_interval, genparam, dfp);
+    (this->*pfp)(adp_draw_interval, genparam, dfp);
 }
-
-
-// derived from this code https://github.com/atuline/FastLED-Demos/blob/master/soundmems_demo/soundmems.h
-//void ReAnimator::process_sound() {
-//    const uint16_t DC_OFFSET = 513;  // measured
-//    const uint8_t NUM_SAMPLES = 64;
-//
-//    static int16_t sample_buffer[NUM_SAMPLES];
-//    static uint16_t sample_sum = 0;
-//    static uint8_t i = 0;
-//
-//    int16_t sample = 0;
-//
-//    sample_peak = 0;
-//
-//    sample = analogRead(MIC_PIN) - DC_OFFSET;
-//    sample = abs(sample);
-//
-//    if (sample < sample_threshold) {
-//        sample = 0;
-//    }
-//
-//    sample_sum += sample - sample_buffer[i]; // add newest sample and subtract oldest sample from the sum
-//    sample_average = sample_sum / NUM_SAMPLES;
-//    sample_buffer[i] = sample;  // overwrite oldest sample with newest sample
-//    i = (i + 1) % NUM_SAMPLES;
-//
-//    sound_value = sound_value_gain*sample_average;
-//    sound_value = min(sound_value, 255);
-//
-//    if (sample > (sample_average + sample_threshold) && (sample < previous_sample)) {
-//        sample_peak = 1;
-//    }
-//  
-//    previous_sample = sample;
-//}
 
 
 void ReAnimator::motion_blur(int8_t blur_num, uint16_t pos, uint16_t(ReAnimator::*dfp)(uint16_t)) {
@@ -2436,16 +1986,6 @@ bool ReAnimator::Freezer::is_frozen() {
     return m_frozen;
 }
 
-
-int ReAnimator::compare(const void *a, const void *b) {
-    Starship *StarshipA = (Starship *)a;
-    Starship *StarshipB = (Starship *)b;
-
-    return (StarshipB->distance > StarshipA->distance) - (StarshipA->distance > StarshipB->distance); // descending order
-}
-
-
-
 /*
 void ReAnimator::print_dt() {
     static uint32_t pm = 0; // previous millis
@@ -2454,58 +1994,3 @@ void ReAnimator::print_dt() {
     pm = millis();
 }
 */
-
-
-
-
-
-
-
-
-
-
-/*
-void demo() {
-  const uint8_t PATTERNS_NUM = 21;
-
-  const Pattern patterns[PATTERNS_NUM] = {DYNAMIC_RAINBOW, SOLID, ORBIT, RUNNING_LIGHTS,
-                                          PENDULUM, SPARKLE, WEAVE, CHECKERBOARD, BINARY_SYSTEM,
-                                          SOLID, SOLID, SOLID, SOLID, DYNAMIC_RAINBOW,
-                                          SHOOTING_STAR, //MITOSIS, BUBBLES, MATRIX,
-                                          BALLS, CYLON,
-                                          //STARSHIP_RACE
-                                          //PUCK_MAN, // PUCK_MAN crashes ???
-                                          //SOUND_BLOCKS, SOUND_BLOCKS, SOUND_RIBBONS, SOUND_RIBBONS,
-                                          //SOUND_ORBIT, SOUND_ORBIT, SOUND_RIPPLE, SOUND_RIPPLE
-                                          };
-
-
-
-  const Overlay overlays[PATTERNS_NUM] = {NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY,
-                                          NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY,
-                                          GLITTER, BREATHING, CONFETTI, FLICKER, FROZEN_DECAY,
-                                          NO_OVERLAY, //NO_OVERLAY, NO_OVERLAY, NO_OVERLAY,
-                                          NO_OVERLAY, NO_OVERLAY
-                                          //NO_OVERLAY
-                                          //NO_OVERLAY
-                                          //NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY,
-                                          //NO_OVERLAY, NO_OVERLAY, NO_OVERLAY, NO_OVERLAY
-                                          };
-
-  static uint8_t poi = 0;
-
-  EVERY_N_MILLISECONDS(19200) {
-    poi = (poi+1) % PATTERNS_NUM;
-    GlowSerum.set_pattern(patterns[poi]);
-    GlowSerum.set_overlay(overlays[poi], false);
-
-    //if (poi >= 22 && poi <= 25) {
-    //    GlowSerum.set_flipflop_enabled(true);
-    //}
-    //else {
-    //    GlowSerum.set_flipflop_enabled(false);
-    //}
-  }
-}
-*/
-

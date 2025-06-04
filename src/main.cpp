@@ -73,8 +73,6 @@ CRGB* leds; // output
 ReAnimator* layers[NUM_LAYERS];
 uint8_t ghost_layers[NUM_LAYERS] = {0};
 
-//uint8_t gmax_brightness = 255;
-//const uint8_t gmin_brightness = 2;
 uint8_t gdynamic_hue = 0;
 uint8_t grandom_hue = 0;
 CRGB gdynamic_rgb = 0x000000;
@@ -325,7 +323,8 @@ void handle_file_list(void) {
   if (gfile_list_needs_refresh) {
     gfile_list_needs_refresh = false;
     gfile_list_tmp = "";
-    gfile_list_json_tmp = "";
+    // opening bracket for JSON array of objects. it feels messy to add the opening bracket now, but doing so should save from doing an memory intensive append.
+    gfile_list_json_tmp = "[";
     image_list_tmp.clear();
     
     // cannot prevent "open(): /littlefs/images does not exist, no permits for creation" message
@@ -340,9 +339,17 @@ void handle_file_list(void) {
     gfile_list = gfile_list_tmp;
     gfile_list_tmp = "";
 
-    gfile_list_json_tmp.setCharAt(gfile_list_json_tmp.length()-1, ']');
-    gfile_list_json = "[" + gfile_list_json_tmp;
-    gfile_list_json_tmp = "";
+    if (gfile_list_json_tmp.length() > 1) {
+      // add closing bracket to complete JSON array of objects
+      // ] replaces unnecessary trailing comma
+      gfile_list_json_tmp.setCharAt(gfile_list_json_tmp.length()-1, ']');
+      gfile_list_json = gfile_list_json_tmp;
+    }
+    else {
+      gfile_list_json = "[]";
+    }
+
+    gfile_list_json_tmp = "[";
 
     image_list = image_list_tmp;
     image_list_tmp.clear();
@@ -503,6 +510,14 @@ bool create_patterns_list(void) {
         pattern_name = "Funky";
         match = true;
         break;
+    case RAIN:
+        pattern_name = "Rain";
+        match = true;
+        break;
+    case WATERFALL:
+        pattern_name = "Waterfall";
+        match = true;
+        break;
   }
   if (match) {
     if (!first) {
@@ -578,16 +593,16 @@ void puck_man_cb(uint8_t event) {
       one_shot = false;
       for (uint8_t i = 0; i < NUM_LAYERS; i++) {
         if (ghost_layers[i] == 1) {
-          load_image_to_layer(i, "blinky");
+          load_image_to_layer(i, "ghost_blinky");
         }
         if (ghost_layers[i] == 2) {
-          load_image_to_layer(i, "pinky");
+          load_image_to_layer(i, "ghost_pinky");
         }
         if (ghost_layers[i] == 3) {
-          load_image_to_layer(i, "inky");
+          load_image_to_layer(i, "ghost_inky");
         }
         if (ghost_layers[i] == 4) {
-          load_image_to_layer(i, "clyde");
+          load_image_to_layer(i, "ghost_clyde");
         }
       }
       break;
@@ -596,7 +611,7 @@ void puck_man_cb(uint8_t event) {
         one_shot = true;
         for (uint8_t i = 0; i < NUM_LAYERS; i++) {
           if (ghost_layers[i]) {
-            load_image_to_layer(i, "blue_ghost");
+            load_image_to_layer(i, "ghost_blue");
           }
         }
       }
@@ -642,7 +657,6 @@ bool is_valid_layer_json(JsonVariant layer_json) {
 
 
 bool load_layer(uint8_t lnum, JsonVariant layer_json) {
-  //if ( layer_json[F("t")] == "e" || layer_json[F("t")].isNull() || layer_json[F("id")].isNull() || (layer_json[F("t")] == "w" && layer_json[F("w")].isNull()) || (layer_json[F("t")] == "im" && !image_exists(layer_json[F("id")])) ) {
   if (!is_valid_layer_json(layer_json)) {
     if (layers[lnum] != nullptr) {
       delete layers[lnum];
@@ -656,7 +670,7 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
   }
 
   // sane defaults in case data is missing.
-  // if this data is missing json is perhaps it is better to not show the layer at all.
+  // if this data is missing from layer_json perhaps it is better to not show the layer at all.
   uint8_t accent_id = 0;
   uint8_t color_type = 1; // dynamic color
   uint32_t color = 0x000000;
@@ -707,16 +721,16 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
   ghost_layers[lnum] = 0;
   if (layer_json[F("t")] == "im") {
     String id = layer_json[F("id")];
-    if (id == "blinky") {
+    if (id == "ghost_blinky") {
       ghost_layers[lnum] = 1;
     }
-    if (id == "pinky") {
+    if (id == "ghost_pinky") {
       ghost_layers[lnum] = 2;
     }
-    if (id == "inky") {
+    if (id == "ghost_inky") {
       ghost_layers[lnum] = 3;
     }
-    if (id == "clyde") {
+    if (id == "ghost_clyde") {
       ghost_layers[lnum] = 4;
     }
     layers[lnum]->setup(Image_t, -2);
@@ -806,7 +820,7 @@ bool load_collection(String type, String id) {
   String fs_path = form_path(type, id);
   File file = LittleFS.open(fs_path, "r");
   
-  if(!file){
+  if (!file){
     return false;
   }
 
@@ -852,7 +866,7 @@ bool load_from_playlist(String id) {
       // should not do if (id != "" && id != resume_id)
       // because a playlist with an id matching resume_id may have been edited,
       // and therefore we would like to reload it to see the changes.
-      // calling with an id means we want to load a new playlist so reinitialize everything
+      // calling with an id that is not blank means we want to load a new playlist so reinitialize everything
       playlist_enabled = false;
       resume_id = id;
       pm = 0; // using zero pm and item_duration ensures first item will be loaded immediately next time load_from_playlist() is called
@@ -960,11 +974,8 @@ void write_log(String log_msg) {
   if (f) {
     size_t fsize = f.size();
     f.close();
-    //if fsize is too big the debug log will include garbage
-    //if (fsize > 2000) { // corruption.
-    //if (fsize > 1900) { // seems ok
     // if full, rotate log files
-    if (fsize > 1750) { // about 100 lines, no corruption.
+    if (fsize > 1750) {
       LittleFS.remove("/files/debug_logP.txt");
       LittleFS.rename("/files/debug_logC.txt", "/files/debug_logP.txt");
     }
@@ -981,7 +992,7 @@ void write_log(String log_msg) {
     f.print(ts);
     f.print(log_msg);
     f.print("\n");
-    delay(1); //works without this. need it?? makes sure access time is changed??
+    delay(1); //works without this. need it?? ensures access time is changed??
     f.close();
     //interrupts();
   }
@@ -1044,7 +1055,7 @@ bool verify_timezone(const String iana_tz) {
     delay (1);
     if (millis() - started > TIMEZONED_TIMEOUT) {
       udp.stop();  
-      Serial.println("verify_timezone(): fetch timezone timed out.");
+      DEBUG_PRINTLN("verify_timezone(): fetch timezone timed out.");
       return false;
     }
   }
@@ -1054,9 +1065,9 @@ bool verify_timezone(const String iana_tz) {
   recv.reserve(60);
   while (udp.available()) recv += (char)udp.read();
   udp.stop();
-  Serial.print(F("verify_timezone(): (round-trip "));
-  Serial.print(millis() - started);
-  Serial.println(F(" ms)  "));
+  DEBUG_PRINT(F("verify_timezone(): (round-trip "));
+  DEBUG_PRINT(millis() - started);
+  DEBUG_PRINTLN(F(" ms)  "));
   if (recv.substring(0,6) == "ERROR ") {
     _server_error = recv.substring(6);
     return false;
@@ -1067,7 +1078,7 @@ bool verify_timezone(const String iana_tz) {
     tz.posix_tz = recv.substring(recv.indexOf(" ", 4) + 1);
     return true;
   }
-  Serial.println("verify_timezone(): timezone not found.");
+  DEBUG_PRINTLN("verify_timezone(): timezone not found.");
   return false;
 }
 // end ezTime MIT licensed code
@@ -1090,11 +1101,13 @@ public:
   }
 };
 
+
 void esp_delay(uint32_t ms) {
   esp_sleep_enable_timer_wakeup(ms * 1000);
   esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
   esp_light_sleep_start();
 }
+
 
 bool attempt_connect(void) {
   bool attempt;
@@ -1104,15 +1117,18 @@ bool attempt_connect(void) {
   return attempt;
 }
 
+
 String get_ip(void) {
   return IP.toString();
 }
+
 
 String get_mdns_addr(void) {
   String mdns_addr = mdns_host;
   mdns_addr += ".local";
   return mdns_addr;
 }
+
 
 String processor(const String& var) {
   preferences.begin("config", false);
@@ -1178,6 +1194,7 @@ bool wifi_connect(void) {
   return success;
 }
 
+
 void mdns_setup(void) {
   preferences.begin("config", false);
   mdns_host = preferences.getString("mdns_host", "");
@@ -1192,6 +1209,7 @@ void mdns_setup(void) {
   preferences.end();
 }
 
+
 bool filterOnNotLocal(AsyncWebServerRequest *request) {
   // have to refer to service when requesting hostname from MDNS
   // but this code is not working for me.
@@ -1202,10 +1220,11 @@ bool filterOnNotLocal(AsyncWebServerRequest *request) {
   return request->host() != get_ip() && request->host() != mdns_host;
 }
 
+
 void web_server_station_setup(void) {
   web_server.on("/save", HTTP_POST, [](AsyncWebServerRequest *request) {
     int rc = 400;
-    String message;
+    String message = "Unknown error.";
 
     String type = request->getParam("t", true)->value();
     String id = request->getParam("id", true)->value();
@@ -1307,6 +1326,7 @@ void web_server_station_setup(void) {
   });
 }
 
+
 void web_server_ap_setup(void) {
   // create a captive portal that catches every attempt to access data besides what the ESP serves to config.htm
   // requests to the ESP are handled normally
@@ -1321,6 +1341,7 @@ void web_server_ap_setup(void) {
   });
 }
 
+
 void web_server_initiate(void) {
 
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
@@ -1328,7 +1349,7 @@ void web_server_initiate(void) {
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
 
   // it is possible for more than one handler to serve a file
-  // the first handler that matches a request will server the file
+  // the first handler that matches a request will serve the file
   // so need to put this before serveStatic(), otherwise serveStatic() will serve restart.htm, but not set restart_needed to true;
   web_server.on("/restart.htm", HTTP_GET, [](AsyncWebServerRequest *request) {
     restart_needed = true;
@@ -1340,14 +1361,25 @@ void web_server_initiate(void) {
       AsyncWebParameter* p = request->getParam("iana_tz", true);
       if (!p->value().isEmpty()) {
         tz.unverified_iana_tz = p->value().c_str();
+        request->send(200);
+      }
+      else {
+        request->send(400);
       }
     }
-    request->send(200);
+    else {
+      request->send(400);
+    }
+  });
+
+  web_server.on("/get_ip", HTTP_GET, [](AsyncWebServerRequest *request) {
+    String ip_json = "{\"IP\":\"";
+    ip_json += get_ip();
+    ip_json += "\"}";
+    request->send(200, "application/json", ip_json);
   });
 
   web_server.on("/get_timezone", HTTP_GET, [](AsyncWebServerRequest *request) {
-    //char timezone_json[53];
-    //snprintf(timezone_json, sizeof(timezone_json), " occurred at %i hours, %i minutes, and %i seconds.", datetime.tm_hour, datetime.tm_min, datetime.tm_sec);
     String timezone = "{\"is_default_tz\":";
     String str_is_default_tz = (tz.is_default_tz) ? "true" : "false";
     timezone += str_is_default_tz;
@@ -1371,7 +1403,7 @@ void web_server_initiate(void) {
     config += preferences.getUChar("columns", DEFAULT_NUM_ROWS);
     config += "\"}";
     preferences.end();
-    Serial.println(config);
+    DEBUG_PRINTLN(config);
     request->send(200, "application/json", config);
   });
 
@@ -1439,7 +1471,7 @@ void web_server_initiate(void) {
     request->redirect("/restart.htm");
   });
 
-  // WiFi scanning code taken from ESPAsyncW3ebServer examples
+  // WiFi scanning code taken from ESPAsyncWebServer examples
   // https://github.com/me-no-dev/ESPAsyncWebServer?tab=readme-ov-file#scanning-for-available-wifi-networks
   // Copyright (c) 2016 Hristo Gochkov. All rights reserved.
   // This WiFi scanning code snippet is under the GNU Lesser General Public License.
@@ -1574,8 +1606,6 @@ void setup() {
   preferences.begin("config", false);
   NUM_ROWS = preferences.getUChar("rows", DEFAULT_NUM_ROWS);
   NUM_COLS = preferences.getUChar("columns", DEFAULT_NUM_COLS);
-  //NUM_ROWS = 12; //testing
-  //NUM_COLS = 12;
   NUM_LEDS = NUM_ROWS*NUM_COLS;
   leds = (CRGB*)malloc(NUM_ROWS*NUM_COLS*sizeof(CRGB));
 
@@ -1583,7 +1613,7 @@ void setup() {
     layers[i] = nullptr;
   }
 
-  //The format is TZ = local_timezone,date/time,date/time.
+  //The POSIX format is TZ = local_timezone,date/time,date/time.
   //Here, date is in the Mm.n.d format, where:
   //    Mm (1-12) for 12 months
   //    n (1-5) 1 for the first week and 5 for the last week in the month
@@ -1632,7 +1662,7 @@ void setup() {
   homogenize_brightness();
   FastLED.setBrightness(homogenized_brightness);
 
-  random16_set_seed(analogRead(A0)); // use randomness ??? need to look up which pin for ESP32 ???
+  random16_set_seed(analogRead(A0));
 
   if (!LittleFS.begin()) {
     DEBUG_PRINTLN("LittleFS initialisation failed!");
@@ -1643,11 +1673,11 @@ void setup() {
   WiFi.scanNetworks(false, true); // synchronous scan, show hidden
 
   if (attempt_connect()) {
-  	if (!wifi_connect()) {
-	  	// failure to connect will result in creating AP
+    if (!wifi_connect()) {
+      // failure to connect will result in creating AP
       esp_delay(2000);
-  		wifi_AP();
-	  }
+      wifi_AP();
+    }
   }
   else {
     wifi_AP();
@@ -1657,18 +1687,17 @@ void setup() {
   web_server_initiate();
 
 
-  Serial.print("Attempting to fetch time from ntp server.");
+  DEBUG_PRINT("Attempting to fetch time from ntp server.");
   configTzTime(tz.posix_tz.c_str(), "pool.ntp.org");
-  //configTzTime(tz.posix_tz.c_str(), "192.168.1.99");
   struct tm local_now = {0};
   uint8_t attempt_cnt = 0;
-  // we want the code to give up because have the time is not essential
+  // we want the code to give up because having the time is not essential
   // the time is needed if a composite has a time effect but there is no guarantee a time effect is used
   // having the correct time is also useful debug logging but not essential
   // if a time effect is used getLocalTime() will be called which may yet result in fetching the ntp time
   // even after this block has given up.
   uint8_t give_up_after = 2; // seconds (approximately)
-  while (true) {
+  while (false) {  // temporarily turn off time lookup for quicker testing
     time_t now;
     time(&now);
     localtime_r(&now, &local_now);
@@ -1679,14 +1708,14 @@ void setup() {
     attempt_cnt++;
     if (attempt_cnt == 100) {
       attempt_cnt = 0;
-      Serial.print(".");
+      DEBUG_PRINT(".");
       give_up_after--;
       if (!give_up_after) {
         break;
       }
     }
   }
-  Serial.printf("\n***** local time: %d/%02d/%02d %02d:%02d:%02d *****\n", local_now.tm_year+1900, local_now.tm_mon+1, local_now.tm_mday, local_now.tm_hour, local_now.tm_min, local_now.tm_sec);
+  DEBUG_PRINTF("\n***** local time: %d/%02d/%02d %02d:%02d:%02d *****\n", local_now.tm_year+1900, local_now.tm_mon+1, local_now.tm_mday, local_now.tm_hour, local_now.tm_min, local_now.tm_sec);
 
   handle_file_list(); // refresh file list before starting loop() because refreshing is slow
 
@@ -1721,6 +1750,9 @@ void loop() {
       write_log(heap_free);
     }
     hp_cnt++;
+
+    // for temp testing
+    //gfile_list_needs_refresh = true;
   }
 #endif
 

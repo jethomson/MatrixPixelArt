@@ -35,17 +35,13 @@ enum Pattern {
               RIFFLE = 4, SPARKLE = 5, 
               WEAVE = 6, PENDULUM = 7, BINARY_SYSTEM = 8, 
               SHOOTING_STAR = 9, PUCK_MAN = 10, CYLON = 11,
-              FUNKY = 12,
+              FUNKY = 12, RAIN = 13, WATERFALL = 14,
               NO_PATTERN = 50,
-              THEATER_CHASE = 51, MITOSIS = 52,
-              BUBBLES = 54, MATRIX = 55, STARSHIP_RACE = 56,
-              BALLS = 57, HALLOWEEN_FADE = 58, HALLOWEEN_ORBIT = 59,
-              CHECKERBOARD = 60, 
-              DEMO = 99,
-              //SOUND_RIBBONS = 60, SOUND_RIPPLE = 61, SOUND_BLOCKS = 62, SOUND_ORBIT = 63
+              THEATER_CHASE = 51,
+              CHECKERBOARD = 60 
              };
 
-enum Overlay {NO_OVERLAY = 0, BREATHING = 1, FLICKER = 2, FROZEN_DECAY = 3, GLITTER = 50, CONFETTI = 51};
+enum Overlay {NO_OVERLAY = 0, BREATHING = 1, FLICKER = 2, FROZEN_DECAY = 3};
 
 enum Info {TIME_12HR = 0, TIME_24HR = 1, DATE_MMDD = 2, DATE_DDMM = 3, TIME_12HR_DATE_MMDD = 4, TIME_24HR_DATE_DDMM = 5};
 
@@ -71,7 +67,7 @@ class ReAnimator {
     uint32_t flipflop_interval;
 
     Pattern pattern;
-    Pattern last_pattern_ran;
+    Pattern last_pattern;
     Overlay transient_overlay;
     Overlay persistent_overlay;
 
@@ -125,20 +121,22 @@ class ReAnimator {
     uint8_t* pm_puck_dots;
     uint8_t pm_speed_jump_cnt;
 
-    struct Starship {
-        uint16_t distance;
-        uint8_t color;
-    };
-
     uint16_t dr_delta;
-
-    //uint16_t previous_sample;
-    //bool sample_peak;
-    //uint16_t sample_average;
-    //uint8_t sample_threshold;
-    //uint16_t sound_value;
-    //uint8_t sound_value_gain;
-
+    uint16_t o_pos;
+    uint16_t gc_delta;
+    uint16_t rl_delta;
+    uint16_t ss_start_pos;
+    uint16_t ss_stop_pos;
+    uint32_t ss_cdi_pm; // cool_down_interval_previous_millis
+    uint16_t ss_pos;
+    uint16_t c_pos;
+    int8_t c_delta;
+    uint32_t p_t;
+    uint32_t f_t;
+    uint32_t r_t;
+    uint16_t w_pos;
+    uint16_t adp_draw_interval;
+    int8_t adp_delta;
 
     String image_path;
     CRGB proxy_color;
@@ -234,8 +232,6 @@ class ReAnimator {
     void set_cb(void(*cb)(uint8_t));
     void set_heading(uint8_t h);
 
-    //void set_sound_value_gain(uint8_t gain);
-
     void clear();
     void reanimate();
     CRGBA get_pixel(uint16_t i);
@@ -250,35 +246,23 @@ class ReAnimator {
 // ++++++++++++++++++++++++++++++
 // ++++++++++ PATTERNS ++++++++++
 // ++++++++++++++++++++++++++++++
+    void dynamic_rainbow(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
     void orbit(uint16_t draw_interval, int8_t delta);
-    void theater_chase(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
     void general_chase(uint16_t draw_interval, uint16_t genparam, uint16_t(ReAnimator::*dfp)(uint16_t));
     void running_lights(uint16_t draw_interval, uint16_t genparam, uint16_t(ReAnimator::*dfp)(uint16_t));
     void shooting_star(uint16_t draw_interval, uint8_t star_size, uint8_t star_trail_decay, uint8_t spm, uint16_t(ReAnimator::*dfp)(uint16_t));
     void cylon(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
-
     void solid(uint16_t draw_interval);
     void pendulum();
     void funky();
     void riffle();
-    void mitosis(uint16_t draw_interval, uint8_t cell_size);
-    void bubbles(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
+    void bubbles(uint16_t draw_interval);
     void sparkle(uint16_t draw_interval, bool random_color, uint8_t fade);
-    void matrix(uint16_t draw_interval);
     void weave(uint16_t draw_interval);
-    void starship_race(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
     void puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
-    void bouncing_balls(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
+    void rain(uint16_t draw_interval);
+    void waterfall(uint16_t draw_interval);
 
-    void halloween_colors_fade(uint16_t draw_interval);
-    void halloween_colors_orbit(uint16_t draw_interval, int8_t delta);
-
-    //void sound_ribbons(uint16_t draw_interval);
-    //void sound_ripple(uint16_t draw_interval, bool trigger);
-    //void sound_orbit(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
-    //void sound_blocks(uint16_t draw_interval, bool trigger);
-
-    void dynamic_rainbow(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
 
 
 // ++++++++++++++++++++++++++++++
@@ -314,6 +298,7 @@ class ReAnimator {
 // ++++++++++ HELPERS +++++++++++
 // ++++++++++++++++++++++++++++++
     void fadeToBlackBy(CRGBA* leds, uint16_t num_leds, uint8_t fadeBy);
+    void fadeToTransparentBy(CRGBA leds[], uint16_t num_leds, uint8_t fadeBy);
     void fill_solid(CRGBA* leds, uint16_t num_leds, const CRGB& color);
 
     uint16_t forwards(uint16_t index);
@@ -326,7 +311,6 @@ class ReAnimator {
     bool finished_waiting(uint16_t interval);
 
     void accelerate_decelerate_pattern(uint16_t draw_interval_initial, uint16_t delta_initial, uint16_t update_period, uint16_t genparam, void(ReAnimator::*pfp)(uint16_t, uint16_t, uint16_t(ReAnimator::*dfp)(uint16_t)), uint16_t(ReAnimator::*dfp)(uint16_t));
-    //void process_sound();
     void motion_blur(int8_t blur_num, uint16_t pos, uint16_t(ReAnimator::*dfp)(uint16_t));
     void fission();
 
