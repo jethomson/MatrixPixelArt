@@ -923,9 +923,12 @@
       }
       
       async function postPixels() {
+        let success = false;
         let ss = gId("saveSvg");
         ss.setAttribute("fill", prsCol);
-        let er = false;
+        let el_btn_save_text = document.getElementById('btn_save_text');
+        let btn_text = el_btn_save_text.innerText;
+        el_btn_save_text.innerText = "Saving";
         try {
           if (devMode) console.log(i);
           if (devMode) console.log(i.length);
@@ -936,26 +939,25 @@
             },
             body:`t=im&id=${encodeURIComponent(imid.value)}&json=`+fileJSON
           });
+          if (!response.ok) {
+            throw new Error(`Error saving ${imid.value}`);
+          }
           const data = await response.json();
           if (devMode) console.log(data);
+          success = true;
         }
         catch (error) {
           console.error(error);
-          er = true;
         }
-        if (er) {
-          //Something went wrong
-          ss.setAttribute("fill", redColor);
-          setTimeout(function() { 
-            ss.setAttribute("fill", accentTextColor);
-          }, 1000);
+
+        if (success) {
+          ss.setAttribute("fill", "#056b0a");
+          el_btn_save_text.innerText = "Saved";
+          setTimeout(function(){el_btn_save_text.innerText = btn_text;}, 1000);
         }
         else {
-          // A, OK
-          ss.setAttribute("fill", greenColor);
-          setTimeout(function() { 
-            ss.setAttribute("fill", accentColor);
-          }, 1000);
+          ss.setAttribute("fill", "#6b050c");
+          el_btn_save_text.innerText = "Error";
         }
       }
       
@@ -1087,8 +1089,10 @@
         gen();
       }
 
+      //gId("sendJSONledbutton").innerHTML = 
+      //'<svg class="svg-icon" style="width:36px;height:36px" viewBox="0 -960 960 960"> <path id="saveSvg" fill="currentColor" d="M440-320v-326L336-542l-56-58 200-200 200 200-56 58-104-104v326h-80ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>&nbsp; Save</button>'
       gId("sendJSONledbutton").innerHTML = 
-      '<svg class="svg-icon" style="width:36px;height:36px" viewBox="0 -960 960 960"> <path id="saveSvg" fill="currentColor" d="M440-320v-326L336-542l-56-58 200-200 200 200-56 58-104-104v326h-80ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>&nbsp; Save</button>'
+      '<svg class="svg-icon" style="width:36px;height:36px" viewBox="0 -960 960 960"> <path id="saveSvg" fill="currentColor" d="M440-320v-326L336-542l-56-58 200-200 200 200-56 58-104-104v326h-80ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg> &nbsp; <span id="btn_save_text">Save</span>'
       
       // set default value of "Stretch Image To Fit" to on 
       window.addEventListener("load", setStretchOption); 
