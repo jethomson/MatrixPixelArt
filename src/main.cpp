@@ -1303,7 +1303,7 @@ void web_server_station_setup(void) {
         gdelete_list += "\n";
       }
     }
-    request->redirect("/remove.htm");
+    request->redirect("/file_manager.htm");
   });
 
   // files/ and www/ are both direct children of the littlefs root directory: /littlefs/files/ and /littlefs/www/
