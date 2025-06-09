@@ -1320,8 +1320,8 @@ void web_server_station_setup(void) {
     if (request->method() == HTTP_OPTIONS) {
       request->send(200);
     } else {
-      //request->send(404, "text/plain", "404"); // for testing
-      request->redirect("/"); // will cause redirect loop if request handlers are not set up properly
+      request->send(404, "text/plain", "404 - NOT FOUND");
+      //request->redirect("/"); // will cause redirect loop if request handlers are not set up properly
     }
   });
 }
@@ -1661,6 +1661,7 @@ void setup() {
 
   homogenize_brightness();
   FastLED.setBrightness(homogenized_brightness);
+  FastLED.setDither(0); // disable temporal dithering. otherwise get flickering for dim pixels.
 
   random16_set_seed(analogRead(A0));
 
@@ -1733,28 +1734,38 @@ void setup() {
   
   load_file(F("pl"), "startup");
 
+#if DEBUG_LOG == 1
   write_log("setup finished");
+#endif
 }
 
 
 void loop() {
-#ifdef DEBUG_CONSOLE
+
+#if defined(DEBUG_CONSOLE) || DEBUG_LOG == 1
+  char heap_free[18];
   static uint8_t hp_cnt = 0;
   static uint32_t pm = 0;
   if ((millis()-pm) > 2000) {
     pm = millis();
-    char heap_free[18];
     snprintf(heap_free, sizeof(heap_free), "heap free: %lu", esp_get_free_heap_size());
+
+#if defined(DEBUG_CONSOLE)
     DEBUG_PRINTLN(heap_free);
+#endif
+
+#if DEBUG_LOG == 1
     if (hp_cnt == 0) {
       write_log(heap_free);
     }
     hp_cnt++;
+#endif
 
     // for temp testing
     //gfile_list_needs_refresh = true;
   }
 #endif
+
 
   if (dns_up) {
     dnsServer.processNextRequest();

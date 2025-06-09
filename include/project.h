@@ -52,8 +52,6 @@
   #define DEBUG_PRINTF(...)
 #endif
 
-#define SOUND_VALUE_GAIN_INITIAL 2
-#define HUE_ALIEN_GREEN 112
 
 inline String form_path(String type, String id) {
   String fs_path = "";
@@ -78,25 +76,3 @@ inline String form_path(String type, String id) {
 
   return fs_path;
 }
-
-/*
-inline String form_path(String root, String id) {
-  String fs_path = "";
-  String param_path_top_dir = "/";
-  if (id.indexOf('/') == 0) {
-    id.remove(0,1);
-  }
-  param_path_top_dir += id.substring(0, id.indexOf('/'));
-
-  if (param_path_top_dir != root) {
-    fs_path = root;
-  }
-
-  fs_path += "/";
-  fs_path += id;
-  fs_path += ".json";
-
-  return fs_path;
-}
-*/
-
