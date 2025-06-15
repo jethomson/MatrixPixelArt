@@ -1655,13 +1655,13 @@ void setup() {
   FastLED.setMaxPowerInVoltsAndMilliamps(LED_STRIP_VOLTAGE, LED_STRIP_MILLIAMPS);
   FastLED.setCorrection(TypicalSMD5050);
   FastLED.addLeds<WS2812B, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
+  FastLED.setDither(0); // disable temporal dithering. otherwise get flickering for dim pixels.
 
   FastLED.clear();
   FastLED.show(); // clear the matrix on startup
 
   homogenize_brightness();
   FastLED.setBrightness(homogenized_brightness);
-  FastLED.setDither(0); // disable temporal dithering. otherwise get flickering for dim pixels.
 
   random16_set_seed(analogRead(A0));
 
