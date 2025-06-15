@@ -8,6 +8,11 @@ Supporting transparent images opens up the possibility of layering images and ot
 
 Simple animated images can also be made by combining references to pixel art images and assigning them a duration.
 
-![animated pixel art of Link's death](https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt/link_death_medium.gif)
-
 Playlists of images, composites, and animated images may also be created.
+
+
+![composite example showing partial transparency and proxy color changing](https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt/partial_transparency_magic_ghost.gif "Example of a composite of a background effect and an image with partial transparency and a proxy color that is automatically replaced with shifting colors")
+
+![composite of moving mushroom with full transparency](https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt/mushroom.gif "Example of a composite of a mushroom with a transparent hole showing the background underneath")
+
+![animated pixel art of Link's death](https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt/link_death_medium.gif "Animation of Link's death made from several still images")
