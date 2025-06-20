@@ -1,8 +1,8 @@
-Import("env")
-
 import shutil
 import os.path
 from os import path
+
+Import("env")
 
 
 def dist(source, target, env):
@@ -80,26 +80,33 @@ Have fun converting images to pixel art, adding effects, and making playlists!
 """, file=fr)
 
   upload_cmd = ""
+  merge_cmd = ""
   uf = env.subst(env.get("UPLOADERFLAGS"))
+  cmd_parts = ["", "", ""]
   i = 0
+  pi = 0;
   while i < len(uf):
     # do not include port argument
     # counting on port being autodiscovered esptool. port names vary between OSes.
     if uf[i] == "--port":
+      pi += 1
       i += 2
       continue
-    if uf[i].startswith("--"):
-      upload_cmd += f" {uf[i]} {uf[i+1]}"
-      i += 2
+
+    if uf[i].startswith("--flash_mode"):
+      pi += 1
+    
+    if uf[i].endswith(".bin"):
+      cmd_parts[pi] += f" {os.path.basename(uf[i])}"
     else:
-      break
+      cmd_parts[pi] += f" {uf[i]}"
+    i += 1
 
-  while i < len(uf):
-    upload_cmd += f" {uf[i]} {os.path.basename(uf[i+1])}"
-    i += 2
+  cmd_parts[2] += f" {env.get('ESP32_APP_OFFSET')} {env.get('PROGNAME')}.bin"
+  cmd_parts[2] += f" {env.get('FS_START')} {env.get('ESP32_FS_IMAGE_NAME')}.bin"
 
-  upload_cmd += f" {env.get('ESP32_APP_OFFSET')} {env.get('PROGNAME')}.bin"
-  upload_cmd += f" {env.get('FS_START')} {env.get('ESP32_FS_IMAGE_NAME')}.bin"
+  upload_cmd = cmd_parts[0] + cmd_parts[1] + cmd_parts[2]
+  merge_cmd = '"$PYTHONEXE"' + ' ' + '"$OBJCOPY"' + cmd_parts[0] + ' merge_bin -o merged_firmware.bin' + cmd_parts[2]
 
   linux_upload_cmd = "#!/bin/bash\n"
   linux_upload_cmd += r"./esptool/linux/esptool --no-stub" + upload_cmd
@@ -115,32 +122,10 @@ Have fun converting images to pixel art, adding effects, and making playlists!
     print(win_upload_cmd, file=fw, end='')
 
 
-
-
-  """  
-  with open('./dist/upload.bat', 'w') as f:
-    print(r'.\esptool.exe --no-stub', file=f, end='')
-    uf = env.subst(env.get("UPLOADERFLAGS"))
-    i = 0
-    while i < len(uf):
-      # do not include port argument
-      # counting on port being autodiscovered esptool. port names vary between OSes.
-      if uf[i] == "--port":
-        i += 2
-        continue
-      if uf[i].startswith("--"):
-        print(f' {uf[i]} {uf[i+1]}', file=f, end='')
-        i += 2
-      else:
-        break
-        
-    while i < len(uf):
-      print(f' {uf[i]} {os.path.basename(uf[i+1])}', file=f, end='')
-      i += 2
-
-    print(f' {env.get("ESP32_APP_OFFSET")} {env.get("PROGNAME")}.bin', file=f, end='')
-    print(f' {env.get("FS_START")} {env.get("ESP32_FS_IMAGE_NAME")}.bin', file=f, end='')
-    """
+  os.chdir("./dist")
+  env.Execute(merge_cmd)
+  #merge_cmd_no_fs = '"$PYTHONEXE" "$OBJCOPY" --chip esp32 merge_bin -o merged_firmware_no_fs.bin --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 bootloader.bin 0x8000 partitions.bin 0xe000 boot_app0.bin 0x10000 firmware.bin'
+  #env.Execute(merge_cmd_no_fs)
 
 
 
