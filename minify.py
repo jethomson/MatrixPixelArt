@@ -48,5 +48,6 @@ def minify(source, target, env):
       js_filename = js_filepath.name
       shutil.copy(js_filepath, dest.joinpath(js_filename))
 
-env.AddPostAction('buildfs', minify)
+#env.AddPreAction('buildfs', minify) # this actually calls minify after buildfs has finished
+env.AddPreAction("$BUILD_DIR/${ESP32_FS_IMAGE_NAME}.bin", minify)
 
