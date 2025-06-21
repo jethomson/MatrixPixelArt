@@ -1,0 +1,2 @@
+This folder is intentionally left empty in the repository.
+The webpages output by minify.py during the build are created here.

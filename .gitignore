@@ -5,7 +5,8 @@
 .vscode/ipch
 .vscode/extensions.json
 include/credentials_private.h
-html_minified/*
+www_minified/*
+!www_minified/README.md
 dist/*
 data_non-free
 notes.txt
