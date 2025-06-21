@@ -18,7 +18,7 @@ Playlists of images, composites, and animated images may also be created.
 
 **Partial transparency and proxy color substitution composite example:**
 
-![composite example showing partial transparency and proxy color changing](https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt/partial_transparency_magic_ghost.gif "Example of a composite of a background effect and an image with partial transparency and a proxy color that is automatically replaced with shifting colors")
+![composite example showing partial transparency and proxy color changing](https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/partial_transparency_magic_ghost.gif "Example of a composite of a background effect and an image with partial transparency and a proxy color that is automatically replaced with shifting colors")
 
 
 ---
@@ -26,14 +26,14 @@ Playlists of images, composites, and animated images may also be created.
 
 **Full transparency composite example:**
 
-![composite of moving mushroom with full transparency](https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt/mushroom.gif "Example of a composite of a mushroom with a transparent hole showing the background underneath")
+![composite of moving mushroom with full transparency](https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/mushroom.gif "Example of a composite of a mushroom with a transparent hole showing the background underneath")
 
 ---
 <br>
 
 **Animation example:**
 
-![animated pixel art of Link's death](https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt/link_death_medium.gif "Animation of Link's death made from several still images")
+![animated pixel art of Link's death](https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/link_death_medium.gif "Animation of Link's death made from several still images")
 
 ---
 ### Programming ESP32
