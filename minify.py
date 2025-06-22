@@ -26,11 +26,15 @@ def minify(source, target, env):
     # if DEBUG_LOG is not set to 1 in platformio.ini (-DDEBUG_LOG=1) then save some space by not including debug_log.htm
     html_files = [path for path in Path(SRC_DIR).glob('*.htm') if 'debug_log.htm' not in path.name]
 
-  #html_files = [Path('www', 'compositor.htm')] # run on single file
+  #html_files = [Path('www', 'compositor.htm')] # run on single file for testing
   if html_files:
     dest = Path(DEST_DIR)
-    shutil.rmtree(dest)
-    os.makedirs(dest, exist_ok=True)
+    shutil.rmtree(dest, ignore_errors=True)
+    #os.makedirs(dest, exist_ok=True)
+    place_holder = Path(f'./{DEST_DIR}/README.md')
+    place_holder.parent.mkdir(exist_ok=True, parents=True)
+    with open(place_holder, 'w') as f:
+        f.write('This folder is intentionally left empty in the repository. The webpages output by minify.py during the build are created here.')
     
     for html_filepath in html_files:
       html_filename = html_filepath.name
