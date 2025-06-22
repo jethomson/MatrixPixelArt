@@ -51,6 +51,45 @@ Download this repository and open it in PlatformIO.
 Compile and upload the code.
 Click the ant icon on the left hand side, under Platform, click Build Filesystem Image, then click Upload Filesystem Image.
 
+### Hardware
+[16x16 WS2812B Addressable RGB LED Matrix](https://www.amazon.com/dp/B097MBPZJW)
+<br>
+[ESP32 D1 Mini - USB C (purchased)](https://www.aliexpress.us/item/3256805791099168.html)
+<br>
+[ESP32 D1 Mini - USB C (not purchased, but look identical)](https://www.amazon.com/AITRIP-ESP-WROOM-32-Bluetooth-Internet-Development/dp/B0CYC227YG)
+<br>
+[5V, 5.5 mm x 2.5 mm Barrel Plug Power Supply](https://www.amazon.com/dp/B078RT3ZPS)
+<br>
+[5.5 mm x 2.5 mm Barrel Jack](https://www.amazon.com/dp/B07C4F7BP5)
+<br>
+<br>
+The screw terminal connector that comes with the power supply or similar should be avoided. It makes a poor connection that will lead to the ESP32 resetting from lost power and the barrel connector getting hot.
+<br>
+Hot glue does not stick well to the flexible PCB, so I put double sided tape on the PCB and applied hot glue on top of that to provide strain relief and keep things stable.
+<br>
+The capacitor is not strictly necessary. I added it to troubleshoot the resetting issue which turned out to be caused by the poor screw terminal connector that came with the power supply so the capacitor was not the ultimate fix.
+<br>
+My ESP32 board requests a max current of 136 mA from my computer, so I am able to safely program and test with the LEDs drawing current. However your board and USB power supply may not set safe current limits. Ideally you would program the ESP32 before attaching the LED matrix, and only power the LEDs with the 5V power supply wires which do not pass current through the ESP32's thinner PCB traces.
+<br>
+
+ESP32 to LED matrix wiring
+<br>
+IO16 -- Green -- DIN 
+<br>
+ GND -- White -- GND
+<br>
+ VCC --  Red  --  5V 
+<br>
+<br>
+<img src="https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/wiring.jpg" width="60%">
+
+<br>
+
+<img src="https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/live_mini_kit_esp32.png" width="60%">
+
+<br>
+
+
 ### Initial Setup
 The device can create its own WiFi network or it can connect to your established WiFi network.
 You can control the device by connecting directly to its WiFi network, but you will be able to access the device more easily and be able to use the time and date features if you connect it to your WiFi network.
