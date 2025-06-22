@@ -1,0 +1,12 @@
+The files included here are based off the following project:
+16x16 LED matrix grid with diffuser and one-part frame (with hole for panel mount DC power adapter)
+licensed under Creative Commons - Attribution
+Thingiverse user: makeitworktech
+https://www.thingiverse.com/thing:5737371
+
+
+LED_Matrix_16x16_front_with_frame_.stl  # unmodified from the original
+16x16_main_frame_v3.3mf # modified 16x16_main_frame_v2_stl.stl to add a hole for the barrel connector to come out the back instead of the bottom and a hole for a USB cable
+barrell_connector_sleeve.3mf # jethomson original, allows most of barrel connector to be outside case (no room) and adds stability when standing up
+
+
