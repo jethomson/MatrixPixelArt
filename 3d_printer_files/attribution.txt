@@ -6,7 +6,7 @@ https://www.thingiverse.com/thing:5737371
 
 
 LED_Matrix_16x16_front_with_frame_.stl  # unmodified from the original
-16x16_main_frame_v3.3mf # modified 16x16_main_frame_v2_stl.stl to add a hole for the barrel connector to come out the back instead of the bottom and a hole for a USB cable
-barrell_connector_sleeve.3mf # jethomson original, allows most of barrel connector to be outside case (no room) and adds stability when standing up
+16x16_main_frame_v3.stl # modified 16x16_main_frame_v2_stl.stl to add a hole for the barrel connector to come out the back instead of the bottom and a hole for a USB cable
+barrel_connector_sleeve.stl # jethomson original, allows most of barrel connector to be outside case (no room) and adds stability when standing up
 
 
