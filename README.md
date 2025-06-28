@@ -12,6 +12,10 @@ Simple animated images can also be made by combining references to pixel art ima
 
 Playlists of images, composites, and animated images may also be created.
 
+<br>
+
+![screenshot showing the various features available in the web UI](https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/web_ui_front.png "Screenshot of web UI front page")
+
 
 ---
 <br>
@@ -120,3 +124,36 @@ Delete the information in the IANA Timezone field, and click outside of that fie
 With luck your IANA Timezone will be filled in automatically based on the location of your IP address, then a few moments later the POSIX Timezone (has Daylight Saving Time info) will also automatically be filled in. If this information is not correct you can manually set the IANA Timezone, then the POSIX Timezone will automatically update.
 Click Save and wait for the device to restart.
 Now you should be able to add the time and date to your composites.
+
+### Creating Art
+
+**Magic Ghost**
+
+Sprites can be extracted easily by using a 16x16 selection box.
+<br>
+
+<img alt="extracting ghost sprite in GIMP" src="https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/extract_ghost.png" description="Example of how to extract a sprite in GIMP using a fixed size 16x16 selection box" width="60%">
+
+<br>
+<br>
+Manually entering a value of 3200% for the zoom value will make tiny images much easier to work with.
+<br>
+Use color picker to find the color you want to swap out using the Combine Effects (compositor) page.
+
+<br>
+Both complete and partial transparency works in Matrix Pixel Art. Complete transparency is good for removing backgrounds so other layers can be seen underneath. Partial transparency is good for making objects look like they are see-through.
+<br>
+
+<img alt="changing the transparency and capturing the body color of the ghost GIMP" src="https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/change_transparency.png" description="Example of changing the transparency and capturing the body color of the ghost for use as the proxy color" width="60%">
+
+<br>
+<br>
+If you wish for Matrix Pixel Art to replace one color in your image with other colors put the color you wish to be replaced in the Proxy Color field. You can use your image editor to find this color, but it isn't too hard to find the hex color value by looking at the text area that shows the image converted to JSON. Notice the output text: ffb7ae80. ffb7ae is the color of the ghost's body, and hex 80 (dec 128, 50% of 255) is the transparency amount.
+<br>
+
+<img alt="using image converter to save ghost and set proxy color" src="https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/converter_proxy_color.png" description="Example of converting ghost and setting the proxy color to the value we found in the previous step" width="60%">
+
+<br>
+Here's what it looks like when you save an image with the Proxy Color set. The proxy color will be replaced by a loop of rainbow colors. The compositor will let you replace the proxy color with any color. So instead of saving separate red, pink, cyan, and orange ghosts you can just use the converter to save one ghost with the proxy color set and use the compositor to create four different colored ghosts from one image.
+
+![peach ghost with proxy color set shows rainbow colors on save](https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/magic_ghost_proxy_color_save.gif "Example of how setting the proxy color allows the image to change color automatically")
