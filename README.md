@@ -131,7 +131,6 @@ Now you should be able to add the time and date to your composites.
 
 Sprites can be extracted easily by using a 16x16 selection box.
 <br>
-
 <img alt="extracting ghost sprite in GIMP" src="https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/extract_ghost.png" description="Example of how to extract a sprite in GIMP using a fixed size 16x16 selection box" width="60%">
 
 <br>
@@ -141,6 +140,7 @@ Manually entering a value of 3200% for the zoom value will make tiny images much
 Use color picker to find the color you want to swap out using the Combine Effects (compositor) page.
 
 <br>
+<br>
 Both complete and partial transparency works in Matrix Pixel Art. Complete transparency is good for removing backgrounds so other layers can be seen underneath. Partial transparency is good for making objects look like they are see-through.
 <br>
 
@@ -148,11 +148,17 @@ Both complete and partial transparency works in Matrix Pixel Art. Complete trans
 
 <br>
 <br>
+Here are the GIMP settings I used when saving a PNG that will be processed by the converter. 8bpc RGBA is the most important setting.
+<br>
+<img alt="GIMP settings used to save png" src="https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/gimp_settings.png" description="Settings I use for saving png that will be processed by the converter. 8bpc RGBA is the most important setting.">
+
+<br>
+<br>
 If you wish for Matrix Pixel Art to replace one color in your image with other colors put the color you wish to be replaced in the Proxy Color field. You can use your image editor to find this color, but it isn't too hard to find the hex color value by looking at the text area that shows the image converted to JSON. Notice the output text: ffb7ae80. ffb7ae is the color of the ghost's body, and hex 80 (dec 128, 50% of 255) is the transparency amount.
 <br>
-
 <img alt="using image converter to save ghost and set proxy color" src="https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/converter_proxy_color.png" description="Example of converting ghost and setting the proxy color to the value we found in the previous step" width="60%">
 
+<br>
 <br>
 Here's what it looks like when you save an image with the Proxy Color set. The proxy color will be replaced by a loop of rainbow colors. The compositor will let you replace the proxy color with any color. So instead of saving separate red, pink, cyan, and orange ghosts you can just use the converter to save one ghost with the proxy color set and use the compositor to create four different colored ghosts from one image.
 
