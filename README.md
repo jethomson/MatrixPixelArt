@@ -92,6 +92,17 @@ IO16 -- Green -- DIN
 <img src="https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/live_mini_kit_esp32.png" width="60%">
 
 <br>
+Here is a 3D rendering of all parts of the enclosure.
+The diffuser shown in green and the grid shown in orange are one part.
+You should edit the model to add a color change where the grid starts.
+The diffuser should be printed in white and the grid should be printed in black.
+A diffuser printed from white filament looks better than one printed from clear filament.
+The grid should be black to prevent light bleed and give the images displayed a distinctive pixel art look.
+<br>
+
+<img src="https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/enclosure.png" width="60%">
+
+<br>
 
 
 ### Initial Setup
@@ -127,7 +138,7 @@ Now you should be able to add the time and date to your composites.
 
 ### Creating Art
 
-**Magic Ghost**
+**Creating Sprites - Magic Ghost**
 
 Sprites can be extracted easily by using a 16x16 selection box.
 <br>
@@ -163,3 +174,13 @@ If you wish for Matrix Pixel Art to replace one color in your image with other c
 Here's what it looks like when you save an image with the Proxy Color set. The proxy color will be replaced by a loop of rainbow colors. The compositor will let you replace the proxy color with any color. So instead of saving separate red, pink, cyan, and orange ghosts you can just use the converter to save one ghost with the proxy color set and use the compositor to create four different colored ghosts from one image.
 
 ![peach ghost with proxy color set shows rainbow colors on save](https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/magic_ghost_proxy_color_save.gif "Example of how setting the proxy color allows the image to change color automatically")
+
+**Preparing Images For Conversion**
+
+Not everything you display on Matrix Pixel Art needs to already be a sprite or tiny pixel art.
+Some images are still surprisingly recognizable when scaled down.
+The image converter will automatically scale down images to fit on the display, but I prefer to scale the images down manually in an image editor and adjust the levels before uploading them using the converter.
+I get good results when using either the Cubic or Linear interpolation methods when scaling down.
+I also like to adjust the levels by pulling in the the black and white sliders (leftmost and rightmost triangles) and move the midtone slider to the right to darken the image. I find that the display makes the images too bright when this step is skipped.
+<br>
+<img alt="an image in GIMP being scaled and modified in preparation for conversion" src="https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/image_prep.png" description="Example of scaling other images and adjusting levels in preparation for conversion" width="60%">
