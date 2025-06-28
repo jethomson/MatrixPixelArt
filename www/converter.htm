@@ -10,7 +10,7 @@
         .box {
           border: 2px solid #fff;
         }
-        
+
         body {
           font-family: Arial, sans-serif;
           color: #faffff;
@@ -35,28 +35,28 @@
           padding: 20px;
           text-align: center;
         }
-        
+
         p {
           font-size: 1em;
           color: #777;
           line-height: 1.5;
           font-family: Arial, sans-serif;
         }
-        
+
         #fieldTable {
           font-size: 1  em;
           color: #777;
           line-height: 1;
           font-family: Arial, sans-serif;
         }
-        
+
         #scaleTable {
           font-size: 1  em;
           color: #777;
           line-height: 1;
           font-family: Arial, sans-serif;
         }
-        
+
         #drop-zone {
           display: block;
           width: 100%-40px;
@@ -70,7 +70,7 @@
           font-size: 15px;
           color: #777;
         }
-        
+
         #file-picker {
           display: none;
         }
@@ -79,9 +79,9 @@
           flex-direction: row;
           flex-wrap: nowrap;
           align-items: center;
-        
+
         }
-        
+
         .mainSelector {
           background-color: #222;
           color: #ddd;
@@ -97,7 +97,7 @@
           align-items: center;
           justify-content: center;
         }
-        
+
         .adaptiveSelector {
           background-color: #222;
           color: #ddd;
@@ -111,12 +111,12 @@
           flex-grow: 1;
           display: none;
         }
-        
+
         .segmentsDiv{
           width: 36px;
           padding-left: 5px;
         }
-        
+
         * input[type=range] {
           appearance: none;
           -moz-appearance: none;
@@ -129,7 +129,7 @@
           background: linear-gradient(to right, #bbb 50%, #333 50%);
           border-radius: 7px;
         }
-        
+
         input[type=range]:focus {
           outline: none;
         }
@@ -161,12 +161,12 @@
           border-radius: 7px;
           background: #fff;
         }
-        
+
         .rangeNumber{
           width: 20px;
           vertical-align: middle;
         }
-        
+
         .fullTextField[type=text] {
           background-color: #222;
           border: 1px solid #333;
@@ -199,7 +199,7 @@
           align-items: center;
           justify-content: center;
         }
-        
+
         * input[type=submit] {
           background-color: #222;
           border: 1px solid #333;
@@ -210,7 +210,7 @@
           font-size: 1.3em;
           color: #ddd;
         }
-        
+
         * button {
           background-color: #222;
           border: 1px solid #333;
@@ -231,13 +231,13 @@
           align-items: center;
           cursor: pointer;
         }
-        
+
         #preview {
           margin:0 auto;
           max-width: 100%;
           max-height: 100%;
         }
-        
+
         textarea {
           grid-row: 1 / 2;
           width: 100%;
@@ -246,7 +246,7 @@
           border: 1px solid #333;
           color: #ddd;
         }
-        
+
         input#imid {
           flex-grow: 1;
           padding-top: 5px;
@@ -263,11 +263,11 @@
           align-items: center;
           justify-content: center;
         }
-        
+
         .hide {
             display: none;
         }
-        
+
         .svg-icon {
           vertical-align: middle;
         }
@@ -282,17 +282,17 @@
           padding-bottom: 10px;
           padding-top: 10px;
         }
-        
+
         .buttonclass {
           flex: 1;
           padding-top: 5px;
           padding-bottom: 5px;
         }
-        
+
         .gap {
           width: 10px;
         }
-        
+
         #submitConvert::before {
           content: "";
           display: inline-block;
@@ -306,19 +306,19 @@
           background-color: transparent;
           text-decoration: none;
         }
-        
+
         a:visited {
           color: rgba(221, 221, 221, 0.61);
           background-color: transparent;
           text-decoration: none;
         }
-        
+
         a:hover {
           color: #ddd;
           background-color: transparent;
           text-decoration: none;
         }
-        
+
         a:active {
           color: rgba(221, 221, 221, 0.61);
           background-color: transparent;
@@ -329,13 +329,13 @@
         .adv-ui-hide {
           display:none !important
         }
-        
+
         .adv-ui-show {
           display:
         }
     </style>
     <script type="text/javascript">
-      var d = document;
+      let d = document;
       function gId(e) {return d.getElementById(e);}
       function cE(e) {return d.createElement(e);}
     </script>
@@ -350,7 +350,7 @@
     <details>
       <summary>Instructions</summary> For best results, use an image that matches the dimensions of the LED matrix, or if relying on autoscaling use an image with dimensions that are an integer multiple of the matrix's dimensions. <br> Source images with an alpha channel are supported. If an image with transparency is used on the Combine Effects page the layer below it will visible. <br> Proxy Color is replaced by the dynamic color, or the color selected for the image on the Combine Effects page. Anti-fingerprinting measures for the canvas prevent the colors saved in the JSON file from exactly matching the colors in the source image, so colors that close to the Proxy Color will also be replaced.
     </details>
-    
+
     <div class="top-part">
       <table id="fieldTable" style="width:100%;table-layout:fixed;align-content:center">
         <tr>
@@ -443,77 +443,60 @@
 
     <script src="js/template_variables.js"></script>
     <!--static.js-->
-    <script> 
+    <script>
       //elements
-      var gurl = gId('curlUrl');
-      var prw = gId("preview");
-      var JLD = gId('JSONled');
-      var brgh = gId("brightnessNumber");
-      var lSS  = gId("ledSetupSelector");
-      var imin = gId('image-info');
-      var imcn = gId('image-container');
-      var bcn = gId("button-container");
-      var im = gId('image');
-      var ss = gId("saveSvg");
-      var w = window;
-      var canvas = gId('pixelCanvas');
-      var brgV = gId("brightnessValue");
-      var shaDiv = gId("showHideAdvDiv");
-      var ssoDiv = gId("setStretchOptionDiv");
-      var pxcolor = gId("proxyColor");
-      var imid = gId("imid");
+      let gurl = gId('curlUrl');
+      let prw = gId("preview");
+      let JLD = gId('JSONled');
+      let brgh = gId("brightnessNumber");
+      let lSS  = gId("ledSetupSelector");
+      let imin = gId('image-info');
+      let imcn = gId('image-container');
+      let bcn = gId("button-container");
+      let im = gId('image');
+      let ss = gId("saveSvg");
+      let w = window;
+      let canvas = gId('pixelCanvas');
+      let brgV = gId("brightnessValue");
+      let shaDiv = gId("showHideAdvDiv");
+      let ssoDiv = gId("setStretchOptionDiv");
+      let pxcolor = gId("proxyColor");
+      let imid = gId("imid");
 
-      var fileJSON = '';
-      
-      var hideableRows = d.querySelectorAll(".ha-hide");
-      for (var i = 0; i < hideableRows.length; i++) {
+      let fileJSON = '';
+
+      let hideableRows = d.querySelectorAll(".ha-hide");
+      for (let i = 0; i < hideableRows.length; i++) {
         hideableRows[i].classList.add("hide");
       }
-      
-      var accentColor = '#eee';
-      var accentTextColor = '#777';
-      var prsCol = '#ccc';
-      var greenColor = '#056b0a';
-      var redColor = '#6b050c';
-      
-      var toggleOffd = "M17,7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7M7,15A3,3 0 0,1 4,12A3,3 0 0,1 7,9A3,3 0 0,1 10,12A3,3 0 0,1 7,15Z";
-      var toggleOnd = "M17,7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7M17,15A3,3 0 0,1 14,12A3,3 0 0,1 17,9A3,3 0 0,1 20,12A3,3 0 0,1 17,15Z";
+
+      let accentColor = '#eee';
+      let accentTextColor = '#777';
+      let prsCol = '#ccc';
+      let greenColor = '#056b0a';
+      let redColor = '#6b050c';
+
+      let toggleOffd = "M17,7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7M7,15A3,3 0 0,1 4,12A3,3 0 0,1 7,9A3,3 0 0,1 10,12A3,3 0 0,1 7,15Z";
+      let toggleOnd = "M17,7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7M17,15A3,3 0 0,1 14,12A3,3 0 0,1 17,9A3,3 0 0,1 20,12A3,3 0 0,1 17,15Z";
     </script>
-              
+
     <!--getPixelValues.js-->
     <script>
 
       function getPixelRGBValues(base64Image) {
         let segID = 0;
-      
-        const formatSelection = "wled";
-        
         let selectedIndex = lSS.selectedIndex;
         const ledSetupSelection = lSS.options[selectedIndex].value;
-      
-        let curlString = ''
-      
-        let colorSeparatorStart = '"';
-        let colorSeparatorEnd = '"';
+
+        const colorSeparatorStart = '"';
+        const colorSeparatorEnd = '"';
 
         let imageInfo = '';
-        
-        // Create two off-screen canvases
-        // The image is scaled by drawing to canvas, then canvas is copied into the webgl texture.
-        // Using two canvases is much easier than scaling with webgl directly.
-        var canvas = cE('canvas');
-        var glcanvas = cE('canvas');
-        var ctx = canvas.getContext('2d', { willReadFrequently: true });
-        var gl = glcanvas.getContext("webgl2");
 
-        //ctx.imageSmoothingEnabled = false; // should give a pixelated look, but does not look great
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = "high";
-      
         // Create an image element and set its src to the base64 image
-        var image = new Image();
+        let image = new Image();
         image.src = base64Image;
-      
+
         // Wait for the image to load before drawing it onto the canvas
         image.onload = function() {
           // LED matrix dimensions
@@ -524,187 +507,262 @@
             t_num_cols = "16";
 
           }
-          let sizeY = parseInt(t_num_rows);
-          let sizeX = parseInt(t_num_cols);
-          canvas.width = sizeX;
-          canvas.height = sizeY;
-          
-          imageInfo = '<p>Output Image Width: ' + sizeX + ', Height: ' + sizeY + '</p>'
-
+          const sizeY = parseInt(t_num_rows);
+          const sizeX = parseInt(t_num_cols);
           const canvasAspectRatio = sizeX / sizeY;
           const imageAspectRatio = this.naturalWidth / this.naturalHeight;
 
-          let ssoPath = ssoDiv.children[0].children[0];
-          let ssoColor = ssoPath.getAttribute("fill");
-          if (ssoColor === accentColor || imageAspectRatio === canvasAspectRatio) {
-            // scale image to fit canvas. if image does not have the same aspect ratio it will be stretched to fit.
-            ctx.drawImage(this, 0, 0, this.naturalWidth, this.naturalHeight, 0, 0, sizeX, sizeY);
-          }
-          else {
-            let scaledWidth, scaledHeight;
-            if (imageAspectRatio > 1) {
+
+          const ssoPath = ssoDiv.children[0].children[0];
+          const ssoColor = ssoPath.getAttribute("fill");
+
+          imageInfo = '<p>Output Image Width: ' + sizeX + ', Height: ' + sizeY + '</p>'
+
+          const canvas_test = document.createElement('canvas');
+          const gl_test = canvas_test.getContext('webgl2');
+
+          let pixelData;
+          if (gl_test) {
+            //using getImageData from the pixel data from a canvas has a couple of problems.
+            // 1) anti-fingerprinting ("farbling") in firefox will add a tiny amount of noise to some pixels.
+            //    this can cause values near 0 or 255 to underflow or overflow completely changing
+            //    the color. anti-fingerprinting is not used if the page is viewed using file://
+            // 2) pixels are premultiplied by alpha which can lead to rounding issues making a
+            //    pixel value slightly different from the original image.
+            //    these slight differences make it harder to set the Proxy Color, because the
+            //    color found using the eye dropper in the image editor might not match the
+            //    color output from the canvas.
+            // using webgl and readPixels instead of getImageData is a work around for these problems.
+
+            const canvas = document.createElement('canvas');
+            canvas.width = sizeX;
+            canvas.height = sizeY;
+            const gl = canvas.getContext('webgl2');
+
+            // --- Setup Shader Sources ---
+            const vsSource = `#version 300 es
+            in vec2 a_position;
+            in vec2 a_texCoord;
+            out vec2 v_texCoord;
+            uniform vec2 u_scale;
+            void main() {
+                vec2 scaled = a_position * u_scale;
+                gl_Position = vec4(scaled, 0, 1);
+                v_texCoord = a_texCoord;
+            }
+            `;
+
+            const fsSource = `#version 300 es
+            precision mediump float;
+            in vec2 v_texCoord;
+            out vec4 outColor;
+            uniform sampler2D u_image;
+            void main() {
+                outColor = texture(u_image, v_texCoord);
+            }
+            `;
+
+            // --- Compile Shader Program ---
+            function createShader(gl, type, src) {
+              const shader = gl.createShader(type);
+              gl.shaderSource(shader, src);
+              gl.compileShader(shader);
+              return shader;
+            }
+
+            function createProgram(gl, vsSrc, fsSrc) {
+              const vShader = createShader(gl, gl.VERTEX_SHADER, vsSrc);
+              const fShader = createShader(gl, gl.FRAGMENT_SHADER, fsSrc);
+              const program = gl.createProgram();
+              gl.attachShader(program, vShader);
+              gl.attachShader(program, fShader);
+              gl.linkProgram(program);
+              return program;
+            }
+
+            const program = createProgram(gl, vsSource, fsSource);
+            gl.useProgram(program);
+
+            // --- Create a quad covering NDC space ---
+            const positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+              -1, -1,   1, -1,
+              -1,  1,   1,  1,
+            ]), gl.STATIC_DRAW);
+
+            const texCoordBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+              0, 0, 1, 0,
+              0, 1, 1, 1,
+            ]), gl.STATIC_DRAW);
+
+            // --- Set up VAO ---
+            const vao = gl.createVertexArray();
+            gl.bindVertexArray(vao);
+
+            const posLoc = gl.getAttribLocation(program, "a_position");
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.enableVertexAttribArray(posLoc);
+            gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+            const texLoc = gl.getAttribLocation(program, "a_texCoord");
+            gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+            gl.enableVertexAttribArray(texLoc);
+            gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
+
+            // --- Load image into texture ---
+            const imageTex = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, imageTex);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+            // --- Create framebuffer and render target texture ---
+            const targetTex = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, targetTex);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sizeX, sizeY, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+            const fb = gl.createFramebuffer();
+            gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTex, 0);
+
+            // --- Calculate uniform scale based on aspect ratio ---
+            let scaleX = 1, scaleY = 1;
+            //if (ssoColor !== accentColor) || imageAspectRatio !== canvasAspectRatio) {
+            if (ssoColor !== accentColor) {
+              // no stretch, preserve aspect ratio
+              if (imageAspectRatio > canvasAspectRatio) {
                 // letterbox
-                scaledWidth = canvas.width;
-                scaledHeight = canvas.width / imageAspectRatio;
-            }
-            else {
+                scaleY = canvasAspectRatio / imageAspectRatio;
+              }
+              else {
                 // pillarbox
-                scaledWidth = canvas.height * imageAspectRatio;
-                scaledHeight = canvas.height;
+                scaleX = imageAspectRatio / canvasAspectRatio;
+              }
             }
 
-            // Calculate offsets to center the image
-            const xOffset = (canvas.width - scaledWidth) / 2;
-            const yOffset = (canvas.height - scaledHeight) / 2;
-
-            ctx.fillStyle = "#00000000";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(image, xOffset, yOffset, scaledWidth, scaledHeight);
-          }
-
-          var pixelData;
-          if (gl) {
-            // using webgl and readPixels instead of getImageData is a work around for pixel errors caused
-            // by canvas anti-fingerprinting and possibly loss of precision caused by premultiplied alpha color values
-            // I believe the tiny noise added to pixels by firefox's canvas anti-fingerprinting method causes
-            // values near 0 or 255 to underflow or overflow which completely changes the color.
+            gl.viewport(0, 0, sizeX, sizeY);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.useProgram(program);
+            gl.bindVertexArray(vao);
+            gl.uniform2f(gl.getUniformLocation(program, "u_scale"), scaleX, scaleY);
             gl.activeTexture(gl.TEXTURE0);
-            let texture = gl.createTexture();
-            gl.bindTexture(gl.TEXTURE_2D, texture);
-            const framebuffer = gl.createFramebuffer();
-            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, ctx.canvas);
-            gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
-            
+            gl.bindTexture(gl.TEXTURE_2D, imageTex);
+            gl.uniform1i(gl.getUniformLocation(program, "u_image"), 0);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+            // --- Read scaled pixels ---
             pixelData = new Uint8Array(sizeX * sizeY * 4);
             gl.readPixels(0, 0, sizeX, sizeY, gl.RGBA, gl.UNSIGNED_BYTE, pixelData);
           }
           else {
+            // webgl is not available so fallback to using canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = sizeX;
+            canvas.height = sizeY;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+            //ctx.imageSmoothingEnabled = false; // should give a pixelated look, but does not look great
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = "high";
+
+            //if (ssoColor !== accentColor) || imageAspectRatio !== canvasAspectRatio) {
+            if (ssoColor !== accentColor) {
+              // no stretch, preserve aspect ratio
+              console.log('no stretch')
+              let scaledWidth, scaledHeight;
+              if (imageAspectRatio > 1) {
+                // letterbox
+                scaledWidth = canvas.width;
+                scaledHeight = canvas.width / imageAspectRatio;
+              }
+              else {
+                // pillarbox
+                scaledWidth = canvas.height * imageAspectRatio;
+                scaledHeight = canvas.height;
+              }
+
+              // Calculate offsets to center the image
+              const xOffset = (canvas.width - scaledWidth) / 2;
+              const yOffset = (canvas.height - scaledHeight) / 2;
+
+              ctx.fillStyle = "#00000000";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(image, xOffset, yOffset, scaledWidth, scaledHeight);
+            }
+            else {
+              // stretch to fit
+              // scale image to fit canvas. if image does not have the same aspect ratio it will be stretched to fit.
+              ctx.drawImage(this, 0, 0, this.naturalWidth, this.naturalHeight, 0, 0, sizeX, sizeY);
+            }
+
             pixelData = ctx.getImageData(0, 0, sizeX, sizeY).data;
           }
-        
+
           // Create an array to hold the RGB values of each pixel
-          var pixelRGBValues = [];
-      
+          let pixelRGBValues = [];
+
           // If the first row of the led matrix is right -> left
           let right2leftAdjust = 1;
           if (ledSetupSelection == 'l2r') {
             right2leftAdjust = 0;
           }
 
-/*
-          // sort colors by how frequently they occur, so that less common colors that are a near match to more common colors can be consolidated
-          // setting less common colors to their more common near match reduces file size and removes extra colors added by canvas anti-fingerprinting (farbling)
-          let color = [];
-          let frequency = {};
-          for (var i = 0; i < pixelData.length; i += 4) {
-            let color = [pixelData[w], pixelData[i + 1], pixelData[i + 2], pixelData[i + 3]];
-            //console.log(`[${i/4}] color: ` + pixelData[i] + "," + pixelData[i + 1] + "," + pixelData[i + 2] + "," + pixelData[i + 3]);
-            if (frequency[color]) {
-              frequency[color] = frequency[color] + 1;
-            }
-            else {
-              frequency[color] = 1;
-            }
-          }
-          let colorsSorted = Object.keys(frequency).sort(function(a, b) {
-            return frequency[b] - frequency[a]
-          });
-          colorsSorted.forEach((key) => {
-            console.log(key + " " + frequency[key]);
-          })
-*/
 
           // Loop through the pixel data and get the RGB values of each pixel
-          for (var i = 0; i < pixelData.length; i += 4) {
-            var r = pixelData[i];
-            var g = pixelData[i + 1];
-            var b = pixelData[i + 2];
-            var a = pixelData[i + 3];
+          for (let i = 0; i < pixelData.length; i += 4) {
+            let r = pixelData[i];
+            let g = pixelData[i + 1];
+            let b = pixelData[i + 2];
+            let a = pixelData[i + 3];
 
-/*
-            for (color of colorsSorted) {
-              let ref_color = color.split(",").map(Number);
-              let dist = Math.abs(ref_color[0] - r) + Math.abs(ref_color[1] - g) + Math.abs(ref_color[2] - b) + Math.abs(ref_color[3] - a);
-              if (dist == 0) {
-                // need to break on an exact match because there could be a less common near match after this
-                break;
-              }
-              // transparency is never farbled, so only consolidate colors of the same transparency
-              if (a == ref_color[3] && dist < 7) {
-                //console.log("ref_color: " + ref_color[0] + "," + ref_color[1] + "," + ref_color[2] + "," + ref_color[3]);
-                //console.log("data color: " + r + "," + g + "," + b + "," + a);
-                r = ref_color[0];
-                g = ref_color[1];
-                b = ref_color[2];
-                break;
-              }
-            }
-            // replace colors that are almost black with complete black
-            let dist = Math.abs(0 - r) + Math.abs(0 - g) + Math.abs(0 - b);
-            if (0 < dist && dist < 7) {
-              r = 0;
-              g = 0;
-              b = 0;
-            }
-            // replace colors that are almost the proxy color with the proxy color
-            if (pxcolor.value && pxcolor.checkValidity()) {
-              let pxca = pxcolor.value.match(/[a-f0-9]{2}/gi);
-              let dist = Math.abs(pxca[0] - r) + Math.abs(pxca[1] - g) + Math.abs(pxca[2] - b);
-              if (0 < dist && dist < 7) {
-                //console.log("pxca: " + pxca[0] + "," + pxca[1] + "," + pxca[2] + "," + pxca[3]);
-                //console.log("data color: " + r + "," + g + "," + b + "," + a);
-                r = pxca[0];
-                g = pxca[1];
-                b = pxca[2];
-              }
-            }
-*/
             let pixel = i/4
             let row = Math.floor(pixel/sizeX);
             let led = pixel;
             if (ledSetupSelection == 'matrix') {
-                //Do nothing, the matrix is set upp like the index in the image
-                //Every row starts from the left, i.e. no zigzagging
+              //Do nothing, the matrix is set upp like the index in the image
+              //Every row starts from the left, i.e. no zigzagging
             }
             else if ((row + right2leftAdjust) % 2 === 0) {
-                //Setup is traditional zigzag
-                //right2leftAdjust basically flips the row order if = 1
-                //Row is left to right
-                //Leave led index as pixel index
-              
+              //Setup is traditional zigzag
+              //right2leftAdjust basically flips the row order if = 1
+              //Row is left to right
+              //Leave led index as pixel index
+
             }
             else {
-                //Setup is traditional zigzag
-                //Row is right to left
-                //Invert index of row for led
-                let indexOnRow = led - (row * sizeX);
-                let maxIndexOnRow = sizeX - 1;
-                let reversedIndexOnRow = maxIndexOnRow - indexOnRow;
-                led = (row * sizeX) + reversedIndexOnRow;
+              //Setup is traditional zigzag
+              //Row is right to left
+              //Invert index of row for led
+              let indexOnRow = led - (row * sizeX);
+              let maxIndexOnRow = sizeX - 1;
+              let reversedIndexOnRow = maxIndexOnRow - indexOnRow;
+              led = (row * sizeX) + reversedIndexOnRow;
             }
-      
+
             // Add the RGB values to the pixel RGB values array
             pixelRGBValues.push([r, g, b, a, led, pixel, row]);
           }
-          
+
           pixelRGBValues.sort((a, b) => a[5] - b[5]);
-      
+
           //Copy the values to a new array for resorting
           let ledRGBValues = [... pixelRGBValues];
-          
+
           //Sort the array based on led index
           ledRGBValues.sort((a, b) => a[4] - b[4]);
-          
+
           //Generate JSON in WLED format
           let JSONledString = '';
-      
+
           //Set starting values for the segment check to something that is no color
           let segmentStart = -1;
           let maxi = ledRGBValues.length;
           let commandArray = [];
-      
+
           //For every pixel in the LED array
           for (let i = 0; i < maxi; i++) {
             let pixel = ledRGBValues[i];
@@ -714,17 +772,17 @@
             let a = pixel[3];
             let segmentString = '';
             let segmentEnd = -1;
-      
+
             if (segmentStart < 0) {
               //This is the first led of a new segment
               segmentStart = i;
             } //Else we already have a start index
-            
-            if (i < maxi - 1) { 
-              
+
+            if (i < maxi - 1) {
+
               let iNext = i + 1;
               let nextPixel = ledRGBValues[iNext];
-      
+
               if (nextPixel[0] != r || nextPixel[1] != g || nextPixel[2] != b || nextPixel[3] != a) {
                 //Next pixel has new color
                 //The current segment ends with this pixel
@@ -744,12 +802,12 @@
                   segmentString = segmentStart + ',' + segmentEnd + ',';
                 }
               }
-      
+
             }
             else {
               //This is the last pixel, so the segment must end
               segmentEnd = i + 1;
-      
+
               if (segmentStart + 1 == segmentEnd) {
                 //If only one led/pixel, no segment info needed
                 if (JSONledString == '') {
@@ -762,18 +820,18 @@
                 }
               }
               else {
-                segmentString = segmentStart + ',' + segmentEnd + ','; 
+                segmentString = segmentStart + ',' + segmentEnd + ',';
               }
             }
-    
+
             if (segmentEnd > -1) {
               //This is the last pixel in the segment, write to the JSONledString
               const [red, green, blue, alpha] = [r, g, b, a];
               let colorValueString = `${[red, green, blue, alpha].map(x => x.toString(16).padStart(2, '0')).join('')}`;
-     
+
               JSONledString += segmentString + colorSeparatorStart + colorValueString + colorSeparatorEnd;
-     
-              if (i == maxi - 1) { 
+
+              if (i == maxi - 1) {
                 fileJSON = JSONledString;
                 JSONledString = ''; //Start on an new command string
               }
@@ -788,84 +846,82 @@
 
           fileJSON = `{"t":"im",${(pxcolor.value && pxcolor.checkValidity())?'"pc":"0x'+pxcolor.value+'",':''}"i":[` + fileJSON + ']}';
           JLD.value = fileJSON;
-      
+
           let infoDiv = imin;
           let canvasDiv = imin;
-          
+
           infoDiv.innerHTML = imageInfo;
           canvasDiv.style.display = "block"
-      
+
           //Drawing the image
           drawBoxes(pixelRGBValues, sizeX, sizeY);
         }
       }
     </script>
-      
+
     <!--boxdraw.js-->
     <script>
       function drawBoxes(inputPixelArray, widthPixels, heightPixels) {
-       
-          var w = window;
-      
-          // Get the canvas context
-          var ctx = canvas.getContext('2d', { willReadFrequently: true });
-      
-          // Set the width and height of the canvas
-          if (w.innerHeight < w.innerWidth) {
-              canvas.width = Math.floor(w.innerHeight * 0.98);
+        let w = window;
+
+        // Get the canvas context
+        let ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        // Set the width and height of the canvas
+        if (w.innerHeight < w.innerWidth) {
+          canvas.width = Math.floor(w.innerHeight * 0.98);
+        }
+        else {
+          canvas.width = Math.floor(w.innerWidth * 0.98);
+        }
+        //canvas.height = w.innerWidth;
+
+        let pixelSize = Math.floor(canvas.width/widthPixels);
+
+        let xOffset = (w.innerWidth - (widthPixels * pixelSize))/2
+
+        //Set the canvas height to fit the right number of pixelrows
+        canvas.height = (pixelSize * heightPixels) + 10
+
+        //Iterate through the matrix
+        for (let y = 0; y < heightPixels; y++) {
+          for (let x = 0; x < widthPixels; x++) {
+            // Calculate the index of the current pixel
+            let i = (y*widthPixels) + x;
+
+            //Gets the RGB of the current pixel
+            let pixel = inputPixelArray[i];
+
+            let pixelColor = 'rgb(' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2] + ')';
+
+            let textColor = 'rgb(128,128,128)';
+
+            // Set the fill style to the pixel color
+            ctx.fillStyle = pixelColor;
+
+            //Draw the rectangle
+            ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+
+            // Draw a border on the box
+            ctx.strokeStyle = '#888888';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+
+            //Write text to box
+            ctx.font = "10px Arial";
+            ctx.fillStyle = textColor;
+            ctx.textAlign = "center";
+            ctx.textBaseline = 'middle';
+            ctx.fillText((pixel[4]), (x * pixelSize) + (pixelSize /2), (y * pixelSize) + (pixelSize /2));
           }
-          else {
-              canvas.width = Math.floor(w.innerWidth * 0.98);
-          }
-          //canvas.height = w.innerWidth;
-      
-          let pixelSize = Math.floor(canvas.width/widthPixels);
-      
-          let xOffset = (w.innerWidth - (widthPixels * pixelSize))/2
-      
-          //Set the canvas height to fit the right number of pixelrows
-          canvas.height = (pixelSize * heightPixels) + 10
-          
-          //Iterate through the matrix
-          for (let y = 0; y < heightPixels; y++) {
-              for (let x = 0; x < widthPixels; x++) {
-      
-                  // Calculate the index of the current pixel
-                  let i = (y*widthPixels) + x;
-                  
-                  //Gets the RGB of the current pixel
-                  let pixel = inputPixelArray[i];
-      
-                  let pixelColor = 'rgb(' + pixel[0] + ', ' + pixel[1] + ', ' + pixel[2] + ')';
-      
-                  let textColor = 'rgb(128,128,128)';
-      
-                  // Set the fill style to the pixel color
-                  ctx.fillStyle = pixelColor;
-      
-                  //Draw the rectangle
-                  ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
-      
-                  // Draw a border on the box
-                  ctx.strokeStyle = '#888888';
-                  ctx.lineWidth = 1;
-                  ctx.strokeRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
-      
-                  //Write text to box
-                  ctx.font = "10px Arial";
-                  ctx.fillStyle = textColor;
-                  ctx.textAlign = "center";
-                  ctx.textBaseline = 'middle';
-                  ctx.fillText((pixel[4]), (x * pixelSize) + (pixelSize /2), (y * pixelSize) + (pixelSize /2));
-              }
-          }
-          var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          canvas.width = w.innerWidth;
-          ctx.putImageData(imageData, xOffset, 0);
+        }
+        let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.width = w.innerWidth;
+        ctx.putImageData(imageData, xOffset, 0);
       }
     </script>
-      
+
     <!--pixart.js-->
     <script>
       //Start up code
@@ -876,7 +932,7 @@
       if (window.location.protocol !== "file:") {
         gurl.value = location.host;
       }
-      
+
       function gen() {
         //Generate image if enough info is in place
         //Is host non empty
@@ -901,27 +957,27 @@
           }
         }
       }
-      
+
       // Event listeners =======================
-      
+
       lSS.addEventListener("change", gen);
       brgh.addEventListener("change", gen);
       gurl.addEventListener("change", gen);
       prw.addEventListener("load", gen);
-      
+
       gId("sendJSONledbutton").addEventListener('click', async () => {
         if (gurl.reportValidity() && imid.reportValidity()) {
           postPixels();
         }
       });
-      
+
       brgh.oninput = () => {
         brgV.textContent = brgh.value;
         let perc = parseInt(brgh.value)*100/255;
-        var val = `linear-gradient(90deg, #bbb ${perc}%, #333 ${perc}%)`;
+        let val = `linear-gradient(90deg, #bbb ${perc}%, #333 ${perc}%)`;
         brgh.style.backgroundImage = val;
       }
-      
+
       async function postPixels() {
         let success = false;
         let ss = gId("saveSvg");
@@ -960,22 +1016,22 @@
           el_btn_save_text.innerText = "Error";
         }
       }
-      
+
       //File uploader code
       const dropZone = gId('drop-zone');
       const filePicker = gId('file-picker');
       const preview = prw;
-      
+
       // Listen for dragenter, dragover, and drop events
       // Drag and drop causes buggy behavior
       //dropZone.addEventListener('dragenter', dragEnter);
       //dropZone.addEventListener('dragover', dragOver);
      // dropZone.addEventListener('drop', dropped);
       dropZone.addEventListener('click', zoneClicked);
-      
+
       // Listen for change event on file picker
       filePicker.addEventListener('change', filePicked);
-      
+
       // Handle zone click
       function zoneClicked(e) {
         e.preventDefault();
@@ -983,35 +1039,35 @@
         //alert('Hej');
         filePicker.click();
       }
-      
+
       // Handle dragenter
       function dragEnter(e) {
         e.preventDefault();
         this.classList.add('drag-over');
       }
-      
+
       // Handle dragover
       function dragOver(e) {
         e.preventDefault();
       }
-      
+
       // Handle drop
       function dropped(e) {
         e.preventDefault();
         this.classList.remove('drag-over');
-      
+
         // Get the dropped file
         const file = e.dataTransfer.files[0];
         updatePreview(file)
       }
-      
+
       // Handle file picked
       function filePicked(e) {
         // Get the picked file
         const file = e.target.files[0];
         updatePreview(file)
       }
-      
+
       // Update the preview image
       function updatePreview(file) {
         imid.value = file.name.replace(/\.[^/.]+$/, "").substr(0, 26);
@@ -1025,7 +1081,7 @@
         };
         reader.readAsDataURL(file);
       }
-      
+
       function isValidBase64Gif(string) {
         // Use a regular expression to check that the string is a valid base64 string
         /*
@@ -1043,9 +1099,9 @@
           return false;
         }
       }
-      
-      var hideableRows = d.querySelectorAll(".ha-hide");
-      for (var i = 0; i < hideableRows.length; i++) {
+
+      hideableRows = d.querySelectorAll(".ha-hide");
+      for (let i = 0; i < hideableRows.length; i++) {
         hideableRows[i].classList.add("hide");
       }
 
@@ -1093,9 +1149,9 @@
       //'<svg class="svg-icon" style="width:36px;height:36px" viewBox="0 -960 960 960"> <path id="saveSvg" fill="currentColor" d="M440-320v-326L336-542l-56-58 200-200 200 200-56 58-104-104v326h-80ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>&nbsp; Save</button>'
       gId("sendJSONledbutton").innerHTML = 
       '<svg class="svg-icon" style="width:36px;height:36px" viewBox="0 -960 960 960"> <path id="saveSvg" fill="currentColor" d="M440-320v-326L336-542l-56-58 200-200 200 200-56 58-104-104v326h-80ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg> &nbsp; <span id="btn_save_text">Save</span>'
-      
-      // set default value of "Stretch Image To Fit" to on 
-      window.addEventListener("load", setStretchOption); 
+
+      // set default value of "Stretch Image To Fit" to on
+      window.addEventListener("load", setStretchOption);
     </script>
   </body>
 </html>
