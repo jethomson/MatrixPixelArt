@@ -318,7 +318,6 @@ class ReAnimator {
 
     Point serp2cart(uint8_t i);
     int16_t cart2serp(Point p);
-    void flip(CRGB sm[], bool dim);
     uint16_t translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8_t sy, bool wrap, int8_t gap);
     void ntranslate(CRGBA in[], CRGBA out[], int8_t xi = 0, int8_t yi = 0, int8_t sx = 1, int8_t sy = 1, bool wrap = true, int8_t gap = 0);
     uint16_t mover(uint16_t i);

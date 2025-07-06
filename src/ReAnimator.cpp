@@ -877,7 +877,9 @@ void ReAnimator::orbit(uint16_t draw_interval, int8_t delta) {
     if (is_wait_over(draw_interval)) {
         uint16_t fuzz = 1 + random16(3);
         while (fuzz--) {
-            fadeToTransparentBy(leds, MTX_NUM_LEDS, 20);
+            //fadeToTransparentBy(leds, MTX_NUM_LEDS, 20);
+            fadeToTransparentBy(leds, MTX_NUM_LEDS, 215);
+            //fadeToTransparentBy(leds, MTX_NUM_LEDS, 255-(14*MTX_NUM_COLS));
             if (delta > 0) {
                 o_pos = o_pos % MTX_NUM_LEDS;
             }
@@ -1023,7 +1025,7 @@ void ReAnimator::pendulum() {
         // beatsin16() effectively uses this: uint16_t beat = ((millis() - timebase) * beats_per_minute_88 * 280) >> 16;
         // so to cancel out the effect of millis() use this: timebase = millis()-t
         // redefining the timebase prevents the effect from skipping
-        p.y = beatsin16(i+7, 0, MTX_NUM_COLS-1, millis()-p_t);
+        p.y = beatsin16(i+7, 0, MTX_NUM_ROWS-1, millis()-p_t);
         uint16_t j = cart2serp(p);
         leds[j] |= CHSV(ball_hue, 200, 255);
         ball_hue += 255/num_columns;
@@ -1041,9 +1043,9 @@ void ReAnimator::funky() {
     for (uint8_t i = 0; i < num_columns; i++) {
         Point p;
         p.x = i*(MTX_NUM_COLS/num_columns);
-        p.y = beatsin16(i+bpm_offset, 0, MTX_NUM_COLS-1, millis()-f_t);
+        p.y = beatsin16(i+bpm_offset, 0, MTX_NUM_ROWS-1, millis()-f_t);
         uint16_t j = cart2serp(p);
-        p.y = MTX_NUM_COLS-1 - beatsin16(i+bpm_offset, 0, MTX_NUM_COLS-1, millis()-f_t);
+        p.y = MTX_NUM_ROWS-1 - beatsin16(i+bpm_offset, 0, MTX_NUM_ROWS-1, millis()-f_t);
         uint16_t k = cart2serp(p);
         leds[j] |= CHSV(ball_hue, 200, 255);
         leds[k] |= CHSV(255-ball_hue, 200, 255);
@@ -1059,7 +1061,7 @@ void ReAnimator::riffle() {
     //fadeToTransparentBy(leds, MTX_NUM_LEDS, 5); // takes longer for colors to separate and appear distinct if this is used for this pattern
     fadeToBlackBy(leds, MTX_NUM_LEDS, 5);
     while (true) {
-        uint16_t high = ((i+1)*16)-1;
+        uint16_t high = ((i+1)*MTX_NUM_COLS)-1;
         if (high >= MTX_NUM_LEDS/2) {
             break;
         }
@@ -1630,36 +1632,16 @@ void ReAnimator::flipflop() {
 // ++++++++ POSITIONING +++++++++
 // ++++++++++++++++++++++++++++++
 ReAnimator::Point ReAnimator::serp2cart(uint8_t i) {
-    const uint8_t rl = 16;
     Point p;
-    p.y = i/rl;
-    p.x = (p.y % 2) ? (rl-1) - (i % rl) : i % rl;
+    p.y = i/MTX_NUM_COLS;
+    p.x = (p.y % 2) ? (MTX_NUM_COLS-1) - (i % MTX_NUM_COLS) : i % MTX_NUM_COLS;
     return p;
 }
 
 
 int16_t ReAnimator::cart2serp(Point p) {
-    const uint8_t rl = 16;
-    int16_t i = (p.y % 2) ? (rl*p.y + rl-1) - p.x : rl*p.y + p.x;
+    int16_t i = (p.y % 2) ? (MTX_NUM_COLS*p.y + MTX_NUM_COLS-1) - p.x : MTX_NUM_COLS*p.y + p.x;
     return i;
-}
-
-
-void ReAnimator::flip(CRGB* sm, bool dim) {
-    Point p1;
-    Point p2;
-    const uint8_t rl = 16;
-    for (uint8_t j = 0; j < rl; j++) {
-        for (uint8_t k = 0; k < rl/2; k++) {
-            p1.x = dim ? j : k;
-            p1.y = dim ? k : j;
-            p2.x = dim ? j : rl-1-k;
-            p2.y = dim ? rl-1-k : j;
-            CRGB tmp = sm[cart2serp(p1)];
-            sm[cart2serp(p1)] = sm[cart2serp(p2)];
-            sm[cart2serp(p2)] = tmp;
-        }
-    }
 }
 
 
@@ -1677,7 +1659,7 @@ uint16_t ReAnimator::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8
     if (t_initial) {
         t_initial = false;
         dx = (xi >= MTX_NUM_COLS) ? -abs(xi) : xi;
-        dy = (yi >= MTX_NUM_COLS) ? -abs(yi) : yi;
+        dy = (yi >= MTX_NUM_ROWS) ? -abs(yi) : yi;
     }
 
     uint16_t ti = MTX_NUM_LEDS; // used to indicate pixel is not in bounds and should not be drawn.
@@ -1691,23 +1673,25 @@ uint16_t ReAnimator::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8
     }
 
     t_visible = false;
-    gap = (gap == -1) ? MTX_NUM_COLS : gap; // if gap is -1 set gap to MTX_NUM_COLS so that the input only appears in one place but will still loop around
+    
+    uint8_t gapx = (gap == -1) ? MTX_NUM_COLS : gap; // if gap is -1 set gap to MTX_NUM_COLS so that the input only appears in one place but will still loop around
+    uint8_t gapy = (gap == -1) ? MTX_NUM_ROWS : gap; // if gap is -1 set gap to MTX_NUM_ROWS so that the input only appears in one place but will still loop around
 
     uint8_t ux = (sx > 0) ? MTX_NUM_COLS-1-p1.x: p1.x; // flip heading output travels
-    uint8_t uy = (sy > 0) ? MTX_NUM_COLS-1-p1.y: p1.y;
+    uint8_t uy = (sy > 0) ? MTX_NUM_ROWS-1-p1.y: p1.y;
 
     int8_t vx = ux+dx; // shift input over into output by dx
     int8_t vy = uy+dy;
 
     if (t_has_entered && wrap) {
-        vx = vx % (MTX_NUM_COLS+gap);
-        vy = vy % (MTX_NUM_COLS+gap);
+        vx = vx % (MTX_NUM_COLS+gapx);
+        vy = vy % (MTX_NUM_ROWS+gapy);
     }
 
-    if ( 0 <= vx && vx < MTX_NUM_COLS && 0 <= vy && vy < MTX_NUM_COLS ) {
+    if ( 0 <= vx && vx < MTX_NUM_COLS && 0 <= vy && vy < MTX_NUM_ROWS ) {
         t_visible = true;
         vx = (sx > 0) ? MTX_NUM_COLS-1-vx : vx; // flip image
-        vy = (sy > 0) ? MTX_NUM_COLS-1-vy : vy;
+        vy = (sy > 0) ? MTX_NUM_ROWS-1-vy : vy;
         p2.x = vx;
         p2.y = vy;
         ti = cart2serp(p2);
@@ -1717,7 +1701,7 @@ uint16_t ReAnimator::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8
     //if (i == MTX_NUM_LEDS-1 && !freezer.is_frozen()) {
     if (i == MTX_NUM_LEDS-1) {
         dx += abs(sx%MTX_NUM_COLS);
-        dy += abs(sy%MTX_NUM_COLS);
+        dy += abs(sy%MTX_NUM_ROWS);
         // need to track when input has entered into view for the first time
         // to prevent wrapping until the transient period has ended
         // this allows controlling how long it takes the input to enter the matrix
@@ -1727,8 +1711,8 @@ uint16_t ReAnimator::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8
         }
 
         if (t_has_entered && wrap) {
-                dx = dx % (MTX_NUM_COLS+gap);
-                dy = dy % (MTX_NUM_COLS+gap);
+                dx = dx % (MTX_NUM_COLS+gapx);
+                dy = dy % (MTX_NUM_ROWS+gapy);
         }
     }
     return ti;
@@ -1743,7 +1727,7 @@ void ReAnimator::ntranslate(CRGBA in[], CRGBA out[], int8_t xi, int8_t yi, int8_
         t_visible = false;
         t_has_entered = false;
         dx = (xi >= MTX_NUM_COLS) ? -abs(xi) : xi;
-        dy = (yi >= MTX_NUM_COLS) ? -abs(yi) : yi;
+        dy = (yi >= MTX_NUM_ROWS) ? -abs(yi) : yi;
     }
 
     Point p1;
@@ -1755,12 +1739,13 @@ void ReAnimator::ntranslate(CRGBA in[], CRGBA out[], int8_t xi, int8_t yi, int8_
     }
 
     t_visible = false;
-    gap = (gap == -1) ? MTX_NUM_COLS : gap; // if gap is -1 set gap to MTX_NUM_COLS so that the input only appears in one place but will still loop around
+    uint8_t gapx = (gap == -1) ? MTX_NUM_COLS : gap; // if gap is -1 set gap to MTX_NUM_COLS so that the input only appears in one place but will still loop around
+    uint8_t gapy = (gap == -1) ? MTX_NUM_ROWS : gap; // if gap is -1 set gap to MTX_NUM_ROWS so that the input only appears in one place but will still loop around
 
     for (uint8_t j = 0; j < MTX_NUM_COLS; j++) {
         for (uint8_t k = 0; k < MTX_NUM_COLS; k++) {
             uint8_t ux = (sx > 0) ? MTX_NUM_COLS-1-k: k; // flip heading output travels
-            uint8_t uy = (sy > 0) ? MTX_NUM_COLS-1-j: j;
+            uint8_t uy = (sy > 0) ? MTX_NUM_ROWS-1-j: j;
 
             p1.x = ux;
             p1.y = uy;
@@ -1769,14 +1754,14 @@ void ReAnimator::ntranslate(CRGBA in[], CRGBA out[], int8_t xi, int8_t yi, int8_
             int8_t vx = k+dx; // shift input over into output by d
             int8_t vy = j+dy;
             if (t_has_entered && wrap) {
-                vx = vx % (MTX_NUM_COLS+gap);
-                vy = vy % (MTX_NUM_COLS+gap);
+                vx = vx % (MTX_NUM_COLS+gapx);
+                vy = vy % (MTX_NUM_ROWS+gapy);
             }
 
-            if ( 0 <= vx && vx < MTX_NUM_COLS && 0 <= vy && vy < MTX_NUM_COLS ) {
+            if ( 0 <= vx && vx < MTX_NUM_COLS && 0 <= vy && vy < MTX_NUM_ROWS ) {
                 t_visible = true;
                 vx = (sx > 0) ? MTX_NUM_COLS-1-vx : vx; // flip image
-                vy = (sy > 0) ? MTX_NUM_COLS-1-vy : vy;
+                vy = (sy > 0) ? MTX_NUM_ROWS-1-vy : vy;
                 p2.x = vx;
                 p2.y = vy;
                 out[cart2serp(p1)] = in[cart2serp(p2)];
@@ -1785,7 +1770,7 @@ void ReAnimator::ntranslate(CRGBA in[], CRGBA out[], int8_t xi, int8_t yi, int8_
     }
 
     dx += abs(sx%MTX_NUM_COLS);
-    dy += abs(sy%MTX_NUM_COLS);
+    dy += abs(sy%MTX_NUM_ROWS);
     // need to track when input has entered into view for the first time
     // to prevent wrapping until the transient period has ended
     // this allows controlling how long it takes the input to enter the matrix
@@ -1795,8 +1780,8 @@ void ReAnimator::ntranslate(CRGBA in[], CRGBA out[], int8_t xi, int8_t yi, int8_
     }
 
     if (t_has_entered && wrap) {
-        dx = dx % (MTX_NUM_COLS+gap);
-        dy = dy % (MTX_NUM_COLS+gap);
+        dx = dx % (MTX_NUM_COLS+gapx);
+        dy = dy % (MTX_NUM_ROWS+gapy);
     }
 }
 
@@ -1806,37 +1791,37 @@ uint16_t ReAnimator::mover(uint16_t i) {
     // to be replaced by speed option in the future.
     int8_t s = 1;
     // add a bit of variability to the speed so moving objects do not always overlap in the same spot
-    if (random8(1, 11) > 8) {
-        s = 2;
-    }
+    //if (random8(1, 11) > 8) {
+    //    s = 2;
+    //}
     switch (heading) {
         default:
         case 0:
             ti = i;
             break;
         case 1:
-            ti = translate(i, 0, MTX_NUM_COLS, 0, -s, true, -1);
+            ti = translate(i, 0, MTX_NUM_ROWS, 0, -s, true, -1);
             break;
         case 2:
-            ti = translate(i, MTX_NUM_COLS, MTX_NUM_COLS, -s, -s, true, -1);
+            ti = translate(i, MTX_NUM_COLS, MTX_NUM_ROWS, -s, -s, true, -1);
             break;
         case 3:
             ti = translate(i, MTX_NUM_COLS, 0, -s, 0, true, -1);
             break;
         case 4:
-            ti = translate(i, MTX_NUM_COLS, -MTX_NUM_COLS, -s, s, true, -1);
+            ti = translate(i, MTX_NUM_COLS, -MTX_NUM_ROWS, -s, s, true, -1);
             break;
         case 5:
-            ti = translate(i, 0, -MTX_NUM_COLS, 0, s, true, -1);
+            ti = translate(i, 0, -MTX_NUM_ROWS, 0, s, true, -1);
             break;
         case 6:
-            ti = translate(i, -MTX_NUM_COLS, -MTX_NUM_COLS, s, s, true, -1);
+            ti = translate(i, -MTX_NUM_COLS, -MTX_NUM_ROWS, s, s, true, -1);
             break;
         case 7:
             ti = translate(i, -MTX_NUM_COLS, 0, s, 0, true, -1);
             break;
         case 8:
-            ti = translate(i, -MTX_NUM_COLS, MTX_NUM_COLS, s, -s, true, -1);
+            ti = translate(i, -MTX_NUM_COLS, MTX_NUM_ROWS, s, -s, true, -1);
             break;
     }
     return ti;
