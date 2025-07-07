@@ -115,6 +115,10 @@ Have fun converting images to pixel art, adding effects, and making playlists!
   upload_cmd = cmd_parts[0] + cmd_parts[1] + cmd_parts[2]
   merged_firmware = 'merged_firmware.bin'
   merge_cmd = f'"$PYTHONEXE" "$OBJCOPY" {cmd_parts[0]} merge_bin -o {merged_firmware} {cmd_parts[2]}'
+  # it is suggested that using the hex format will not overwrite the nvs data (WiFi credentials, etc.) but that does not actually work
+  # https://github.com/espressif/esptool/issues/1075
+  #merged_firmware = 'merged_firmware.hex'
+  #merge_cmd = f'"$PYTHONEXE" "$OBJCOPY" {cmd_parts[0]} merge_bin --format hex -o {merged_firmware} {cmd_parts[2]}'
 
   linux_upload_cmd = '#!/bin/bash\n'
   linux_upload_cmd += r'./esptool/linux/esptool --no-stub' + upload_cmd
