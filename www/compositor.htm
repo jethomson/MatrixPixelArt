@@ -443,7 +443,7 @@ async function load_composite(el_select) {
       let color_type = 1;
       if (color.indexOf("0x") === 0) {
         color_type = 0;
-        color = "#" + color.toString(16);
+        color = "#" + color.slice(2);
       }
       else {
         color_type = color;
