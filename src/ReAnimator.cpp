@@ -165,6 +165,7 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
     t_initial = true;
     t_visible = false;
     t_has_entered = false;
+    t_pixel_count = 0;
     dx = 0;
     dy = 0;
 
@@ -667,6 +668,17 @@ void ReAnimator::reanimate() {
 CRGBA ReAnimator::get_pixel(uint16_t i) {
     //CRGBA pixel_out = 0xFF000000; // if black with no transparency is used it creates a sort of spotlight effect
     CRGBA pixel_out = CRGBA::Transparent;
+
+    //if (ROT90) {
+    if (true) {
+        Point p;
+        Point q;
+        p = serp2cart_native(i);
+        q.x = MTX_NUM_COLS-1 - p.y;
+        q.y = p.x;
+        i = cart2serp(q);
+    }
+
     uint16_t ti = mover(i);
     if (0 <= ti && ti < MTX_NUM_LEDS) {
         pixel_out = leds[ti];
@@ -1386,6 +1398,7 @@ const uint8_t* ReAnimator::get_bitmap(const lv_font_t* f, uint32_t c, uint32_t n
     //int16_t ofs_x;                  //< x offset of the bounding box
     //int16_t ofs_y;                  //< y offset of the bounding box. Measured from the top of the line
     lv_font_glyph_dsc_t g;
+    Serial.println(c);
     bool g_ret = lv_font_get_glyph_dsc(f, &g, c, nc);
     if (g_ret && g.gid.index) {
         lv_font_fmt_txt_dsc_t* fdsc = (lv_font_fmt_txt_dsc_t*)f->dsc;
@@ -1645,6 +1658,23 @@ int16_t ReAnimator::cart2serp(Point p) {
 }
 
 
+ReAnimator::Point ReAnimator::serp2cart_native(uint8_t i) {
+    Point p;
+    p.y = i/MTX_NUM_ROWS;
+    p.x = (p.y % 2) ? (MTX_NUM_ROWS-1) - (i % MTX_NUM_ROWS) : i % MTX_NUM_ROWS;
+    return p;
+}
+
+
+int16_t ReAnimator::cart2serp_native(Point p) {
+    // for a display in its native orientation this would normally use MTX_NUM_COLS
+    // but since the display is in a non-native orientation (MTX_NUM_ROWS and MTX_NUM_COLS are swapped)
+    // MTX_NUM_ROWS is used here instead
+    int16_t i = (p.y % 2) ? (MTX_NUM_ROWS*p.y + MTX_NUM_ROWS-1) - p.x : MTX_NUM_ROWS*p.y + p.x;
+    return i;
+}
+
+
 //sx: + is WEST, - is EAST
 //sy: + is SOUTH, - is NORTH
 // where WEST means right to left, EAST means left to right, SOUTH means down, and NORTH means up
@@ -1697,9 +1727,15 @@ uint16_t ReAnimator::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8
         ti = cart2serp(p2);
     }
 
+    // previously checked for end of data like this: if (i == MTX_NUM_LEDS-1)
+    // but transforming i to a different coordinate system results in i no longer
+    // being sequential so i == MTX_NUM_LEDS-1 may come up before all of the data
+    // has been translated. therefore we should count the pixels instead.
+    t_pixel_count++;
     // not sure if I like stopping movement when frozen.
-    //if (i == MTX_NUM_LEDS-1 && !freezer.is_frozen()) {
-    if (i == MTX_NUM_LEDS-1) {
+    //if (t_pixle_count == MTX_NUM_LEDS && !freezer.is_frozen()) {
+    if (t_pixel_count == MTX_NUM_LEDS) {
+        t_pixel_count = 0;
         dx += abs(sx%MTX_NUM_COLS);
         dy += abs(sy%MTX_NUM_ROWS);
         // need to track when input has entered into view for the first time
