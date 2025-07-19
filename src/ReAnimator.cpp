@@ -156,7 +156,7 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
 
     font = &ascii_sector_12;
 
-    refresh_text_index = 0;
+    refresh_text_pos = 0;
     shift_char_column = 0;
     shift_char_tracking = 0; // spacing between letters
 
@@ -540,20 +540,24 @@ int8_t ReAnimator::get_image_status() {
 }
 
 
-void ReAnimator::set_text(String s) {
+void ReAnimator::set_text(std::string t) {
     // need to reinitialize when one string was already being written and new string is set
-    refresh_text_index = 0; // start at the beginning of a string
+    refresh_text_pos = 0; // start at the beginning of a string
     shift_char_column = 0; // start at the beginning of a glyph
 
-    ftext.s = s;
+    ftext.s = t;
+    const char *str = t.c_str();
 
     int16_t max_height_above_baseline = 0;
-    for (uint8_t i = 0; i < s.length(); i++) {
-        char c = s[i];
+    // loop through the string to maximum height above the baseline so the text can be centered properly
+    while (*str) {
+        uint32_t c;
+        uint16_t num_bytes_c = get_UTF8_char(str, c);
+        str += num_bytes_c;
         uint16_t box_h = 0;
         int16_t offset_y = 0;
 
-        const uint8_t* glyph = get_bitmap(font, s[i], '\0', nullptr, nullptr, &box_h, &offset_y);
+        const uint8_t* glyph = get_bitmap(font, c, '\0', nullptr, nullptr, &box_h, &offset_y);
         if (glyph && box_h > 0) {
             max_height_above_baseline = max((int16_t)(box_h+offset_y), max_height_above_baseline);
             ftext.baseline = max((int16_t)(-offset_y), ftext.baseline);
@@ -820,10 +824,22 @@ int8_t ReAnimator::apply_overlay(Overlay overlay) {
 
 void ReAnimator::refresh_text(uint16_t draw_interval) {
     if (is_wait_over(draw_interval)) {
-        uint32_t c = ftext.s[refresh_text_index];
-        uint32_t nc = ftext.s[(refresh_text_index+1) % ftext.s.length()];
-        if(shift_char(c, nc)) {
-            refresh_text_index = (refresh_text_index+1) % ftext.s.length();
+        const char* str = ftext.s.c_str();
+        if (str[refresh_text_pos]) {
+            uint32_t c = '\0';
+            uint32_t nc = '\0';
+            uint16_t num_bytes_c = 0;
+            num_bytes_c = get_UTF8_char(str+refresh_text_pos, c);
+            (void)get_UTF8_char(str+((refresh_text_pos+num_bytes_c) % ftext.s.length()), nc);
+            if(shift_char(c, nc)) {
+                refresh_text_pos = (refresh_text_pos + num_bytes_c) % ftext.s.length();
+            }
+        }
+        else {
+            // given empty string?
+            // reinit likely will not help, but at least it is a fresh start.
+            refresh_text_pos = 0;
+            shift_char_column = 0;
         }
     }
 }
@@ -1377,6 +1393,31 @@ bool ReAnimator::load_image_from_file(String fs_path, String* message) {
 // ++++++++++++++++++++++++++++++
 // ++++++++++++ TEXT ++++++++++++
 // ++++++++++++++++++++++++++++++
+uint16_t ReAnimator::get_UTF8_char(const char* str, uint32_t& codepoint) {
+    uint8_t byte = *str;
+    if (byte < 0x80) {
+        codepoint = byte;
+        return 1;
+    }
+    else if ((byte & 0xE0) == 0xC0) {
+        codepoint = ((str[0] & 0x1F) << 6) | (str[1] & 0x3F);
+        return 2;
+    }
+    else if ((byte & 0xF0) == 0xE0) {
+        codepoint = ((str[0] & 0x0F) << 12) | ((str[1] & 0x3F) << 6) | (str[2] & 0x3F);
+        return 3;
+    }
+    else if ((byte & 0xF8) == 0xF0) {
+        codepoint = ((str[0] & 0x07) << 18) | ((str[1] & 0x3F) << 12) | ((str[2] & 0x3F) << 6) | (str[3] & 0x3F);
+        return 4;
+    }
+    else {
+        codepoint = 0xFFFD; // Replacement character
+        return 1;
+    }
+}
+
+
 const uint8_t* ReAnimator::get_bitmap(const lv_font_t* f, uint32_t c, uint32_t nc, uint32_t* full_width, uint16_t* box_w, uint16_t* box_h, int16_t* offset_y) {
     // comments from lv_font_fmt_txt.h
     //uint32_t bitmap_index;          //< Start index of the bitmap. A font can be max 4 GB.
@@ -1443,6 +1484,10 @@ bool ReAnimator::shift_char(uint32_t c, uint32_t nc) {
     int16_t offset_y = 0;
 
     const uint8_t* glyph = get_bitmap(font, c, nc, &full_width, &box_w, &box_h, &offset_y);
+    if (!glyph) {
+        DEBUG_PRINTLN("character not in font. trying to replace with space character.");
+        glyph = get_bitmap(font, ' ', nc, &full_width, &box_w, &box_h, &offset_y);
+    }
     if (glyph) {
         uint16_t glyph_row = 0;
         for (uint8_t i = 0; i < MTX_NUM_ROWS; i++) {
@@ -1491,6 +1536,9 @@ bool ReAnimator::shift_char(uint32_t c, uint32_t nc) {
             finished_shifting = true; // character fully shifted onto matrix.
             shift_char_tracking = 1; // add tracking (spacing between letters) on next call
         }
+    }
+    else {
+        DEBUG_PRINTLN("space character not in font.");
     }
 
     return finished_shifting;
