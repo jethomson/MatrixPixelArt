@@ -167,7 +167,7 @@ class ReAnimator {
     const lv_font_t* font;
 
     struct fstring {
-      String s;
+      std::string s;
       int16_t line_height = 0;
       int16_t baseline = 0;
       int16_t vmargin = 0; // for centering text vertically
@@ -175,7 +175,7 @@ class ReAnimator {
     } ftext;
 
 
-    uint16_t refresh_text_index;
+    uint16_t refresh_text_pos;
     uint8_t shift_char_column;
     uint8_t shift_char_tracking; // spacing between letters
 
@@ -224,7 +224,7 @@ class ReAnimator {
     void set_image(String fs_path, uint32_t duration = REFRESH_INTERVAL, String* message = nullptr);
     static void load_image_from_queue(void* parameter);
     int8_t get_image_status();
-    void set_text(String s);
+    void set_text(std::string t);
     void set_info(Info id);
 
     void set_color(CRGB *color);
@@ -285,6 +285,7 @@ class ReAnimator {
 // ++++++++++++++++++++++++++++++
 // ++++++++++++ TEXT ++++++++++++
 // ++++++++++++++++++++++++++++++
+    uint16_t get_UTF8_char(const char* str, uint32_t& codepoint);
     const uint8_t* get_bitmap(const lv_font_t* f, uint32_t c, uint32_t nc = '\0', uint32_t* full_width = nullptr, uint16_t* box_w = nullptr, uint16_t* box_h = nullptr, int16_t* offset_y = nullptr);
     bool shift_char(uint32_t c, uint32_t nc = '\0');
 
