@@ -47,9 +47,13 @@ enum Info {TIME_12HR = 0, TIME_24HR = 1, DATE_MMDD = 2, DATE_DDMM = 3, TIME_12HR
 
 
 class ReAnimator {
+    // any changes to these values here will be overwritten
+    // these values are set in the frontend
+    // and their defaults are set in platformio.ini
     uint8_t MTX_NUM_COLS = 0;
     uint8_t MTX_NUM_ROWS = 0;
     uint16_t MTX_NUM_LEDS = 0;
+    uint8_t MTX_ORIENTATION = 0;
 
     CRGBA* leds;
 
@@ -195,7 +199,7 @@ class ReAnimator {
     LayerType _ltype;
     uint32_t display_duration; // amount of time image is shown for if it is part of an animation
 
-    ReAnimator(uint8_t num_rows, uint8_t num_cols);
+    ReAnimator(uint8_t num_rows, uint8_t num_cols, uint8_t orientation);
     ~ReAnimator() { delete[] leds; leds = nullptr; delete[] pm_puck_dots; pm_puck_dots = nullptr;}
 
     void setup(LayerType ltype, int8_t id);

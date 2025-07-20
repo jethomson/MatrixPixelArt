@@ -55,9 +55,14 @@ bool dns_up = false;
 IPAddress IP;
 String mdns_host;
 
+// any changes to these values here will be overwritten
+// these values are set in the frontend
+// and their defaults are set in platformio.ini
 uint8_t NUM_ROWS = 0;
 uint8_t NUM_COLS = 0;
 uint16_t NUM_LEDS = 0;
+uint8_t ORIENTATION = 0;
+
 CRGB* leds; // output
 
 
@@ -657,7 +662,7 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
   }
 
   if (layers[lnum] == nullptr) {
-    layers[lnum] = new ReAnimator(NUM_ROWS, NUM_COLS);
+    layers[lnum] = new ReAnimator(NUM_ROWS, NUM_COLS, ORIENTATION);
   }
 
   // sane defaults in case data is missing.
@@ -793,7 +798,7 @@ bool load_image_solo(String id) {
   }
 
   if (layers[0] == nullptr) {
-    layers[0] = new ReAnimator(NUM_ROWS, NUM_COLS);
+    layers[0] = new ReAnimator(NUM_ROWS, NUM_COLS, ORIENTATION);
     layers[0]->setup(Image_t, -2);
     retval = load_image_to_layer(0, id);
     if (retval) {
@@ -1392,6 +1397,8 @@ void web_server_initiate(void) {
     config += preferences.getUChar("rows", DEFAULT_NUM_ROWS);
     config += "\",\"columns\":\"";
     config += preferences.getUChar("columns", DEFAULT_NUM_ROWS);
+    config += "\",\"orientation\":\"";
+    config += preferences.getUChar("orientation", DEFAULT_ORIENTATION);
     config += "\"}";
     preferences.end();
     DEBUG_PRINTLN(config);
@@ -1439,6 +1446,14 @@ void web_server_initiate(void) {
       if (0 < num_cols && num_cols <= 32) {
         preferences.putUChar("columns", num_cols);
       }
+    }
+
+    if (request->hasParam("orientation", true)) {
+      AsyncWebParameter* p = request->getParam("orientation", true);
+      uint8_t orientation = p->value().toInt();
+      Serial.print("orientation saved: ");
+      Serial.println(orientation);
+      preferences.putUChar("orientation", orientation);
     }
 
     if (request->hasParam("iana_tz", true)) {
@@ -1597,6 +1612,7 @@ void setup() {
   preferences.begin("config", false);
   NUM_ROWS = preferences.getUChar("rows", DEFAULT_NUM_ROWS);
   NUM_COLS = preferences.getUChar("columns", DEFAULT_NUM_COLS);
+  ORIENTATION = preferences.getUChar("orientation", DEFAULT_ORIENTATION);
   NUM_LEDS = NUM_ROWS*NUM_COLS;
   leds = (CRGB*)malloc(NUM_ROWS*NUM_COLS*sizeof(CRGB));
 

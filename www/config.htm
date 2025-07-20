@@ -154,12 +154,17 @@
     <input id="mdns_host" type="text" form="save_config" name="mdns_host" autocapitalize="none" maxlength="30" autocomplete="off">
     <label>.local</label>
     
-    <label class="item-a">Matrix Size</label>
+    <label class="item-a">Matrix</label>
     <section id="dimensions" style="text-align:left">
     <input id="rows" type="number" form="save_config" name="rows" pattern="[0-9]*" min=1 maxlength="4" title="Number of rows or height of matrix">
     <label> x </label>
     <input id="columns" type="number" form="save_config" name="columns" pattern="[0-9]*" min=1 maxlength="4" title="Number of columns or width of matrix">
     <label>(rows x columns)</label>
+    <select id="orientation" form="save_config" name="orientation" required>
+      <option value="" disabled>Select orientation</option>
+      <option value=0 selected autocomplete="off">Native</option>
+      <option value=1>Rotated 90° Counterclockwise</option>
+    </select>
     </section>
     <label class="item-a">IANA Timezone</label>
     <input id="iana_tz" class="wide-input" form="save_config" name="iana_tz" placeholder="enter IANA timezone here" onchange="handle_iana_tz_change(false)" autocomplete="off">
@@ -331,6 +336,15 @@ async function get_config() {
   document.getElementById("mdns_host").value = data["mdns_host"];
   document.getElementById("rows").value = data["rows"];
   document.getElementById("columns").value = data["columns"];
+
+  const el_orientation = document.getElementById("orientation");
+  for (let i = 0; i < el_orientation.options.length; i++) {
+    if (el_orientation.options[i].value === data["orientation"]) {
+      el_orientation.options[i].selected = true;
+      break;
+    }
+  }
+
 }
 
 async function run() {

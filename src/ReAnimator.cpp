@@ -64,7 +64,7 @@ inline void cb_dbg_print(uint32_t i) {
   DEBUG_PRINTLN(i);
 }
 
-ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
+ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols, uint8_t orientation) : freezer(*this) {
     set_lvfmcb(&cb_dbg_print);
 
     // it should be possible to use ReAnimator with matrices of different sizes in the same project
@@ -72,6 +72,7 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
     MTX_NUM_ROWS = num_rows,
     MTX_NUM_COLS = num_cols;
     MTX_NUM_LEDS = num_rows*num_cols;
+    MTX_ORIENTATION = orientation;
 
     // abort() is called if out of memory so no point in trying to check?
     leds = new CRGBA[MTX_NUM_LEDS];
@@ -691,8 +692,8 @@ CRGBA ReAnimator::get_pixel(uint16_t i) {
     //CRGBA pixel_out = 0xFF000000; // if black with no transparency is used it creates a sort of spotlight effect
     CRGBA pixel_out = CRGBA::Transparent;
 
-    //if (ROT90) {
-    if (true) {
+    if (MTX_ORIENTATION == 1) {
+        // rotated 90 degrees counterclockwise
         Point p;
         Point q;
         p = serp2cart_native(i);
@@ -1457,7 +1458,6 @@ const uint8_t* ReAnimator::get_bitmap(const lv_font_t* f, uint32_t c, uint32_t n
     //int16_t ofs_x;                  //< x offset of the bounding box
     //int16_t ofs_y;                  //< y offset of the bounding box. Measured from the top of the line
     lv_font_glyph_dsc_t g;
-    Serial.println(c);
     bool g_ret = lv_font_get_glyph_dsc(f, &g, c, nc);
     if (g_ret && g.gid.index) {
         lv_font_fmt_txt_dsc_t* fdsc = (lv_font_fmt_txt_dsc_t*)f->dsc;
