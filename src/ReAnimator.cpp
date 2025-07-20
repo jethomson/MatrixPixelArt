@@ -44,8 +44,15 @@
 // pattern forward from right to left.
 #define LEFT_TO_RIGHT_IS_FORWARD true
 
+#if FONT_TYPE == 2
 //LV_FONT_DECLARE(ascii_sector_12); //OR use extern lv_font_t ascii_sector_12;
 extern lv_font_t ascii_sector_12;
+extern lv_font_t fivexfive_10;
+#elif FONT_TYPE == 1
+extern lv_font_t ascii_sector_12;
+#elif FONT_TYPE == 0
+extern lv_font_t fivexfive_10;
+#endif
 
 //const char* timezone = "EST5EDT,M3.2.0,M11.1.0";
 
@@ -154,7 +161,18 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols) : freezer(*this) {
     image_queued_time = millis();
     display_duration = REFRESH_INTERVAL;
 
-    font = &ascii_sector_12;
+#if FONT_TYPE == 2
+    if (MTX_NUM_ROWS <= 8) {
+        font = &fivexfive_10;
+    }
+    else {
+        font = &ascii_sector_12;
+    }
+#elif FONT_TYPE == 1
+    font = &ascii_sector_12; // regular size font for displays with more rows
+#elif FONT_TYPE == 0
+    font = &fivexfive_10;  // smaller size font for displays with fewer rows
+#endif
 
     refresh_text_pos = 0;
     shift_char_column = 0;

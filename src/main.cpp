@@ -21,15 +21,6 @@
 #include "project.h"
 #include "ReAnimator.h"
 
-#define WIFI_CONNECT_TIMEOUT 10000 // milliseconds
-#define SOFT_AP_SSID "PixelArt"
-#define MDNS_HOSTNAME "pixelart"
-
-// these values are used if the number of rows and columns of the LED matrix are not provided
-// on the configuration page of the frontend
-#define DEFAULT_NUM_ROWS 16
-#define DEFAULT_NUM_COLS 16
-
 #define DATA_PIN 16
 #define COLOR_ORDER GRB
 
