@@ -216,7 +216,8 @@ async function save() {
         }
 
         //stringify() wraps numbers in quotes so wrap numbers in !! to make it easy to remove the quotes.
-        //any number that you want to represented as a number in json should have the value set above here. 
+        //any number that you want to represented as a number in json should have the value set above this
+        //code block
         if (value && !isNaN(value)) {
           value = "!!"+value+"!!";
         }
@@ -232,7 +233,10 @@ async function save() {
 
         // writing
         if (ltype === "w" && key === "w") {
-          value = encodeURIComponent(el_key.value); // text can have special characters, so need to encode them.
+          // % and & will not work unless encodeURIComponent() is called when setting the body variable
+          // value = encodeURIComponent(el_key.value) used to be in this code block
+          // but that caused issues with JSON.stringify() not escaping characters.
+          value = el_key.value;
         }
 
         if (value) {
@@ -243,12 +247,17 @@ async function save() {
       comp_dict["l"].push(lobj);
     }
 
+    // stringify escapes characters like " and \, so using them in a text message should not be a problem.
     let json = JSON.stringify(comp_dict);
     const regex = /"!!(-?[0-9]+\.{0,1}[0-9]*)!!"/g 
     json = json.replace(regex, '$1')
 
-    console.log(`t=${type}&id=${cm_id}&json=` + json);
-
+    // I have seen conflicting info on how application/x-www-form-urlencoded works.
+    // It seems like % and & in a text message within the json variable should be automatically encoded,
+    // but they are not. Using encodeURIComponent() fixes that problem.
+    // Perhaps the data has to actually come from form elements to be encoded automatically.
+    let body = `t=${type}&id=${cm_id}&json=${encodeURIComponent(json)}`;
+    console.log(body);
 
     let success = false;
     let sb = document.getElementById("saveSvg");
@@ -263,7 +272,7 @@ async function save() {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"
         },
-        body: `t=${type}&id=${cm_id}&json=` + json
+        body: body
       });
       if (!response.ok) {
         throw new Error(`Error saving ${id}`);
@@ -471,6 +480,7 @@ async function load_composite(el_select) {
 
     if (typeof layer["w"] === "string") {
       let writing = document.getElementById(`l${i}w`);
+      console.log(layer["w"]);
       writing.value = layer["w"];
     }
   }
