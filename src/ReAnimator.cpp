@@ -32,17 +32,7 @@
 #include <StreamUtils.h>
 
 
-// Conventions
-// -----------
-// Forward means a directional pattern moves away from pixel 0 and toward the last pixel in the strip.
-// Backward means a directional pattern moves toward pixel 0 and away from the last pixel in the strip.
-// If LEFT_TO_RIGHT_IS_FORWARD is true then pixel 0 is the leftmost pixel as seen by the viewer (i.e. the viewer's left),
-// pushing a right arrow button moves a pattern forward from left to right, and pushing a left arrow button moves a 
-// pattern backward from right to left.
-// If LEFT_TO_RIGHT_IS_FORWARD is false then pixel 0 is the rightmost pixel as seen by the viewer (i.e. the viewer's right),
-// pushing a right arrow button moves a pattern backward from left to right, and pushing a left arrow button moves a 
-// pattern forward from right to left.
-#define LEFT_TO_RIGHT_IS_FORWARD true
+#define DEFAULT_PATTERN_DIRECTION true
 
 #if FONT_TYPE == 2
 //LV_FONT_DECLARE(ascii_sector_12); //OR use extern lv_font_t ascii_sector_12;
@@ -99,8 +89,7 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols, uint8_t orientation) 
     transient_overlay = NO_OVERLAY;
     persistent_overlay = NO_OVERLAY;
 
-    // direction indicates why point the leading pixel of a pattern advances toward: end of strip or beginning of strip.
-#if !defined(LEFT_TO_RIGHT_IS_FORWARD) || LEFT_TO_RIGHT_IS_FORWARD
+#if !defined(DEFAULT_PATTERN_DIRECTION) || DEFAULT_PATTERN_DIRECTION
     direction_fp = &ReAnimator::forwards;
     antidirection_fp = &ReAnimator::backwards;
 #else
@@ -179,7 +168,7 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols, uint8_t orientation) 
     shift_char_column = 0;
     shift_char_tracking = 0; // spacing between letters
 
-    // heading indicates which direction an object (image, patter, text, etc.) displayed on the matrix moves
+    // heading indicates which direction an object (image, pattern, text, etc.) displayed on the matrix moves
     heading = 0;
     t_initial = true;
     t_visible = false;
@@ -617,6 +606,8 @@ void ReAnimator::set_info(Info type) {
 void ReAnimator::set_color(CRGB *color) {
   rgb = color;
   CHSV chsv = rgb2hsv_approximate(*color);
+  // if color is 0x000000 (black) then hue will be 0 which is red when CHSV(hue, 255, 255)
+  // for the patterns that use hue it does not make sense for them to use black anyway
   hue = chsv.h;
 }
 
@@ -650,7 +641,9 @@ void ReAnimator::clear() {
 void ReAnimator::reanimate() {
     // some patterns rely on hue. if rgb is dynamic, it is ever changing, so hue has to be updated to reflect the current rgb value.
     CHSV chsv = rgb2hsv_approximate(*rgb);
-    hue = chsv.h; // !!BUG!! if color is 0x000000 (black) then hue will be 0 which is red when CHSV(hue, 255, 255)
+    // if color is 0x000000 (black) then hue will be 0 which is red when CHSV(hue, 255, 255)
+    // for the patterns that use hue it does not make sense for them to use black anyway
+    hue = chsv.h;
 
     if (autocycle_enabled) {
         autocycle();
@@ -711,7 +704,9 @@ CRGBA ReAnimator::get_pixel(uint16_t i) {
         // this means the values sent from the converter page do not have the exact same RGB values as the source image.
         // this if condition accepts values that are similar to the proxy_color.
         //if ( _ltype == Image_t && proxy_color_set && (abs(pixel_out.r - proxy_color.r) + abs(pixel_out.g - proxy_color.g) + abs(pixel_out.b - proxy_color.b) < 7) ) {
-        // a workaround was found for the converter page such that the data does not get farbled.
+        // a workaround was found for the converter page code such that the data does not get farbled, but keeping the above
+        // if statement in case it is useful in the future.
+
         if ( _ltype == Image_t && proxy_color_set && pixel_out == proxy_color ) {
             pixel_out = *rgb;
             pixel_out.a = leds[ti].alpha;
@@ -770,7 +765,7 @@ int8_t ReAnimator::run_pattern(Pattern pattern) {
             accelerate_decelerate_pattern(30, 2, 1000, 3, &ReAnimator::running_lights, dfp);
             break;
         case SHOOTING_STAR:
-            //if one star traverses all the LEDs (worst case) and the star moves one LED ever draw_interval
+            //if one star traverses all the LEDs (worst case) and the star moves one LED every draw_interval
             //then it takes MTX_NUM_LEDS*draw_interval for one star sequence to be completely drawn in milliseconds
             //draw_time = MTX_NUM_LEDS*draw_interval [ms]
             //if we want to draw N stars per minute [spm] then N * draw_time must be less than 60000 [ms]
@@ -780,7 +775,6 @@ int8_t ReAnimator::run_pattern(Pattern pattern) {
             //50[spm]*52[LEDs]*5[ms] = 13000[ms]
             //(60000-13000)/50 = 940 [ms] time between stars
             //shooting_star(5, 5, 40, 50, dfp); // original
-
 
             //27[spm]*256[LEDs]*5[ms] = 34560[ms]
             //(60000-34560)/27 = 942 [ms] time between stars
@@ -1172,9 +1166,9 @@ void ReAnimator::puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uin
             pm_speed_jump_cnt = 0;
 
             // the power pellet must be at least at led[48] so the pattern completes correctly
-            // 48 is close to the beginning though and that leaves a lot of boring animation of
-            // just puck-man eating puck dots, so it is better to put the power pellet closer to
-            // the end.
+            // 48 is close to the beginning though and if he easts the pellet early that leaves
+            // a lot of boring animation of just puck-man eating puck dots, so it is better to
+            // put the power pellet closer to the end.
             //pm_power_pellet_pos = 48;
             // the power pellet must be at an even led so multiply by 2.
             // power pellet falls between 60% and 80% of the length of LEDs
@@ -1292,7 +1286,7 @@ void ReAnimator::rain(uint16_t draw_interval) {
     }
 }
 
-
+// this really only looks good when a Dynamic color is chosen
 void ReAnimator::waterfall(uint16_t draw_interval) {
     if (is_wait_over(draw_interval)) {
         fadeToTransparentBy(leds, MTX_NUM_LEDS, 40);
@@ -1443,7 +1437,7 @@ uint16_t ReAnimator::get_UTF8_char(const char* str, uint32_t& codepoint) {
         return 4;
     }
     else {
-        codepoint = 0xFFFD; // Replacement character
+        codepoint = 0xFFFD; // unicode specific replacement character
         return 1;
     }
 }
@@ -1539,8 +1533,8 @@ bool ReAnimator::shift_char(uint32_t c, uint32_t nc) {
             // instead of dimming the pixel color to match the glyph's brightness we use transparency
             // where a transparency of 0 represents the glyph's negative space
             uint8_t alpha = 0;
-            // do not start drawning the glyph until we are on the right line to ensure the glyph is in the
-            // orrect position relative to the other characters: MTX_NUM_ROWS-box_h-offset_y-ftext.baseline
+            // do not start drawing the glyph until we are on the right line to ensure the glyph is in the
+            // correct position relative to the other characters: MTX_NUM_ROWS-box_h-offset_y-ftext.baseline
             // and that the text is vertically centered: ftext.vmargin
             if (i >= (MTX_NUM_ROWS-box_h-offset_y-ftext.baseline) - ftext.vmargin && glyph_row < box_h) {
                 alpha = glyph[(glyph_row*box_w)+shift_char_column];
@@ -1558,7 +1552,7 @@ bool ReAnimator::shift_char(uint32_t c, uint32_t nc) {
         // see lv_font_get_bitmap_fmt_txt() in lv_font_minimal.c
         // however kerning does not appear to be implemented for fonts output by the online font converter
         // using just the glyph's box_w gives better results
-        // whitespace (just space U+0020?) glyphs have a box_w of 0 so their full width must be used instead
+        // whitespace (just space U+0020 ?) glyphs have a box_w of 0 so their full width must be used instead
         // however you will likely get better results if you manually edit the font file to set the box_w of
         // whitespace characters to be closer to the average character width.
         uint16_t shift_width = box_w ? box_w : full_width;
@@ -1773,7 +1767,7 @@ uint16_t ReAnimator::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8
     uint8_t gapx = (gap == -1) ? MTX_NUM_COLS : gap; // if gap is -1 set gap to MTX_NUM_COLS so that the input only appears in one place but will still loop around
     uint8_t gapy = (gap == -1) ? MTX_NUM_ROWS : gap; // if gap is -1 set gap to MTX_NUM_ROWS so that the input only appears in one place but will still loop around
 
-    uint8_t ux = (sx > 0) ? MTX_NUM_COLS-1-p1.x: p1.x; // flip heading output travels
+    uint8_t ux = (sx > 0) ? MTX_NUM_COLS-1-p1.x: p1.x; // flip heading that the output travels towards
     uint8_t uy = (sy > 0) ? MTX_NUM_ROWS-1-p1.y: p1.y;
 
     int8_t vx = ux+dx; // shift input over into output by dx
@@ -1796,7 +1790,7 @@ uint16_t ReAnimator::translate(uint16_t i, int8_t xi, int8_t yi, int8_t sx, int8
     // previously checked for end of data like this: if (i == MTX_NUM_LEDS-1)
     // but transforming i to a different coordinate system results in i no longer
     // being sequential so i == MTX_NUM_LEDS-1 may come up before all of the data
-    // has been translated. therefore we should count the pixels instead.
+    // has been passed to translate(). therefore we should count the pixels instead.
     t_pixel_count++;
     // not sure if I like stopping movement when frozen.
     //if (t_pixle_count == MTX_NUM_LEDS && !freezer.is_frozen()) {

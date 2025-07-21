@@ -1568,7 +1568,7 @@ void show(bool refresh_now) {
         if (first_layer) {
           first_layer = false;
           refresh_now = false;
-          // data in leds[] is written to a black background for first layer draw on top of
+          // data in leds[] is written to a black background for first layer
           // tried white and black bitmasks but clear() is around 10-50 microseconds faster
           FastLED.clear();
         }
@@ -1701,8 +1701,8 @@ void setup() {
   uint8_t attempt_cnt = 0;
   // we want the code to give up because having the time is not essential
   // the time is needed if a composite has a time effect but there is no guarantee a time effect is used
-  // having the correct time is also useful debug logging but not essential
-  // if a time effect is used getLocalTime() will be called which may yet result in fetching the ntp time
+  // having the correct time is also useful for debug logging but not essential
+  // if a time effect is used getLocalTime() will be called which might succeed in fetching the ntp time
   // even after this block has given up.
   uint8_t give_up_after = 2; // seconds (approximately)
   while (false) {  // temporarily turn off time lookup for quicker testing
