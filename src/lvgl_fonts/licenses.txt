@@ -1,0 +1,29 @@
+Adventurer
+by Brian J Smith
+license : (Creative Commons Attribution)
+https://www.pentacom.jp/pentacom/bitfontmaker2/gallery/?id=195
+
+ASCII Sector 16x16 Tileset
+by c3y99
+license: FontStruct Non-Commercial License
+https://fontstruct.com/fontstructions/show/2414528/asciisec-main-st-1-1-1
+
+Fancy Pixels
+by Clockwork Prince
+license : (Creative Commons NonCommercial)
+https://www.pentacom.jp/pentacom/bitfontmaker2/gallery/?id=3287
+
+NESultra by iljalicious
+license : Public Domain
+https://www.pentacom.jp/pentacom/bitfontmaker2/gallery/?id=3121
+
+
+Public Pixel
+by GGBotNet
+license : Creative Commons Zero v1.0 Universal
+https://ggbot.itch.io/public-pixel-font
+
+X11 fonts
+license : X11 License
+https://spdx.org/licenses/X11.html
+https://github.com/gamache/x11-fonts-ttf

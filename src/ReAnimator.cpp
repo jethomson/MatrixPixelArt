@@ -34,14 +34,14 @@
 
 #define DEFAULT_PATTERN_DIRECTION true
 
-#if FONT_TYPE == 2
-//LV_FONT_DECLARE(ascii_sector_12); //OR use extern lv_font_t ascii_sector_12;
-extern lv_font_t ascii_sector_12;
-extern lv_font_t fivexfive_10;
-#elif FONT_TYPE == 1
-extern lv_font_t ascii_sector_12;
-#elif FONT_TYPE == 0
-extern lv_font_t fivexfive_10;
+#if FONT_OPTION == 3
+//extern lv_font_t ascii_sector_12; // equivalent to LV_FONT_DECLARE(ascii_sector_12);
+extern lv_font_t font_standard; // equivalent to LV_FONT_DECLARE(font_standard);
+extern lv_font_t font_small;
+#elif FONT_OPTION == 2
+extern lv_font_t font_standard;
+#elif FONT_OPTION == 1 || FONT_OPTION == 0
+extern lv_font_t font_small;
 #endif
 
 //const char* timezone = "EST5EDT,M3.2.0,M11.1.0";
@@ -151,19 +151,25 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols, uint8_t orientation) 
     image_queued_time = millis();
     display_duration = REFRESH_INTERVAL;
 
-#if FONT_TYPE == 2
+#if FONT_OPTION == 3
     if (MTX_NUM_ROWS <= 8) {
-        font = &fivexfive_10;
+        font = &font_small;  // smaller size font for displays with fewer rows
     }
     else {
-        font = &ascii_sector_12;
+        font = &font_standard; // standard size font for displays with more rows
     }
-#elif FONT_TYPE == 1
-    font = &ascii_sector_12; // regular size font for displays with more rows
-#elif FONT_TYPE == 0
-    font = &fivexfive_10;  // smaller size font for displays with fewer rows
+#elif FONT_OPTION == 2
+    font = &font_standard; // standar size font for displays with more rows
+#elif FONT_OPTION == 1 || FONT_OPTION == 0
+    font = &font_small;  // smaller size font for displays with fewer rows
 #endif
 
+    font_scale = 1;
+    if (FONT_OPTION == 0 && MTX_NUM_ROWS >= 16) {
+        font_scale = 2;
+    }
+
+    glyph_draw_buf = nullptr;
     refresh_text_pos = 0;
     shift_char_column = 0;
     shift_char_tracking = 0; // spacing between letters
@@ -555,10 +561,14 @@ void ReAnimator::set_text(std::string t) {
     shift_char_column = 0; // start at the beginning of a glyph
 
     ftext.s = t;
+    ftext.line_height = 0;
+    ftext.base_line = 0;
+    ftext.vmargin = 0;
+    ftext.tracking = 1;
     const char *str = t.c_str();
 
-    int16_t max_height_above_baseline = 0;
-    // loop through the string to maximum height above the baseline so the text can be centered properly
+    int16_t max_height_glyph = 0;
+    // loop through the string to maximum height above the base_line so the text can be centered properly
     while (*str) {
         uint32_t c;
         uint16_t num_bytes_c = get_UTF8_char(str, c);
@@ -568,11 +578,16 @@ void ReAnimator::set_text(std::string t) {
 
         const uint8_t* glyph = get_bitmap(font, c, '\0', nullptr, nullptr, &box_h, &offset_y);
         if (glyph && box_h > 0) {
-            max_height_above_baseline = max((int16_t)(box_h+offset_y), max_height_above_baseline);
-            ftext.baseline = max((int16_t)(-offset_y), ftext.baseline);
+            box_h = font_scale*box_h;
+            offset_y = font_scale*offset_y;
+            max_height_glyph = max((int16_t)(box_h+offset_y), max_height_glyph);
+            // base_line is bottom of lowest reaching glyph. this matches terminology used by LVGL Font Converter. it differs from the concept of a font's baseline
+            ftext.base_line = max((int16_t)(-offset_y), ftext.base_line);
         }
     }
-    ftext.line_height = max_height_above_baseline+ftext.baseline;
+    // this is the height from the bottom of the lowest reaching glyph to the top of the highest reaching glyph
+    // this is the a meausre for this particular text not the entire font
+    ftext.line_height = max_height_glyph+ftext.base_line;
     ftext.vmargin = (MTX_NUM_ROWS - ftext.line_height)/2;
 }
 
@@ -1456,7 +1471,40 @@ const uint8_t* ReAnimator::get_bitmap(const lv_font_t* f, uint32_t c, uint32_t n
     if (g_ret && g.gid.index) {
         lv_font_fmt_txt_dsc_t* fdsc = (lv_font_fmt_txt_dsc_t*)f->dsc;
         const lv_font_fmt_txt_glyph_dsc_t* gdsc = &fdsc->glyph_dsc[g.gid.index];
-        const uint8_t* glyph = &fdsc->glyph_bitmap[gdsc->bitmap_index];
+
+        uint8_t width = gdsc->box_w;
+        uint8_t height = gdsc->box_h;
+
+        /*
+        DEBUG_PRINT("bpp: ");
+        DEBUG_PRINT(fdsc->bpp);
+        DEBUG_PRINT(", ");
+        DEBUG_PRINT(" width: ");
+        DEBUG_PRINT(width);
+        DEBUG_PRINT(", ");
+        DEBUG_PRINT(" height: ");
+        DEBUG_PRINTLN(height);
+        */
+
+        uint16_t bufsize = width*height;
+        if (glyph_draw_buf != nullptr) {
+            delete glyph_draw_buf->data;
+            glyph_draw_buf->data = nullptr;
+            delete glyph_draw_buf;
+            glyph_draw_buf = nullptr;
+        }
+
+        glyph_draw_buf = new lv_draw_buf_t;
+        glyph_draw_buf->data = new uint8_t[bufsize];
+        for (uint16_t i = 0; i < bufsize; i++) {
+          (glyph_draw_buf->data)[i] = 0;
+        }
+
+        font->get_glyph_bitmap(&g, glyph_draw_buf);
+        uint8_t* glyph = glyph_draw_buf->data;
+
+        // old approach works only works for 8 bpp fonts
+        //const uint8_t* glyph = &fdsc->glyph_bitmap[gdsc->bitmap_index];
 
         if (full_width != nullptr) {
             // g.adv_w is not the same as the adv_w font in the glyph descriptor in the font file
@@ -1514,32 +1562,42 @@ bool ReAnimator::shift_char(uint32_t c, uint32_t nc) {
         glyph = get_bitmap(font, ' ', nc, &full_width, &box_w, &box_h, &offset_y);
     }
     if (glyph) {
-        uint16_t glyph_row = 0;
-        for (uint8_t i = 0; i < MTX_NUM_ROWS; i++) {
-            for (uint8_t j = 0; j < MTX_NUM_COLS-1; j++) {
-                uint8_t k = (MTX_NUM_COLS-1)-j;
+        uint16_t sw = font_scale*box_w;
+        uint16_t sfw = font_scale*full_width;
+        uint16_t sh = font_scale*box_h;
+        int16_t soy = font_scale*offset_y;
+        uint16_t gi = 0;
+
+        for (uint8_t mi = 0; mi < MTX_NUM_ROWS; mi++) {
+            for (uint8_t mj = 0; mj < MTX_NUM_COLS-1; mj++) {
+                uint8_t mk = (MTX_NUM_COLS-1)-mj;
                 Point p1;
                 Point p2;
-                p1.x = k;
-                p1.y = i;
-                p2.x = k-1;
-                p2.y = i;
+                p1.x = mk;
+                p1.y = mi;
+                p2.x = mk-1;
+                p2.y = mi;
                 leds[cart2serp(p1)] = leds[cart2serp(p2)];
             }
             Point p;
             p.x = 0;
-            p.y = i;
+            p.y = mi;
 
             // instead of dimming the pixel color to match the glyph's brightness we use transparency
             // where a transparency of 0 represents the glyph's negative space
             uint8_t alpha = 0;
             // do not start drawing the glyph until we are on the right line to ensure the glyph is in the
-            // correct position relative to the other characters: MTX_NUM_ROWS-box_h-offset_y-ftext.baseline
+            // correct position relative to the other characters: MTX_NUM_ROWS-box_h-offset_y-ftext.base_line
             // and that the text is vertically centered: ftext.vmargin
-            if (i >= (MTX_NUM_ROWS-box_h-offset_y-ftext.baseline) - ftext.vmargin && glyph_row < box_h) {
-                alpha = glyph[(glyph_row*box_w)+shift_char_column];
-                glyph_row++;
+            if (mi >= (MTX_NUM_ROWS-sh-soy-ftext.base_line) - ftext.vmargin && gi < sh) {
+                // glyph_row/2 duplicates pixels vertically and shift_char_column/2 duplicates pixels horizontally
+                // basically the values stay the same for 2 iterations: 0, 0, 1, 1, 2, 2, etc.
+                uint16_t glyph_row = gi/font_scale;
+                // box_w is not scaled because we need the unmodified value for indexing into glyph because the bitmap itself is actually left unscaled
+                alpha = glyph[(box_w*glyph_row)+(shift_char_column/font_scale)];
+                gi++;
             }
+
             CRGB pixel = *rgb;
             if (alpha == 0) {
                 pixel = CRGB::Black;
@@ -1548,14 +1606,14 @@ bool ReAnimator::shift_char(uint32_t c, uint32_t nc) {
             leds[cart2serp(p)].a = alpha;
         }
 
-        // full_width should be glyph's adv_w specified in the font file divided by 16 plus kerning
+        // full_width (sfw) should be glyph's adv_w specified in the font file divided by 16 plus kerning
         // see lv_font_get_bitmap_fmt_txt() in lv_font_minimal.c
         // however kerning does not appear to be implemented for fonts output by the online font converter
         // using just the glyph's box_w gives better results
         // whitespace (just space U+0020 ?) glyphs have a box_w of 0 so their full width must be used instead
         // however you will likely get better results if you manually edit the font file to set the box_w of
         // whitespace characters to be closer to the average character width.
-        uint16_t shift_width = box_w ? box_w : full_width;
+        uint16_t shift_width = box_w ? sw : sfw;
         shift_char_column = (shift_char_column+1)%shift_width;
         if (shift_char_column == 0) {
             finished_shifting = true; // character fully shifted onto matrix.

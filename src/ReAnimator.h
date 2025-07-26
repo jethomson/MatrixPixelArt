@@ -169,11 +169,14 @@ class ReAnimator {
     };
 
     const lv_font_t* font;
+    uint8_t font_scale;
+    lv_draw_buf_t * glyph_draw_buf;
 
     struct fstring {
       std::string s;
       int16_t line_height = 0;
-      int16_t baseline = 0;
+      // base_line is bottom of lowest reaching glyph. this matches terminology used by LVGL Font Converter. it differs from the concept of a font's baseline
+      int16_t base_line = 0;
       int16_t vmargin = 0; // for centering text vertically
       uint8_t tracking = 1; // spacing between letters
     } ftext;

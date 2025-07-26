@@ -325,7 +325,7 @@ const void * lv_font_get_bitmap_fmt_txt(lv_font_glyph_dsc_t * g_dsc, lv_draw_buf
  */
 const void * lv_font_get_bitmap_fmt_txt(lv_font_glyph_dsc_t * g_dsc, lv_draw_buf_t * draw_buf)
 {
-    _lvfmcb(42); // example of how to print a number to serial for debugging
+    //_lvfmcb(42); // example of how to print a number to serial for debugging
     const lv_font_t * font = g_dsc->resolved_font;
     uint8_t * bitmap_out = draw_buf->data;
 
