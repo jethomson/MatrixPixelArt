@@ -422,28 +422,6 @@ async function load_composite(el_select) {
     }
 
 
-    //if (!isNaN(layer["c"])) {
-    //  let color_picker = document.getElementById(`l${i}cp`);
-    //  let color_select = document.getElementById(`l${i}c`);
-
-    //  let color = layer["c"];
-    //  let color_type = (color >> 24) & 0xFF;
-    //  color = color & 0x00FFFFFF;
-    //  color = "#" + color.toString(16);
-    //  console.log(`color_type: ${color_type}, color: ${color}`);
-
-    //  color_picker.value = color;
-    //  color_picker.dispatchEvent(new Event('input'));
-
-    //  color_select.selectedIndex = color_type;
-    //  color_select.dispatchEvent(new Event('change'));
-    //  console.log(`color_select selected: ${color_select.selectedIndex}`);
-    //  if (color_select.selectedIndex === 0) {
-    //    console.log(`color_picker value: ${color_picker.value}`);
-    //  }
-    //}
-
-
     if (!isNaN(layer["c"])) {
       let color_picker = document.getElementById(`l${i}cp`);
       let color_select = document.getElementById(`l${i}c`);
@@ -662,7 +640,7 @@ function create_color_options() {
   // complementary colors are placed next to each other
   let color_names = [     "Custom",  "Dynamic 1",  "Dynamic 2",      "White",      "Black",        "Red",       "Aqua",      "Green",    "Magenta",       "Blue",     "Yellow",     "Orange", "Ultramarine",       "Pink",       "Mint"];
   let color_values = ["0xFFFFFF", "1", "2", "0xFFFFFF", "0x000000", "0xFF0000", "0x00FFFF", "0x00FF00", "0xFF00FF", "0x0000FF", "0xFFFF00", "0xFFA500",  "0x005AFF", "0xFFC0CB", "0xC0FFF4"];
-  color_options_html += `      <optgroup label="From Color Picker"><option value="${color_values[0]}">${color_names[0]} (${color_values[0].replace('0x00', '#')})</option></optgroup>\r\n`
+  color_options_html += `      <optgroup label="From Color Picker"><option value="${color_values[0]}">${color_names[0]} (${color_values[0].replace('0x', '#')})</option></optgroup>\r\n`
   color_options_html += `      <optgroup label="Predefined">\r\n`
   //color_options_html += `      <option value="${color_values[1]}" selected="true">${color_names[1]}</option>\r\n`
   for (let i = 1; i < color_names.length; i++) {
