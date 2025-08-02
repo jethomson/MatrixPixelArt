@@ -86,8 +86,8 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols, uint8_t orientation) 
 
     pattern = NO_PATTERN;
     last_pattern = NO_PATTERN;
-    transient_overlay = NO_OVERLAY;
-    persistent_overlay = NO_OVERLAY;
+    transient_accent = NO_ACCENT;
+    persistent_accent = NO_ACCENT;
 
 #if !defined(DEFAULT_PATTERN_DIRECTION) || DEFAULT_PATTERN_DIRECTION
     direction_fp = &ReAnimator::forwards;
@@ -223,7 +223,7 @@ void ReAnimator::setup(LayerType layer_type_in, int8_t id_in) {
         set_flipflop_enabled(false);
 
         set_pattern(NO_PATTERN);
-        set_overlay(NO_OVERLAY, false);
+        set_accent(NO_ACCENT, false);
         set_cb(noop_cb);
 
         image_dequeued = false;
@@ -302,7 +302,7 @@ int8_t ReAnimator::set_pattern(Pattern pattern_in, bool reverse) {
 
 int8_t ReAnimator::set_pattern(Pattern pattern_in, bool reverse_in, bool disable_autocycle_flipflop) {
     Pattern pattern_out;
-    Overlay overlay_out;
+    Accent accent_out;
 
     int8_t retval = 0;
     is_xray = false;
@@ -317,102 +317,102 @@ int8_t ReAnimator::set_pattern(Pattern pattern_in, bool reverse_in, bool disable
             // fall through to next case
         case DYNAMIC_RAINBOW:
             pattern_out = DYNAMIC_RAINBOW;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case ORBIT:
             //o_ff = 240; // one dot. does not not work well for causing glow.
             //o_ff = (94-4*MTX_NUM_COLS > 0) ? (94-4*MTX_NUM_COLS) : 1; // two lines of 16
             o_ff = (94-2*MTX_NUM_COLS > 0) ? (94-2*MTX_NUM_COLS) : 1; // one line of 16
             pattern_out = ORBIT;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case CHECKERBOARD:
             pattern_out = CHECKERBOARD;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case BINARY_SYSTEM:
             pattern_out = BINARY_SYSTEM;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case THEATER_CHASE:
             pattern_out = THEATER_CHASE;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case RUNNING_LIGHTS:
             pattern_out = RUNNING_LIGHTS;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case SHOOTING_STAR:
             pattern_out = SHOOTING_STAR;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case CYLON:
             pattern_out = CYLON;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case SOLID:
             pattern_out = SOLID;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case PENDULUM:
             pattern_out = PENDULUM;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case FUNKY:
             pattern_out = FUNKY;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case RIFFLE:
             pattern_out = RIFFLE;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case SPARKLE:
             pattern_out = SPARKLE;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case WEAVE:
             pattern_out = WEAVE;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case PUCK_MAN:
             pattern_out = PUCK_MAN;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case RAIN:
             pattern_out = RAIN;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case WATERFALL:
             pattern_out = WATERFALL;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case XRAY_SPARKLE:
             is_xray = true;
             pattern_out = XRAY_SPARKLE;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case XRAY_ORBIT:
             is_xray = true;
             o_ff = (94-2*MTX_NUM_COLS > 0) ? (94-2*MTX_NUM_COLS) : 1; // one line of 16
             pattern_out = XRAY_ORBIT;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case XRAY_SCAN:
             is_xray = true;
             //o_ff = (94-MTX_NUM_COLS > 0) ? (94-MTX_NUM_COLS) : 1;
             o_ff = 240;
             pattern_out = XRAY_SCAN;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
         case NO_PATTERN:
             pattern_out = NO_PATTERN;
-            overlay_out = NO_OVERLAY;
+            accent_out = NO_ACCENT;
             break;
     }
 
     last_pattern = pattern;
     pattern = pattern_out;
-    set_overlay(overlay_out, false);
+    set_accent(accent_out, false);
 
     reverse = reverse_in;
 
@@ -436,55 +436,55 @@ int8_t ReAnimator::increment_pattern(bool disable_autocycle_flipflop) {
 
 
 
-Overlay ReAnimator::get_overlay(bool is_persistent) {
+Accent ReAnimator::get_accent(bool is_persistent) {
     if (is_persistent) {
-        return persistent_overlay;
+        return persistent_accent;
     }
     else {
-        return transient_overlay;
+        return transient_accent;
     }
 }
 
 
-int8_t ReAnimator::set_overlay(Overlay overlay_in, bool is_persistent) {
-    Overlay overlay_out;
+int8_t ReAnimator::set_accent(Accent accent_in, bool is_persistent) {
+    Accent accent_out;
     int8_t retval = 0;
 
-    switch(overlay_in) {
+    switch(accent_in) {
         default:
             retval = INT8_MIN;
             // fall through to next case
-        case NO_OVERLAY:
-            overlay_out = NO_OVERLAY;
+        case NO_ACCENT:
+            accent_out = NO_ACCENT;
             break;
         case BREATHING:
-            overlay_out = BREATHING;
+            accent_out = BREATHING;
             break;
         case FLICKER:
-            overlay_out = FLICKER;
+            accent_out = FLICKER;
             break;
         case FROZEN_DECAY:
-            overlay_out = FROZEN_DECAY;
+            accent_out = FROZEN_DECAY;
             break;
     }
 
     if (is_persistent) {
-        persistent_overlay = overlay_out;
+        persistent_accent = accent_out;
     }
     else {
-        transient_overlay = overlay_out;
+        transient_accent = accent_out;
     }
 
     return retval;
 }
 
 
-void ReAnimator::increment_overlay(bool is_persistent) {
+void ReAnimator::increment_accent(bool is_persistent) {
     if (is_persistent) {
-        set_overlay(static_cast<Overlay>(persistent_overlay+1), is_persistent);
+        set_accent(static_cast<Accent>(persistent_accent+1), is_persistent);
     }
     else {
-        set_overlay(static_cast<Overlay>(transient_overlay+1), is_persistent);
+        set_accent(static_cast<Accent>(transient_accent+1), is_persistent);
     }
 }
 
@@ -722,8 +722,8 @@ void ReAnimator::reanimate() {
         }
     }
 
-    apply_overlay(transient_overlay);
-    apply_overlay(persistent_overlay);
+    apply_accent(transient_accent);
+    apply_accent(persistent_accent);
 
     //print_dt();
 }
@@ -877,14 +877,14 @@ int8_t ReAnimator::run_pattern(Pattern pattern) {
 }
 
 
-int8_t ReAnimator::apply_overlay(Overlay overlay) {
+int8_t ReAnimator::apply_accent(Accent accent) {
     int8_t retval = 0;
 
-    switch(overlay) {
+    switch(accent) {
         default:
             retval = INT8_MIN;
             // fall through to next case
-        case NO_OVERLAY:
+        case NO_ACCENT:
             break;
         case BREATHING:
             breathing(10);
@@ -1392,7 +1392,7 @@ void ReAnimator::xray_scan(uint16_t draw_interval, int8_t delta) {
 
 
 // ++++++++++++++++++++++++++++++
-// ++++++++++ OVERLAYS ++++++++++
+// ++++++++++ ACCENTS ++++++++++
 // ++++++++++++++++++++++++++++++
 void ReAnimator::breathing(uint16_t interval) {
     const uint8_t min_brightness = 2;
@@ -2083,8 +2083,8 @@ uint16_t ReAnimator::backwards(uint16_t index) {
 // function with the longer interval will never see its interval has
 // elapsed, therefore a second function that does the same thing as
 // is_wait_over() has been added. This is only a concern when a pattern
-// function and an overlay function are both called at the same time.
-// Patterns should use is_wait_over() and overlays should use finished_waiting(). 
+// function and an accent function are both called at the same time.
+// Patterns should use is_wait_over() and accents should use finished_waiting(). 
 bool ReAnimator::is_wait_over(uint16_t interval) {
     if ( (millis() - iwopm) > interval ) {
         iwopm = millis();

@@ -546,7 +546,7 @@ bool create_patterns_list(void) {
 
 
 bool create_accents_list(void) {
-  static Overlay accent_id = static_cast<Overlay>(0);
+  static Accent accent_id = static_cast<Accent>(0);
   String accent_name;
   bool match = false;
   static bool first = true;
@@ -554,12 +554,12 @@ bool create_accents_list(void) {
   switch(accent_id) {
     default:
         if (accent_id > 49) {
-          accent_id = static_cast<Overlay>(0);
+          accent_id = static_cast<Accent>(0);
           finished = true;
         }
         break;
     // Since accents are an optional, secondary effect it makes sense to present an option to have no accent in the frontend
-    case NO_OVERLAY:
+    case NO_ACCENT:
         accent_name = "None";
         match = true;
         break;
@@ -588,7 +588,7 @@ bool create_accents_list(void) {
     first = false;
   }
   if (!finished) {
-    accent_id = static_cast<Overlay>(accent_id+1);
+    accent_id = static_cast<Accent>(accent_id+1);
   }
   return finished;
 }
@@ -745,7 +745,7 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     if (!load_image_to_layer(lnum, id, image_duration)) {
       return false;
     }
-    layers[lnum]->set_overlay(static_cast<Overlay>(accent_id), true);
+    layers[lnum]->set_accent(static_cast<Accent>(accent_id), true);
     layers[lnum]->set_heading(movement);
   }
   else if (layer_json[F("t")] == "p") {
@@ -753,13 +753,13 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     layers[lnum]->setup(Pattern_t, id);
     layers[lnum]->set_cb(&puck_man_cb);
     layers[lnum]->set_pattern(static_cast<Pattern>(id));
-    layers[lnum]->set_overlay(static_cast<Overlay>(accent_id), true);
+    layers[lnum]->set_accent(static_cast<Accent>(accent_id), true);
     layers[lnum]->set_heading(movement);
   }
   else if (layer_json[F("t")] == "w") {
     layers[lnum]->setup(Text_t, -1);
     layers[lnum]->set_text(layer_json[F("w")]);
-    layers[lnum]->set_overlay(static_cast<Overlay>(accent_id), true);
+    layers[lnum]->set_accent(static_cast<Accent>(accent_id), true);
     // direction is disabled for text in the frontend. setting to default of 0.
     // if it is not set back to 0 on a layer that previously had movement the text
     // will move.
@@ -769,7 +769,7 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
     uint8_t id = layer_json[F("id")];
     layers[lnum]->setup(Info_t, id);
     layers[lnum]->set_info(static_cast<Info>(id));
-    layers[lnum]->set_overlay(static_cast<Overlay>(accent_id), true);
+    layers[lnum]->set_accent(static_cast<Accent>(accent_id), true);
     layers[lnum]->set_heading(movement);
   }
   return true;

@@ -42,7 +42,7 @@ enum Pattern {
               CHECKERBOARD = 60 
              };
 
-enum Overlay {NO_OVERLAY = 0, BREATHING = 1, FLICKER = 2, FROZEN_DECAY = 3};
+enum Accent {NO_ACCENT = 0, BREATHING = 1, FLICKER = 2, FROZEN_DECAY = 3};
 
 enum Info {TIME_12HR = 0, TIME_24HR = 1, DATE_MMDD = 2, DATE_DDMM = 3, TIME_12HR_DATE_MMDD = 4, TIME_24HR_DATE_DDMM = 5};
 
@@ -73,8 +73,8 @@ class ReAnimator {
 
     Pattern pattern;
     Pattern last_pattern;
-    Overlay transient_overlay;
-    Overlay persistent_overlay;
+    Accent transient_accent;
+    Accent persistent_accent;
 
     // direction indicates why point the leading pixel of a pattern advances toward: end of strip or beginning of strip.
     uint16_t(ReAnimator::*direction_fp)(uint16_t);
@@ -231,9 +231,9 @@ class ReAnimator {
     int8_t increment_pattern();
     int8_t increment_pattern(bool disable_autocycle_flipflop);
 
-    Overlay get_overlay(bool is_persistent);
-    int8_t set_overlay(Overlay overlay, bool is_persistent);
-    void increment_overlay(bool is_persistent);
+    Accent get_accent(bool is_persistent);
+    int8_t set_accent(Accent accent, bool is_persistent);
+    void increment_accent(bool is_persistent);
 
     void set_image(String fs_path, uint32_t duration = REFRESH_INTERVAL, String* message = nullptr);
     static void load_image_from_queue(void* parameter);
@@ -253,7 +253,7 @@ class ReAnimator {
 
   private:
     int8_t run_pattern(Pattern pattern);
-    int8_t apply_overlay(Overlay overlay);
+    int8_t apply_accent(Accent accent);
     void refresh_text(uint16_t draw_interval);
     void refresh_info(uint16_t draw_interval);
 
@@ -282,7 +282,7 @@ class ReAnimator {
 
 
 // ++++++++++++++++++++++++++++++
-// ++++++++++ OVERLAYS ++++++++++
+// ++++++++++ ACCENTS ++++++++++
 // ++++++++++++++++++++++++++++++
     void breathing(uint16_t interval);
     void flicker(uint16_t interval);
