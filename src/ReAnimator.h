@@ -36,6 +36,7 @@ enum Pattern {
               WEAVE = 6, PENDULUM = 7, BINARY_SYSTEM = 8, 
               SHOOTING_STAR = 9, PUCK_MAN = 10, CYLON = 11,
               FUNKY = 12, RAIN = 13, WATERFALL = 14,
+              XRAY_SPARKLE = 15, XRAY_ORBIT = 16, XRAY_SCAN = 17,    /* patterns for glow filament diffuser */
               NO_PATTERN = 50,
               THEATER_CHASE = 51,
               CHECKERBOARD = 60 
@@ -57,8 +58,8 @@ class ReAnimator {
 
     CRGBA* leds;
 
-    //LayerType _ltype;
-    int8_t _id ;
+    LayerType layer_type;
+    int8_t id;
 
     uint8_t layer_brightness;
 
@@ -108,6 +109,8 @@ class ReAnimator {
 
     Freezer freezer;
 
+    bool is_xray;
+
     // puck-man variables
     uint16_t pm_puck_man_pos;
     int8_t pm_puck_man_delta;
@@ -127,6 +130,7 @@ class ReAnimator {
 
     uint16_t dr_delta;
     uint16_t o_pos;
+    uint8_t o_ff;
     uint16_t gc_delta;
     uint16_t rl_delta;
     uint16_t ss_start_pos;
@@ -139,6 +143,7 @@ class ReAnimator {
     uint32_t f_t;
     uint32_t r_t;
     uint16_t w_pos;
+    uint16_t xs_offset;
     uint16_t adp_draw_interval;
     int8_t adp_delta;
 
@@ -199,13 +204,12 @@ class ReAnimator {
     uint32_t fwpm ; // previous millis for finished_waiting()
 
   public:
-    LayerType _ltype;
     uint32_t display_duration; // amount of time image is shown for if it is part of an animation
 
     ReAnimator(uint8_t num_rows, uint8_t num_cols, uint8_t orientation);
     ~ReAnimator() { delete[] leds; leds = nullptr; delete[] pm_puck_dots; pm_puck_dots = nullptr;}
 
-    void setup(LayerType ltype, int8_t id);
+    void setup(LayerType layer_type_in, int8_t id_in);
 
     uint32_t get_autocycle_interval();
     void set_autocycle_interval(uint32_t inteval);
@@ -216,6 +220,9 @@ class ReAnimator {
     void set_flipflop_interval(uint32_t inteval);
     bool get_flipflop_enabled();
     void set_flipflop_enabled(bool enabled);
+
+    LayerType get_type();
+    bool is_xray_pattern();
 
     Pattern get_pattern();
     int8_t set_pattern(Pattern pattern);
@@ -232,7 +239,7 @@ class ReAnimator {
     static void load_image_from_queue(void* parameter);
     int8_t get_image_status();
     void set_text(std::string t);
-    void set_info(Info id);
+    void set_info(Info id_in);
 
     void set_color(CRGB *color);
     void set_color(CRGB color);
@@ -265,11 +272,12 @@ class ReAnimator {
     void funky();
     void riffle();
     void bubbles(uint16_t draw_interval);
-    void sparkle(uint16_t draw_interval, bool random_color, uint8_t fade);
+    void sparkle(uint16_t draw_interval, bool random_color, uint8_t fade_factor);
     void weave(uint16_t draw_interval);
     void puck_man(uint16_t draw_interval, uint16_t(ReAnimator::*dfp)(uint16_t));
     void rain(uint16_t draw_interval);
     void waterfall(uint16_t draw_interval);
+    void xray_scan(uint16_t draw_interval, int8_t delta);
 
 
 
@@ -281,6 +289,7 @@ class ReAnimator {
     void glitter(uint16_t chance_of_glitter);
     void fade_randomly(uint8_t chance_of_fade, uint8_t decay);
     void vanish_randomly(uint8_t chance_of_fade, uint8_t decay);
+
 
 
 // ++++++++++++++++++++++++++++++
@@ -306,9 +315,9 @@ class ReAnimator {
 // ++++++++++++++++++++++++++++++
 // ++++++++++ HELPERS +++++++++++
 // ++++++++++++++++++++++++++++++
-    void fadeToBlackBy(CRGBA* leds, uint16_t num_leds, uint8_t fadeBy);
+    void fadeToTransparentBlackBy(CRGBA* leds, uint16_t num_leds, uint8_t fadeBy);
     void fadeToTransparentBy(CRGBA leds[], uint16_t num_leds, uint8_t fadeBy);
-    void fill_solid(CRGBA* leds, uint16_t num_leds, const CRGB& color);
+    void fill_solid(CRGBA* leds, uint16_t num_leds, const CRGBA& color);
 
     uint16_t forwards(uint16_t index);
     uint16_t backwards(uint16_t index);

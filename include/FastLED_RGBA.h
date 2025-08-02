@@ -126,7 +126,7 @@ struct CRGBA  {
     return *this;
   }
 
-  inline CRGBA& fadeToBlackBy (uint8_t fadefactor) {
+  inline CRGBA& fadeToTransparentBlackBy (uint8_t fadefactor) {
     nscale8x3(r, g, b, 255 - fadefactor);
     a = scale8(a, 255 - fadefactor);
     return *this;
@@ -134,7 +134,7 @@ struct CRGBA  {
 
   // when color substitution is involved we do not want to alter the proxy color
   // so fade by decreasing the transparency.
-  // this will mostly look the same as fadeToBlackBy() but can lead to overlapping
+  // this will mostly look the same as fadeToTransparentBlackBy() but can lead to overlapping
   // colors look more white than they would if fadeToBlackBy() is used.
   inline CRGBA& fadeToTransparentBy (uint8_t fadefactor) {
     a = scale8(a, 255 - fadefactor);

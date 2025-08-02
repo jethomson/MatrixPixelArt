@@ -238,7 +238,7 @@ void create_dirs(String path) {
     }
     else {
       f = -1;
-      }
+    }
   }
 }
 
@@ -512,6 +512,18 @@ bool create_patterns_list(void) {
         break;
     case WATERFALL:
         pattern_name = "Waterfall";
+        match = true;
+        break;
+    case XRAY_SPARKLE:
+        pattern_name = "X-ray Sparkle";
+        match = true;
+        break;
+    case XRAY_ORBIT:
+        pattern_name = "X-ray Orbit";
+        match = true;
+        break;
+    case XRAY_SCAN:
+        pattern_name = "X-ray Scan";
         match = true;
         break;
   }
@@ -1529,7 +1541,7 @@ void show(bool refresh_now) {
       // draw layer. changes in layers are not displayed until they are copied to leds[] in the blend block
       layers[i]->reanimate();
 
-      if (layers[i]->_ltype == Image_t) {
+      if (layers[i]->get_type() == Image_t) {
         // to prevent flickering do not show layers until all images are loaded.
         int8_t image_status = layers[i]->get_image_status();
         if (image_status == 0) {
@@ -1557,7 +1569,7 @@ void show(bool refresh_now) {
     static uint8_t i = 0;
     while (true) {
       if (layers[i] != nullptr) {
-        if (layers[i]->_ltype == Image_t) {
+        if (layers[i]->get_type() == Image_t) {
           // it is possible the image may never load, so after so many attempts the image was
           // marked as broken (-1) by get_image_status()
           int8_t image_status = layers[i]->get_image_status();
@@ -1575,6 +1587,39 @@ void show(bool refresh_now) {
         for (uint16_t j = 0; j < NUM_LEDS; j++) {
           pixel = layers[i]->get_pixel(j);
           CRGB bgpixel = leds[j];
+          if (layers[i]->is_xray_pattern()) {
+            // most effects have active pixels that are colored and are opaque or semitransparent.
+            // the active pixels are surrounded by negative space which is fully transparent black.
+            // this allows layers to be drawn on top of each other to combine effects.
+            // for xray patterns we want an opaque negative space which hides what is underneath and
+            // active pixels that reveal what is underneath.
+            // xray patterns are created the same as regular patterns (i.e. transparent negative space)
+            // and then converted to have an opaque negative space and active pixels that are effectively
+            // transparent in this block.
+
+            uint8_t gray_value = (bgpixel.r + bgpixel.g + bgpixel.b) / 3;
+
+            bool is_colored = ((CRGB)pixel != (CRGB)0);
+            if (is_colored) {
+              // use the gray scale value of the pixel below to adjust the pattern's color such that the effect
+              // from the layer below is shown in a new color for the composite
+              nscale8x3(pixel.r, pixel.g, pixel.b, gray_value);
+              // data for bgpixel has been transferred to pixel, so set it to black so nblend() produces the correct output
+              bgpixel = CRGB::Black;
+            }
+            else {
+              // else pixel is fully transparent black or semitransparent black.
+              // if it is fully transparent, then it is negative space, so hide everything beneath by setting alpha to 255 (fully opaque).
+              // if it is opaque black or semi transparent black, then it is an active pixel, so invert its transparency so the pixels
+              // underneath can be seen as is.
+
+              // flipping the opaqueness has the effect of only showing the layer underneath
+              // when the pixels of the layer above are not completely transparent.
+              // that is completely transparent areas become completely opaque and hide what is underneath.
+              pixel.a = 255 - pixel.a;
+            }
+          }
+          // effectively merge pixel that is combination of previous layers with pixel from current layer. flatten.
           leds[j] = nblend(bgpixel, (CRGB)pixel, pixel.a);
         }
         refresh_interval = layers[i]->display_duration;
@@ -1599,6 +1644,7 @@ void show(bool refresh_now) {
     //  DEBUG_PRINTLN(homogenized_brightness);
     //  homogenized_brightness = 128;
     //}
+
     FastLED.setBrightness(homogenized_brightness);
   }
 

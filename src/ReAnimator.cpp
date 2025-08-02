@@ -67,8 +67,8 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols, uint8_t orientation) 
     // abort() is called if out of memory so no point in trying to check?
     leds = new CRGBA[MTX_NUM_LEDS];
 
-    _ltype = static_cast<LayerType>(-1);
-    _id = -1;
+    layer_type = static_cast<LayerType>(-1);
+    id = -1;
 
     image_path = "";
 
@@ -106,6 +106,8 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols, uint8_t orientation) 
 
     _cb = noop_cb;
 
+    is_xray = false;
+
     // puck-man variables
     pm_puck_man_pos = 0;
     pm_puck_man_delta = 1;
@@ -130,6 +132,7 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols, uint8_t orientation) 
 
     dr_delta = 0;
     o_pos = MTX_NUM_LEDS;
+    o_ff = 0;
     gc_delta = 0;
     rl_delta = 0;
     ss_start_pos = random16(0, MTX_NUM_LEDS/4);
@@ -142,6 +145,7 @@ ReAnimator::ReAnimator(uint8_t num_rows, uint8_t num_cols, uint8_t orientation) 
     f_t = 0;
     r_t = 0;
     w_pos = 0;
+    xs_offset = 0;
     adp_draw_interval = 0;
     adp_delta = 0;
 
@@ -194,7 +198,7 @@ ReAnimator::Freezer::Freezer(ReAnimator &r) : parent(r) {
 }
 
 
-void ReAnimator::setup(LayerType ltype, int8_t id) {
+void ReAnimator::setup(LayerType layer_type_in, int8_t id_in) {
     layer_brightness = 255;
     proxy_color_set = false;
 
@@ -205,9 +209,9 @@ void ReAnimator::setup(LayerType ltype, int8_t id) {
     // images use an id of -2 because real image ids (paths) are more complicated and it is unnecessary to clear since a new image should completely overwrite leds[]
     // in practice there is probably no observable difference between -2 and -1 for images.
     // could possibly get an interesting effect with -2 if the new image does not write to all of leds[] and part of the previous image remains.
-    if (id == -1 || !(_ltype == ltype && _id == id)) {
-        _ltype = ltype;
-        _id = id;
+    if (id == -1 || !(layer_type == layer_type_in && id == id_in)) {
+        layer_type = layer_type_in;
+        id = id_in;
 
         // since layers are reused the remnants of the old effect may still be in leds[]
         // these leftovers may not be overwritten by the new effect, so it is best to clear leds[]
@@ -273,6 +277,13 @@ void ReAnimator::set_flipflop_enabled(bool enabled) {
     flipflop_previous_millis = 0; // set to zero so flipfloping will start without waiting
 }
 
+LayerType ReAnimator::get_type() {
+    return layer_type;
+}
+
+bool ReAnimator::is_xray_pattern() {
+    return is_xray;
+}
 
 Pattern ReAnimator::get_pattern() {
     return pattern;
@@ -294,6 +305,7 @@ int8_t ReAnimator::set_pattern(Pattern pattern_in, bool reverse_in, bool disable
     Overlay overlay_out;
 
     int8_t retval = 0;
+    is_xray = false;
 
     if (autocycle_enabled && pattern_in == NO_PATTERN) {
         pattern_in = static_cast<Pattern>(pattern+1);
@@ -308,6 +320,9 @@ int8_t ReAnimator::set_pattern(Pattern pattern_in, bool reverse_in, bool disable
             overlay_out = NO_OVERLAY;
             break;
         case ORBIT:
+            //o_ff = 240; // one dot. does not not work well for causing glow.
+            //o_ff = (94-4*MTX_NUM_COLS > 0) ? (94-4*MTX_NUM_COLS) : 1; // two lines of 16
+            o_ff = (94-2*MTX_NUM_COLS > 0) ? (94-2*MTX_NUM_COLS) : 1; // one line of 16
             pattern_out = ORBIT;
             overlay_out = NO_OVERLAY;
             break;
@@ -369,6 +384,24 @@ int8_t ReAnimator::set_pattern(Pattern pattern_in, bool reverse_in, bool disable
             break;
         case WATERFALL:
             pattern_out = WATERFALL;
+            overlay_out = NO_OVERLAY;
+            break;
+        case XRAY_SPARKLE:
+            is_xray = true;
+            pattern_out = XRAY_SPARKLE;
+            overlay_out = NO_OVERLAY;
+            break;
+        case XRAY_ORBIT:
+            is_xray = true;
+            o_ff = (94-2*MTX_NUM_COLS > 0) ? (94-2*MTX_NUM_COLS) : 1; // one line of 16
+            pattern_out = XRAY_ORBIT;
+            overlay_out = NO_OVERLAY;
+            break;
+        case XRAY_SCAN:
+            is_xray = true;
+            //o_ff = (94-MTX_NUM_COLS > 0) ? (94-MTX_NUM_COLS) : 1;
+            o_ff = 240;
+            pattern_out = XRAY_SCAN;
             overlay_out = NO_OVERLAY;
             break;
         case NO_PATTERN:
@@ -593,7 +626,7 @@ void ReAnimator::set_text(std::string t) {
 
 
 void ReAnimator::set_info(Info type) {
-  _id = type;
+  id = type;
   //switch(type) {
   //  default:
   //    // fall through to next case
@@ -669,7 +702,7 @@ void ReAnimator::reanimate() {
     }
 
     if (!freezer.is_frozen()) {
-        if (_ltype == Image_t && image_loaded && !image_clean) {
+        if (layer_type == Image_t && image_loaded && !image_clean) {
             // frozen_decay changed image, so refresh the image.
             image_dequeued = false;
             image_loaded = false;
@@ -677,14 +710,14 @@ void ReAnimator::reanimate() {
             Image image = {&image_path, &MTX_NUM_LEDS, leds, &proxy_color_set, &proxy_color, &image_dequeued, &image_loaded, &image_clean};
             xQueueSend(qimages, (void *)&image, 0);
         }
-        else if (_ltype == Pattern_t) {
+        else if (layer_type == Pattern_t) {
             run_pattern(pattern);
             last_pattern = pattern;
         }
-        else if (_ltype == Text_t) {
+        else if (layer_type == Text_t) {
             refresh_text(200);
         }
-        else if (_ltype == Info_t) {
+        else if (layer_type == Info_t) {
             refresh_info(200);
         }
     }
@@ -718,11 +751,11 @@ CRGBA ReAnimator::get_pixel(uint16_t i) {
         // some browsers slightly modify the RGB values of the canvas to prevent tracking. Brave calls this farbling.
         // this means the values sent from the converter page do not have the exact same RGB values as the source image.
         // this if condition accepts values that are similar to the proxy_color.
-        //if ( _ltype == Image_t && proxy_color_set && (abs(pixel_out.r - proxy_color.r) + abs(pixel_out.g - proxy_color.g) + abs(pixel_out.b - proxy_color.b) < 7) ) {
+        //if ( layer_type == Image_t && proxy_color_set && (abs(pixel_out.r - proxy_color.r) + abs(pixel_out.g - proxy_color.g) + abs(pixel_out.b - proxy_color.b) < 7) ) {
         // a workaround was found for the converter page code such that the data does not get farbled, but keeping the above
         // if statement in case it is useful in the future.
 
-        if ( _ltype == Image_t && proxy_color_set && pixel_out == proxy_color ) {
+        if ( layer_type == Image_t && proxy_color_set && pixel_out == proxy_color ) {
             pixel_out = *rgb;
             pixel_out.a = leds[ti].alpha;
         }
@@ -825,6 +858,16 @@ int8_t ReAnimator::run_pattern(Pattern pattern) {
         case WATERFALL:
             waterfall(100);
             break;
+        case XRAY_SPARKLE:
+            sparkle(20, false, 32);
+            break;
+        case XRAY_ORBIT:
+            //orbit(60, orbit_delta); // about as fast as can go and touch every pixel with a single moving dot
+            orbit(40, orbit_delta);
+            break;
+        case XRAY_SCAN:
+            xray_scan(100, orbit_delta);
+            break;
         case NO_PATTERN:
             //fill_solid(leds, MTX_NUM_LEDS, CRGBA::Transparent);
             break;
@@ -886,7 +929,7 @@ void ReAnimator::refresh_text(uint16_t draw_interval) {
 
 
 void ReAnimator::refresh_info(uint16_t draw_interval) {
-    switch(_id) {
+    switch(id) {
       default:
           // fall through to next case
       case TIME_12HR:
@@ -931,11 +974,9 @@ void ReAnimator::orbit(uint16_t draw_interval, int8_t delta) {
     }
 
     if (is_wait_over(draw_interval)) {
-        uint16_t fuzz = 1 + random16(3);
-        while (fuzz--) {
-            //fadeToTransparentBy(leds, MTX_NUM_LEDS, 20);
-            fadeToTransparentBy(leds, MTX_NUM_LEDS, 215);
-            //fadeToTransparentBy(leds, MTX_NUM_LEDS, 255-(14*MTX_NUM_COLS));
+        //uint16_t fuzz = 1 + random16(3);
+        //while (fuzz--) {
+            fadeToTransparentBy(leds, MTX_NUM_LEDS, o_ff);
             if (delta > 0) {
                 o_pos = o_pos % MTX_NUM_LEDS;
             }
@@ -948,7 +989,7 @@ void ReAnimator::orbit(uint16_t draw_interval, int8_t delta) {
 
             leds[o_pos] = *rgb;
             o_pos = o_pos + delta;
-        }
+        //}
     }
 }
 
@@ -1095,7 +1136,7 @@ void ReAnimator::funky() {
     const uint8_t num_columns = MTX_NUM_COLS;
     byte ball_hue = hue;
     //fadeToTransparentBy(leds, MTX_NUM_LEDS, 1); // colors are washed out if this is used for this pattern
-    fadeToBlackBy(leds, MTX_NUM_LEDS, 1);
+    fadeToTransparentBlackBy(leds, MTX_NUM_LEDS, 1);
     for (uint8_t i = 0; i < num_columns; i++) {
         Point p;
         p.x = i*(MTX_NUM_COLS/num_columns);
@@ -1115,7 +1156,7 @@ void ReAnimator::riffle() {
     uint8_t ball_hue = hue;
     uint8_t i = 0;
     //fadeToTransparentBy(leds, MTX_NUM_LEDS, 5); // takes longer for colors to separate and appear distinct if this is used for this pattern
-    fadeToBlackBy(leds, MTX_NUM_LEDS, 5);
+    fadeToTransparentBlackBy(leds, MTX_NUM_LEDS, 5);
     while (true) {
         uint16_t high = ((i+1)*MTX_NUM_COLS)-1;
         if (high >= MTX_NUM_LEDS/2) {
@@ -1134,11 +1175,11 @@ void ReAnimator::riffle() {
 }
 
 
-void ReAnimator::sparkle(uint16_t draw_interval, bool random_color, uint8_t fade) {
+void ReAnimator::sparkle(uint16_t draw_interval, bool random_color, uint8_t fade_factor) {
     CRGB c = (random_color) ? CHSV(random8(), 255, 255) : *rgb;
 
     if (is_wait_over(draw_interval)) {
-        fadeToTransparentBy(leds, MTX_NUM_LEDS, fade);
+        fadeToTransparentBy(leds, MTX_NUM_LEDS, fade_factor);
         leds[random16(MTX_NUM_LEDS)] = c;
     }
 }
@@ -1301,6 +1342,7 @@ void ReAnimator::rain(uint16_t draw_interval) {
     }
 }
 
+
 // this really only looks good when a Dynamic color is chosen
 void ReAnimator::waterfall(uint16_t draw_interval) {
     if (is_wait_over(draw_interval)) {
@@ -1326,6 +1368,26 @@ void ReAnimator::waterfall(uint16_t draw_interval) {
     }
 }
 
+
+void ReAnimator::xray_scan(uint16_t draw_interval, int8_t delta) {
+    if (pattern != last_pattern) {
+        fill_solid(leds, MTX_NUM_LEDS, CRGBA::Transparent);
+    }
+
+    if (is_wait_over(draw_interval)) {
+        fadeToTransparentBy(leds, MTX_NUM_LEDS, o_ff);
+        //fill_solid(leds, MTX_NUM_LEDS, CRGBA::Transparent); // single scan line
+        for (uint8_t i = 0; i < MTX_NUM_COLS; i++) {
+            leds[i+xs_offset] = *rgb;
+        }
+        //xs_offset = (xs_offset + MTX_NUM_COLS) % MTX_NUM_LEDS;
+        // this is probably better approach that assuming MTX_NUM_LEDS is an interger multiple of MTX_NUM_COLS
+        xs_offset += MTX_NUM_COLS;
+        if (xs_offset >= MTX_NUM_LEDS) {
+            xs_offset = 0;
+        }
+    }
+}
 
 
 
@@ -1360,7 +1422,7 @@ void ReAnimator::flicker(uint16_t interval) {
 void ReAnimator::fade_randomly(uint8_t chance_of_fade, uint8_t decay) {
     for (uint16_t i = 0; i < MTX_NUM_LEDS; i++) {
         if (chance_of_fade > random8()) {
-            leds[i].fadeToBlackBy(decay);
+            leds[i].fadeToTransparentBlackBy(decay);
         }
     }
 }
@@ -1645,15 +1707,15 @@ void ReAnimator::refresh_date_time(uint16_t draw_interval) {
         char ts[nd+1] = {'-', '-', '-', '-', '\0'};
         if (getLocalTime(&local_now, 0)) {
             get_time_fails = 0;
-            if (_id == 0 || _id == 1 || ((_id == 4 || _id == 5) && local_now.tm_sec % 7 != 0)) {
-                uint8_t hour = ((_id == 0 || _id == 4) && local_now.tm_hour > 12) ? local_now.tm_hour-12 : local_now.tm_hour;
+            if (id == 0 || id == 1 || ((id == 4 || id == 5) && local_now.tm_sec % 7 != 0)) {
+                uint8_t hour = ((id == 0 || id == 4) && local_now.tm_hour > 12) ? local_now.tm_hour-12 : local_now.tm_hour;
                 snprintf(ts, sizeof ts, "%02d%02d", hour, local_now.tm_min);
             }
-            else if (_id == 2 || _id == 3 || ((_id == 4 || _id == 5) && local_now.tm_sec % 7 == 0)) {
-                if (_id == 2 || _id == 4) {
+            else if (id == 2 || id == 3 || ((id == 4 || id == 5) && local_now.tm_sec % 7 == 0)) {
+                if (id == 2 || id == 4) {
                     snprintf(ts, sizeof ts, "%02d%02d", local_now.tm_mon+1, local_now.tm_mday);
                 }
-                else if (_id == 3 || _id == 5) {
+                else if (id == 3 || id == 5) {
                     snprintf(ts, sizeof ts, "%02d%02d", local_now.tm_mday, local_now.tm_mon+1);
                 }
             }
@@ -1985,11 +2047,12 @@ uint16_t ReAnimator::mover(uint16_t i) {
 // ++++++++++++++++++++++++++++++
 // ++++++++++ HELPERS +++++++++++
 // ++++++++++++++++++++++++++++++
-void ReAnimator::fadeToBlackBy(CRGBA leds[], uint16_t num_leds, uint8_t fadeBy) {
+void ReAnimator::fadeToTransparentBlackBy(CRGBA leds[], uint16_t num_leds, uint8_t fadeBy) {
     for (uint16_t i = 0; i < num_leds; i++) {
-        leds[i].fadeToBlackBy(fadeBy);
+        leds[i].fadeToTransparentBlackBy(fadeBy);
     }
 }
+
 
 void ReAnimator::fadeToTransparentBy(CRGBA leds[], uint16_t num_leds, uint8_t fadeBy) {
     for (uint16_t i = 0; i < num_leds; i++) {
@@ -1997,7 +2060,8 @@ void ReAnimator::fadeToTransparentBy(CRGBA leds[], uint16_t num_leds, uint8_t fa
     }
 }
 
-void ReAnimator::fill_solid(CRGBA leds[], uint16_t num_leds, const CRGB& color) {
+
+void ReAnimator::fill_solid(CRGBA leds[], uint16_t num_leds, const CRGBA& color) {
     for(uint16_t i = 0; i < num_leds; ++i) {
         leds[i] = color;
     }
@@ -2065,7 +2129,7 @@ void ReAnimator::motion_blur(int8_t blur_num, uint16_t pos, uint16_t(ReAnimator:
         for (uint8_t i = 1; i < blur_num+1; i++) {
             if (pos >= pos-i) {
                 leds[(this->*dfp)(pos-i)] += leds[(this->*dfp)(pos)];
-                leds[(this->*dfp)(pos-i)].fadeToBlackBy(120+(i*120/blur_num));
+                leds[(this->*dfp)(pos-i)].fadeToTransparentBlackBy(120+(i*120/blur_num));
             }
         }
     }
@@ -2073,7 +2137,7 @@ void ReAnimator::motion_blur(int8_t blur_num, uint16_t pos, uint16_t(ReAnimator:
         for (uint8_t i = 1; i < abs(blur_num)+1; i++) {
             if (pos+i < MTX_NUM_LEDS) {
                 leds[(this->*dfp)(pos+i)] += leds[(this->*dfp)(pos)];
-                leds[(this->*dfp)(pos+i)].fadeToBlackBy(120+(i*120/abs(blur_num)));
+                leds[(this->*dfp)(pos+i)].fadeToTransparentBlackBy(120+(i*120/abs(blur_num)));
             }
         }
     }
