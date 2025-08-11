@@ -17,6 +17,7 @@
 #include <StreamUtils.h>
 
 #include <unordered_set>
+#include <set>
 
 #include "project.h"
 #include "ReAnimator.h"
@@ -65,7 +66,6 @@ uint8_t ORIENTATION = 0;
 
 CRGB* leds; // output
 
-
 ReAnimator* layers[NUM_LAYERS];
 uint8_t ghost_layers[NUM_LAYERS] = {0};
 
@@ -85,6 +85,8 @@ struct {
   String id;
 } ui_request;
 
+const char* stored_file_list = FILE_ROOT "/file_list.txt";
+
 String patterns_json;
 String accents_json;
 
@@ -97,13 +99,14 @@ void homogenize_brightness_custom(void);
 void homogenize_brightness_builtin(void);
 void homogenize_brightness(void);
 void create_dirs(String path);
-void list_files(File dir, String parent);
-void handle_file_list(void);
-void delete_files(String name, String parent);
+void write_file_list_to_disk(void);
+void update_file_list(bool action, String type, String id);
+void create_file_list(void);
+void delete_files(String type, String id);
 void handle_delete_list(void);
 bool create_patterns_list(void);
 bool create_accents_list(void);
-bool save_data(String fs_path, String json, String* message = nullptr);
+bool save_data(String type, String id, String json, String* message = nullptr);
 void puck_man_cb(uint8_t event);
 bool image_exists(String id);
 bool is_valid_layer_json(JsonVariant layer_json);
@@ -173,12 +176,12 @@ void homogenize_brightness_custom(void) {
   uint32_t total_dark_mW = 780; // measured.
   uint32_t total_mW = red32 + green32 + blue32 + total_dark_mW;
 
-	uint32_t requested_power_mW = ((uint32_t)total_mW * homogenized_brightness) / 256;
+  uint32_t requested_power_mW = ((uint32_t)total_mW * homogenized_brightness) / 256;
 
 
-	if (requested_power_mW > max_power_mW) { 
+  if (requested_power_mW > max_power_mW) { 
     homogenized_brightness = (uint32_t)((uint8_t)(homogenized_brightness) * (uint32_t)(max_power_mW)) / ((uint32_t)(requested_power_mW));
-	}
+  }
 }
 
 //uses builtin values for LED power usage
@@ -208,7 +211,8 @@ void homogenize_brightness(void) {
 }
 
 
-
+// NOTE: An empty folder will not be added when building a littlefs image.
+// Empty folders will not be created when uploaded either.
 void create_dirs(String path) {
   int f = path.indexOf('/');
   if (f == -1) {
@@ -240,172 +244,190 @@ void create_dirs(String path) {
       f = -1;
     }
   }
+  //update_file_list(1, path);
 }
 
 
-String gfile_list_tmp;
-String gfile_list;
-String gfile_list_json_tmp;
-String gfile_list_json;
-std::unordered_set<std::string> image_list_tmp;
-std::unordered_set<std::string> image_list;
-// NOTE: An empty folder will not be added when building a littlefs image.
-// Empty folders will not be created when uploaded either.
-void list_files(File dir, String parent) {
-  String path = parent;
-  if (!parent.endsWith("/")) {
-    path += "/";
+String gfile_list_text;
+//String gfile_list_json;
+
+/*
+void list_files(void) {
+  File start_dir = LittleFS.open(FILE_ROOT);
+  String gfile_list_text_tmp = "ROOT:" FILE_ROOT;
+  gfile_list_text_tmp += "\n";
+
+  //String gfile_list_json_tmp;
+
+  while (File parent = start_dir.openNextFile()) {
+    if (parent.isDirectory()) {
+      while (File child = parent.openNextFile()) {
+
+        gfile_list_text_tmp += parent.name();
+        gfile_list_text_tmp += "/";
+        gfile_list_text_tmp += child.name();
+        gfile_list_text_tmp += "\t";
+        gfile_list_text_tmp += child.size(); // Well, it's roughly the size of a two-year old child, if the child were liquefied. It's a real bargain at $1.59. 
+        gfile_list_text_tmp += "\n";
+
+        //String type = parent.name();
+        //String id = child.name();
+        //id.remove(id.length()-5); // remove .json extension
+        //if (type == "im" || type == "cm" || type == "an" || type == "pl") {
+        //  gfile_list_json_tmp += "{\"t\":\"";
+        //  gfile_list_json_tmp += type;
+        //  gfile_list_json_tmp += "\",";
+        //  gfile_list_json_tmp += "\"id\":\"";
+        //  gfile_list_json_tmp += id;
+        //  gfile_list_json_tmp += "\"},";
+        //}
+
+        child.close();
+        //delay(1);
+      }
+      parent.close();
+      //delay(1);
+    }
   }
-  path += dir.name();
+  gfile_list_text = gfile_list_text_tmp;
+}
+*/
 
-  //DEBUG_PRINT("list_files(): ");
-  //DEBUG_PRINTLN(path);
 
-  gfile_list_tmp += path;
-  gfile_list_tmp += "/\n";
+// set has slower access time but uses less memory
+// access time should not be a problem because the number of entries will probably be at most in the low hundreds
+std::set<std::string> gfile_list_set;
+void write_file_list_to_disk(void) {
+  File file = LittleFS.open(stored_file_list, "w");
+  if (!file) {
+    DEBUG_PRINTLN("Failed to open file for writing");
+    return;
+  }
 
-  //gfile_list_json_tmp += "{\"t\":\"dir\",\"id\":\"";
-  //gfile_list_json_tmp += path;
-  //gfile_list_json_tmp += "\"},";
+  for (const auto& item : gfile_list_set) {
+      // println() adds \r\n, so use print() and manually add newline to save disk space.
+      file.print(item.c_str());
+      file.print("\n");
+  }
 
-  while (File entry = dir.openNextFile()) {
-    if (entry.isDirectory()) {
-      list_files(entry, path);
-      entry.close();
+  file.close();
+}
+
+
+void update_file_list(bool action, String type, String id) {
+  String fs_path = form_path(type, id, false);
+  bool found = false;
+  if (action) {
+    gfile_list_set.insert(fs_path.c_str());
+    found = true;
+  }
+  else {
+    auto it = gfile_list_set.find(fs_path.c_str());
+    if (it != gfile_list_set.end()) {
+      found = true;
+      gfile_list_set.erase(it);
     }
-    else {
-      gfile_list_tmp += path;
-      gfile_list_tmp += "/";
-      gfile_list_tmp += entry.name();
-      gfile_list_tmp += "\t";
-      gfile_list_tmp += entry.size();
-      gfile_list_tmp += "\n";
+  }
 
-      String type = dir.name();
-      String id = entry.name();
-      id.remove(id.length()-5); // remove .json extension
-      if (type == "im" || type == "cm" || type == "an") {
-        gfile_list_json_tmp += "{\"t\":\"";
-        gfile_list_json_tmp += type;
-        gfile_list_json_tmp += "\",";
-        gfile_list_json_tmp += "\"id\":\"";
-        gfile_list_json_tmp += id;
-        gfile_list_json_tmp += "\"},";
-        image_list_tmp.insert(id.c_str());
-      }
-      else if (type == "pl") {
-        gfile_list_json_tmp += "{\"t\":\"";
-        gfile_list_json_tmp += type;
-        gfile_list_json_tmp += "\",\"p\":\"";
-        gfile_list_json_tmp += path; // the frontend only needs paths for playlists
-        gfile_list_json_tmp += "/";
-        gfile_list_json_tmp += entry.name();
-        gfile_list_json_tmp += "\",";
-        gfile_list_json_tmp += "\"id\":\"";
-        gfile_list_json_tmp += id;
-        gfile_list_json_tmp += "\"},";
-      }
-
-      entry.close();
-    }
+  if (found) {
+    write_file_list_to_disk();
   }
 }
 
 
-bool gfile_list_needs_refresh = true;
-void handle_file_list(void) {
-  // refreshing file list is slow and can cause playlists with short durations to lag
-  // therefore use a flag to indicate refresh is needed instead of refreshing periodically using a timer
-  if (gfile_list_needs_refresh) {
-    gfile_list_needs_refresh = false;
-    gfile_list_tmp = "";
-    // opening bracket for JSON array of objects. it feels messy to add the opening bracket now, but doing so should save from doing an memory intensive append.
-    gfile_list_json_tmp = "[";
-    image_list_tmp.clear();
-    
-    // cannot prevent "open(): /littlefs/images does not exist, no permits for creation" message
-    // the abscense of FILE_ROOT is not an error.
-    // tried using exists() before open to prevent message but exists() calls open()
-    File file_root = LittleFS.open(FILE_ROOT);
-    //File file_root = LittleFS.open("/");  // use this to see all files for debugging
-    if (file_root) {
-      list_files(file_root, "/");
-      file_root.close();
-    }
-    gfile_list = gfile_list_tmp;
-    gfile_list_tmp = "";
+// this takes multiple seconds and halts the display so only call it when necessary
+bool grebuild_file_list = false;
+void create_file_list(void) {
+  gfile_list_set.clear();
+  gfile_list_set.insert("ROOT:" FILE_ROOT);
 
-    if (gfile_list_json_tmp.length() > 1) {
-      // add closing bracket to complete JSON array of objects
-      // ] replaces unnecessary trailing comma
-      gfile_list_json_tmp.setCharAt(gfile_list_json_tmp.length()-1, ']');
-      gfile_list_json = gfile_list_json_tmp;
+  File start_dir = LittleFS.open(FILE_ROOT);
+  if (start_dir) {
+    while (File parent = start_dir.openNextFile()) {
+      String list_entry = "";
+      if (parent.isDirectory()) {
+        list_entry += parent.name();
+        list_entry += "/";
+
+        gfile_list_set.insert(list_entry.c_str());
+
+        while (File child = parent.openNextFile()) {
+          String id = child.name();
+          id.remove(id.length()-5); // remove .json extension
+
+          list_entry = parent.name();
+          list_entry += "/";
+          list_entry += id;
+
+          gfile_list_set.insert(list_entry.c_str());
+
+          child.close();
+        }
+        parent.close();
+      }
+    }
+  }
+  start_dir.close();
+
+  write_file_list_to_disk();
+}
+
+
+void delete_files(String type, String id) {
+  String fs_path = form_path(type, id, true);
+  File entry1 = LittleFS.open(fs_path);
+  if (entry1) {
+    if (entry1.isDirectory()) {
+      while (File entry2 = entry1.openNextFile()) {
+        String filename = entry2.name();
+        entry2.close();
+        LittleFS.remove(fs_path+filename);
+        filename.remove(filename.length()-5); // remove .json extension
+        update_file_list(0, type, filename);
+      }
+      entry1.close();
+      //LittleFS.rmdir(path);  // directories are used to indicate type and therefore should not be deleted
     }
     else {
-      gfile_list_json = "[]";
+      entry1.close();
+      LittleFS.remove(fs_path);
+      update_file_list(0, type, id);
     }
-
-    gfile_list_json_tmp = "[";
-
-    image_list = image_list_tmp;
-    image_list_tmp.clear();
+  }
+  else {
+    // file does not actually exist but is still on file list, so remove it
+    update_file_list(0, type, id);
   }
 }
 
 
 String gdelete_list;
-void delete_files(String name, String parent) {
-  String path = parent;
-  if (!parent.endsWith("/")) {
-    path += "/";
-  }
-  path += name;
-
-  File entry = LittleFS.open(path);
-  if (entry) {
-    if (entry.isDirectory()) {
-      while (File e = entry.openNextFile()) {
-        String ename = e.name();
-        e.close();
-        delay(1);
-        delete_files(ename, path);
-      }
-      entry.close();
-      delay(1);
-      LittleFS.rmdir(path);
+void handle_delete_list(void) {
+  int f = gdelete_list.indexOf('\n');
+  while (gdelete_list != "") {
+    String data = gdelete_list.substring(0, f);
+    int di = data.indexOf('/');  // file manager checkbox name uses slash to separate type and id
+    if (di != -1) {
+      String type = data.substring(0, di);
+      String id = data.substring(di+1);
+      delete_files(type, id);
     }
     else {
-      entry.close();
-      delay(1);
-      LittleFS.remove(path);
+      delete_files(data, ""); // directory
+    }
+    if (f+1 < gdelete_list.length()) {
+      gdelete_list = gdelete_list.substring(f+1);
+      f = gdelete_list.indexOf('\n');
+    }
+    else {
+      gdelete_list = "";
     }
   }
 }
 
 
-void handle_delete_list(void) {
-  if (gdelete_list != "") {
-    //DEBUG_PRINT("gdelete_list: ");
-    //DEBUG_PRINTLN(gdelete_list);
-
-    int f = gdelete_list.indexOf('\n');
-    while (gdelete_list != "") {
-      String name = gdelete_list.substring(0, f);
-      delete_files(name, "/");
-      if (f+1 < gdelete_list.length()) {
-        gdelete_list = gdelete_list.substring(f+1);
-        f = gdelete_list.indexOf('\n');
-      }
-      else {
-        gdelete_list = "";
-      }
-    }
-    gfile_list_needs_refresh = true;
-  }
-}
-
-
-bool save_data(String fs_path, String json, String* message) {
+bool save_data(String type, String id, String json, String* message) {
+  String fs_path = form_path(type, id, true);
   if (fs_path == "") {
     if (message) {
       *message = F("save_data(): Filename is empty. Data not saved.");
@@ -418,8 +440,8 @@ bool save_data(String fs_path, String json, String* message) {
   if (f) {
     //noInterrupts();
     f.print(json);
-    delay(1);
     f.close();
+    update_file_list(1, type, id);
     //interrupts();
   }
   else {
@@ -432,8 +454,29 @@ bool save_data(String fs_path, String json, String* message) {
   if (message) {
     *message = F("save_data(): Data saved.");
   }
+
   return true;
 }
+
+
+std::set<std::string> load_file_list_from_disk(const char* filename) {
+    std::set<std::string> result;
+    File file = LittleFS.open(filename, "r");
+    if (!file) {
+        Serial.println("Failed to open file for reading");
+        return result;
+    }
+
+    while (file.available()) {
+        String line = file.readStringUntil('\n');
+        line.trim();  // Remove any trailing newline or whitespace
+        result.insert(line.c_str());  // Convert to std::string
+    }
+
+    file.close();
+    return result;
+}
+
 
 // creating the patterns list procedurally rather than hardcoding it allows for rearranging and adding to the patterns that appear
 // in the frontend more easily. this function creates the list based on what is in the enum Pattern, so changes to that enum
@@ -640,7 +683,11 @@ void puck_man_cb(uint8_t event) {
 
 
 bool image_exists(String id) {
-  return image_list.find(id.c_str()) != image_list.end();
+  // the file_list is used instead of LittleFS.exists() because exists() is a thousand or more times slower.
+  String entry = "im";
+  entry += "/";
+  entry += id;
+  return gfile_list_set.find(entry.c_str()) != gfile_list_set.end();
 }
 
 
@@ -781,7 +828,6 @@ bool load_layer(uint8_t lnum, JsonVariant layer_json) {
 // this helps streamline code from having the same repeative layer and image
 // existence checks.
 bool load_image_to_layer(uint8_t lnum, String id, uint32_t image_duration) {
-  // the set image_list is used instead of LittleFS.exists() because exists() is much slower
   if (layers[lnum] != nullptr) {
     if (image_exists(id)) {
       layers[lnum]->set_image(id, image_duration);
@@ -825,7 +871,7 @@ bool load_image_solo(String id) {
 
 bool load_collection(String type, String id) {
   bool retval = false;
-  String fs_path = form_path(type, id);
+  String fs_path = form_path(type, id, true);
   File file = LittleFS.open(fs_path, "r");
   
   if (!file){
@@ -882,7 +928,7 @@ bool load_from_playlist(String id) {
       i = 0;
       playlist_loaded = false;
 
-      String fs_path = form_path(F("pl"), id);
+      String fs_path = form_path(F("pl"), id, true);
       File file = LittleFS.open(fs_path, "r");
       if (file && file.available()) {
         ReadBufferingStream bufferedFile(file, 64);
@@ -1000,7 +1046,6 @@ void write_log(String log_msg) {
     f.print(ts);
     f.print(log_msg);
     f.print("\n");
-    delay(1); //works without this. need it?? ensures access time is changed??
     f.close();
     //interrupts();
   }
@@ -1037,10 +1082,10 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-#define TIMEZONED_REMOTE_HOST	"timezoned.rop.nl"
-#define TIMEZONED_REMOTE_PORT	2342
-#define TIMEZONED_LOCAL_PORT	2342
-#define TIMEZONED_TIMEOUT		2000			// milliseconds
+#define TIMEZONED_REMOTE_HOST  "timezoned.rop.nl"
+#define TIMEZONED_REMOTE_PORT  2342
+#define TIMEZONED_LOCAL_PORT   2342
+#define TIMEZONED_TIMEOUT      2000 // milliseconds
 String _server_error = "";
 
 // instead of just the IANA timezone, technically a country code or empty string can also be input
@@ -1155,6 +1200,7 @@ String processor(const String& var) {
   return String();
 }
 
+
 void wifi_AP(void) {
   DEBUG_PRINTLN(F("Entering AP Mode."));
   //WiFi.softAP(SOFT_AP_SSID, "123456789");
@@ -1165,6 +1211,7 @@ void wifi_AP(void) {
   DEBUG_PRINT(F("AP IP address: "));
   DEBUG_PRINTLN(IP);
 }
+
 
 bool wifi_connect(void) {
   bool success = false;
@@ -1246,13 +1293,13 @@ void web_server_station_setup(void) {
     }
 
     if (id != "") {
-      String fs_path = form_path(type, id);
-      if (save_data(fs_path, json, &message)) {
+      //String fs_path = form_path(type, id, true);
+      //if (save_data(fs_path, json, &message)) {
+      if (save_data(type, id, json, &message)) {
         if (load == "true") {
           ui_request.type = type;
           ui_request.id = id;
         }
-        gfile_list_needs_refresh = true;
         rc = 200;
       }
     }
@@ -1284,18 +1331,24 @@ void web_server_station_setup(void) {
     request->send(rc, "application/json", "{\"message\": \""+message+"\"}");
   });
 
-  // memory hog?
   web_server.on("/options.json", HTTP_GET, [](AsyncWebServerRequest *request) {
-    String options_json = "{\"files\":"+gfile_list_json + ",\"patterns\":["+patterns_json + "],\"accents\":["+accents_json + "]}"; 
+    String options_json = "{\"patterns\":["+patterns_json + "],\"accents\":["+accents_json + "]}"; 
     request->send(200, "application/json", options_json);
   });
 
   web_server.on("/file_list", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", gfile_list);
+    File file = LittleFS.open(stored_file_list, "r");
+    if (!file || file.isDirectory()) {
+      request->send(404, "text/plain", "File not found");
+      return;
+    }
+
+    request->send(file, "text/plain");
   });
 
-  web_server.on("/file_list.json", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "application/json", gfile_list_json);
+  web_server.on("/rebuild_file_list", HTTP_GET, [](AsyncWebServerRequest *request) {
+    grebuild_file_list = true;
+    request->send(200, "application/json", "{\"message\": \"rebuild request received\"}");
   });
 
   web_server.on("/delete", HTTP_POST, [](AsyncWebServerRequest *request) {
@@ -1303,11 +1356,9 @@ void web_server_station_setup(void) {
     for(int i=0; i < params; i++){
       AsyncWebParameter* p = request->getParam(i);
       if(p->isPost()){
-        //DEBUG_PRINTF("POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
+        DEBUG_PRINTF("POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
 
-        String param_name = p->name();
-        // remove leading / and file size from param_name to add only filename to the gdelete_list
-        gdelete_list += param_name.substring(1, param_name.indexOf('\t'));
+        gdelete_list += p->name();
         gdelete_list += "\n";
       }
     }
@@ -1771,7 +1822,26 @@ void setup() {
   }
   DEBUG_PRINTF("\n***** local time: %d/%02d/%02d %02d:%02d:%02d *****\n", local_now.tm_year+1900, local_now.tm_mon+1, local_now.tm_mday, local_now.tm_hour, local_now.tm_min, local_now.tm_sec);
 
-  handle_file_list(); // refresh file list before starting loop() because refreshing is slow
+  uint32_t debug_dt = millis();
+
+  if (LittleFS.exists(stored_file_list)) {
+    // about 50 milliseconds to load from disk
+    debug_dt = millis();
+    gfile_list_set.clear();
+    gfile_list_set = load_file_list_from_disk(stored_file_list);
+    if (gfile_list_set.empty()) {
+      // if only line is header (ROOT:...), then frontend javascript code works fine whether header is followed by newline or not
+      gfile_list_set.insert("ROOT:" FILE_ROOT "\n");
+    }
+    Serial.print("load set from stored list: ");
+    Serial.println(millis()-debug_dt);
+  }
+  else {
+    // about 3 to 5 seconds for about 100 files:
+    create_file_list();
+    //Serial.print("create_file_list() dt: ");
+    //Serial.println(millis()-debug_dt);
+  }
 
   while(!create_patterns_list());
   while(!create_accents_list());
@@ -1813,9 +1883,6 @@ void loop() {
     }
     hp_cnt++;
 #endif
-
-    // for temp testing
-    //gfile_list_needs_refresh = true;
   }
 #endif
 
@@ -1832,7 +1899,11 @@ void loop() {
   bool refresh_now = load_from_playlist();
   show(refresh_now);
 
-  handle_file_list();
+  if (grebuild_file_list) {
+    grebuild_file_list = false;
+    create_file_list();
+  }
+
   handle_delete_list();
   handle_ui_request();
 

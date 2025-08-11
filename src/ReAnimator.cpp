@@ -490,7 +490,7 @@ void ReAnimator::increment_accent(bool is_persistent) {
 
 
 void ReAnimator::set_image(String id, uint32_t duration, String* message) {
-    image_path = form_path(F("im"), id);
+    image_path = form_path(F("im"), id, true);
     image_dequeued = false;
     image_loaded = false;
     image_clean = false;

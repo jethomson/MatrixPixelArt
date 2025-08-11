@@ -161,6 +161,11 @@
 
 <script src="js/template_variables.js"></script>
 <script>
+// minifier code breaks code when some escape sequences (e.g. backslash n) are used
+const newline_char = String.fromCharCode(10);
+const return_char = String.fromCharCode(13);
+//const tab_char = String.fromCharCode(9)
+
 base_url = "";
 if (window.location.protocol == "file:") {
   // makes for easier debugging.
@@ -168,7 +173,6 @@ if (window.location.protocol == "file:") {
   // otherwise every change to html would require uploading new version to microcontroller.
   base_url = "http://pixelart.local";
 }
-
 
 
 async function save() {
@@ -288,7 +292,7 @@ async function save() {
       sb.setAttribute("fill", "#056b0a");
       el_btn_save_text.innerText = "Saved";
       setTimeout(function(){el_btn_save_text.innerText = btn_text;}, 1000);
-      setTimeout(populate_composite_list, 3000);
+      setTimeout(function(){populate(false)}, 3000);
     }
     else {
       sb.setAttribute("fill", "#6b050c");
@@ -427,6 +431,7 @@ async function load_composite(el_select) {
       let color_select = document.getElementById(`l${i}c`);
 
       let color = layer["c"];
+      console.log(color);
       let color_type = 1;
       if (color.indexOf("0x") === 0) {
         color_type = 0;
@@ -465,38 +470,26 @@ async function load_composite(el_select) {
 }
 
 
-async function populate_composite_list() {
+async function populate_composite_list(files) {
   let cm_select = document.getElementById("cm_list");
   cm_select.innerHTML = "<option disabled selected value> -- load composite -- </option>";
-  let data;
-  try {
-    let response = await fetch(`${base_url}/file_list.json`);
-    if (!response.ok) {
-      throw new Error("Error fetching /file_list.json");
-    }
 
-    data = await response.json();
-    if (!data.length) {
-      throw new Error("Error file list is empty.");
+  if (files) {
+    const FILE_ROOT = Object.keys(files)[0];
+    const type = "cm";
+    if (FILE_ROOT && files[FILE_ROOT][type] && Object.keys(files[FILE_ROOT][type]).length > 0) { 
+      Object.keys(files[FILE_ROOT][type]).forEach(id => {
+        cm_select.insertAdjacentHTML("beforeend", `<option value="${FILE_ROOT}/${type}/${id}.json">${id}</option>`)
+      });
     }
-  }
-  catch(e) {
-    console.error(e);
-    return;
-  }
-
-  for (let i in data) {
-    let type = data[i]["t"]; 
-    let id = data[i]["id"];
-    if(type === "cm" && id) {
-      cm_select.insertAdjacentHTML("beforeend", `<option value="/files/${type}/${id}.json">${id}</option>`)
+    else {
+      console.log("No composite files.");
     }
   }
-
 }
 
 
-async function populate_layers() {
+async function populate_layers(files) {
   let data;
   try {
     let response = await fetch(`${base_url}/options.json`);
@@ -513,24 +506,25 @@ async function populate_layers() {
     return;
   }
 
-  //let data = JSON.parse('{"files":[{"t":"im","id":"blinky","name":"blinky"},{"t":"im","id":"inky","name":"inky"},{"t":"im","id":"pinky","name":"pinky"},{"t":"im","id":"clyde","name":"clyde"}],"patterns":[{"id":0,"name":"Rainbow"},{"id":1,"name":"Solid"},{"id":2,"name":"Riffle"},{"id":3,"name":"Puck-Man"}],"accents":[{"id":0,"name":"None"},{"id":1,"name":"Breathing"},{"id":2,"name":"Flicker"},{"id":3,"name":"Frozen Decay"}]}');
-
-  let files = data["files"];
   if (files) {
-    let el_selects = document.querySelectorAll('select[data-key="id"]');
-    for (el_select of el_selects) {
-      el_select.insertAdjacentHTML("beforeend", '<optgroup id="im" label="Images">');
-    }
-
-    for (let i = 0; i < files.length; i++) {
-      let type = files[i]["t"];
-      let id = files[i]["id"];
-      if (type === "im" && id) { 
-        let el_optgroups = document.querySelectorAll('optgroup[id="im"]');
+    const FILE_ROOT = Object.keys(files)[0];
+    const type = "im";
+    if (FILE_ROOT && files[FILE_ROOT][type] && Object.keys(files[FILE_ROOT][type]).length > 0) { 
+      const images = files[FILE_ROOT][type];
+      let el_selects = document.querySelectorAll('select[data-key="id"]');
+      for (el_select of el_selects) {
+        el_select.insertAdjacentHTML("beforeend", `<optgroup id="${type}" label="Images">`);
+      }
+      Object.keys(images).forEach(id => {
+        //cm_select.insertAdjacentHTML("beforeend", `<option value="${FILE_ROOT}/${type}/${id}.json">${id}</option>`)
+        let el_optgroups = document.querySelectorAll(`optgroup[id="${type}"]`);
         for (el_optgroup of el_optgroups) {
           el_optgroup.insertAdjacentHTML("beforeend", `<option value="${id}">${id}</option>`);
         }
-      }
+      });
+    }
+    else {
+      console.log("No image files.");
     }
   }
 
@@ -640,14 +634,14 @@ function create_color_options() {
   // complementary colors are placed next to each other
   let color_names = [     "Custom",  "Dynamic 1",  "Dynamic 2",      "White",      "Black",        "Red",       "Aqua",      "Green",    "Magenta",       "Blue",     "Yellow",     "Orange", "Ultramarine",       "Pink",       "Mint"];
   let color_values = ["0xFFFFFF", "1", "2", "0xFFFFFF", "0x000000", "0xFF0000", "0x00FFFF", "0x00FF00", "0xFF00FF", "0x0000FF", "0xFFFF00", "0xFFA500",  "0x005AFF", "0xFFC0CB", "0xC0FFF4"];
-  color_options_html += `      <optgroup label="From Color Picker"><option value="${color_values[0]}">${color_names[0]} (${color_values[0].replace('0x', '#')})</option></optgroup>\r\n`
-  color_options_html += `      <optgroup label="Predefined">\r\n`
-  //color_options_html += `      <option value="${color_values[1]}" selected="true">${color_names[1]}</option>\r\n`
+  color_options_html += `      <optgroup label="From Color Picker"><option value="${color_values[0]}">${color_names[0]} (${color_values[0].replace('0x', '#')})</option></optgroup>${newline_char}`
+  color_options_html += `      <optgroup label="Predefined">${newline_char}`
+  //color_options_html += `      <option value="${color_values[1]}" selected="true">${color_names[1]}</option>${newline_char}`
   for (let i = 1; i < color_names.length; i++) {
-    color_options_html += `      <option value="${color_values[i]}">${color_names[i]}</option>\r\n`
+    color_options_html += `      <option value="${color_values[i]}">${color_names[i]}</option>${newline_char}`
   }
 
-  color_options_html += `      </optgroup>\r\n`
+  color_options_html += `      </optgroup>${newline_char}`
   return color_options_html;
 }
 
@@ -703,14 +697,80 @@ ${color_options_html}
 }
 
 
+function convert_to_object(file_list_string) {
+  let output = {};
+  if (file_list_string.length === 0 || !file_list_string.startsWith("ROOT:")) {
+    return output;
+  }
+  
+  // guard against return and newline being used to separate lines.
+  file_list_lines = file_list_string.replaceAll(return_char + newline_char, newline_char).split(newline_char);
+  let FILE_ROOT = file_list_lines.shift();
+  FILE_ROOT = FILE_ROOT.slice(5);
+  
+  output[FILE_ROOT] = {};
+
+  for (let i = 0; i < file_list_lines.length; i++) {
+    if (file_list_lines[i].endsWith("/")) {
+      const type = file_list_lines[i].slice(0, -1);
+      output[FILE_ROOT][type] = {};
+      continue;
+    }
+    const si = file_list_lines[i].indexOf("/");
+    if (si == -1) {
+      continue; // bad entry
+    }
+    const type = file_list_lines[i].substring(0, si);
+    const id = file_list_lines[i].substring(si+1);
+    output[FILE_ROOT][type][id] = 0;
+  }
+  return output;
+}
+
+
+async function populate(initial_load) {
+  let files;
+  try {
+    let response = await fetch(`${base_url}/file_list`);
+    if (!response.ok) {
+      throw new Error("Error fetching /file_list");
+    }
+
+    // a lot of html and javascript was already written for processing json file lists but it was
+    // decided that using a text file list would keep things simpler in the microcontroller code.
+    // converting a text file list to an object, so it can be processed using code already written
+    // for processing a json /file_list. this leaves option the option open for returning to a json
+    // file list in the microcontroller code in the future.
+    response_text = await response.text();
+    files = convert_to_object(response_text);
+    
+    //files = await response.json();
+    
+    if (Object.keys(files).length === 0 && files.constructor === Object) {
+      throw new Error("Error file list is empty.");
+    }
+    
+  }
+  catch(e) {
+    console.error(e);
+    files = null; // files = {}; if (files) is true so use null
+    // this is not a fatal error. device can still operate normally without any files.
+  }
+
+  if (initial_load) {
+    populate_layers(files);
+  }
+  populate_composite_list(files);
+}
+
+
 function run() {
   create_layers_ui();
   //let color_selects = document.querySelectorAll('select[data-key="c"]');
   //for (color_select of color_selects) {
   //  color_select.dispatchEvent(new Event('change'));
   //}
-  populate_layers();
-  populate_composite_list();
+  populate(true);
 }
 
 window.addEventListener("load", run);

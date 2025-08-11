@@ -167,6 +167,11 @@
 
 <script src="js/template_variables.js"></script>
 <script>
+// minifier code breaks code when some escape sequences (e.g. backslash n) are used
+const newline_char = String.fromCharCode(10);
+const return_char = String.fromCharCode(13);
+//const tab_char = String.fromCharCode(9)
+
 base_url = "";
 if (window.location.protocol == "file:") {
   // makes for easier debugging.
@@ -265,7 +270,7 @@ async function save() {
       sb.setAttribute("fill", "#056b0a");
       el_btn_save_text.innerText = "Saved";
       setTimeout(function(){el_btn_save_text.innerText = btn_text;}, 1000);
-      setTimeout(populate_animation_list, 3000);
+      setTimeout(function(){populate(false)}, 3000);
     }
     else {
       sb.setAttribute("fill", "#6b050c");
@@ -386,39 +391,26 @@ async function load_animation(el_select) {
 }
 
 
-async function populate_animation_list() {
+async function populate_animation_list(files) {
   let an_select = document.getElementById("an_list");
   an_select.innerHTML = "<option disabled selected value> -- load animation -- </option>";
 
-  let data;
-  try {
-    const response = await fetch(`${base_url}/file_list.json`);
-    if (!response.ok) {
-      throw new Error(`Error fetching ${id}`);
+  if (files) {
+    const FILE_ROOT = Object.keys(files)[0];
+    const type = "an";
+    if (FILE_ROOT && files[FILE_ROOT][type] && Object.keys(files[FILE_ROOT][type]).length > 0) { 
+      Object.keys(files[FILE_ROOT][type]).forEach(id => {
+        an_select.insertAdjacentHTML("beforeend", `<option value="/files/${type}/${id}.json">${id}</option>`)
+      });
     }
-
-    data = await response.json();
-    if (!data.length) {
-      throw new Error("Error file list is empty.");
-    }
-  }
-  catch(e) {
-    console.error(e);
-    return;
-  }
-
-  for (let i in data) {
-    let type = data[i]["t"]; 
-    let id = data[i]["id"];
-    if(type === "an" && id) {
-      an_select.insertAdjacentHTML("beforeend", `<option value="/files/${type}/${id}.json">${id}</option>`)
+    else {
+      console.log("No animation files.");
     }
   }
-
 }
 
 
-async function populate_layers() {
+async function populate_layers(files) {
   let data;
   try {
     let response = await fetch(`${base_url}/options.json`);
@@ -435,22 +427,25 @@ async function populate_layers() {
     return;
   }
 
-  let files = data["files"];
   if (files) {
-    let el_selects = document.querySelectorAll('select[data-key="id"]');
-    for (el_select of el_selects) {
-      el_select.insertAdjacentHTML("beforeend", '<optgroup id="im" label="Images">');
-    }
-
-    for (let i = 0; i < files.length; i++) {
-      let type = files[i]["t"];
-      let id = files[i]["id"];
-      if (type === "im" && id) { 
-        let el_optgroups = document.querySelectorAll('optgroup[id="im"]');
+    const FILE_ROOT = Object.keys(files)[0];
+    const type = "im";
+    if (FILE_ROOT && files[FILE_ROOT][type] && Object.keys(files[FILE_ROOT][type]).length > 0) { 
+      const images = files[FILE_ROOT][type];
+      let el_selects = document.querySelectorAll('select[data-key="id"]');
+      for (el_select of el_selects) {
+        el_select.insertAdjacentHTML("beforeend", `<optgroup id="${type}" label="Images">`);
+      }
+      Object.keys(images).forEach(id => {
+        //cm_select.insertAdjacentHTML("beforeend", `<option value="${FILE_ROOT}/${type}/${id}.json">${id}</option>`)
+        let el_optgroups = document.querySelectorAll(`optgroup[id="${type}"]`);
         for (el_optgroup of el_optgroups) {
           el_optgroup.insertAdjacentHTML("beforeend", `<option value="${id}">${id}</option>`);
         }
-      }
+      });
+    }
+    else {
+      console.log("No image files.");
     }
   }
 }
@@ -483,10 +478,76 @@ function create_layers_ui() {
 }
 
 
+function convert_to_object(file_list_string) {
+  let output = {};
+  if (file_list_string.length === 0 || !file_list_string.startsWith("ROOT:")) {
+    return output;
+  }
+  
+  // guard against return and newline being used to separate lines.
+  file_list_lines = file_list_string.replaceAll(return_char + newline_char, newline_char).split(newline_char);
+  let FILE_ROOT = file_list_lines.shift();
+  FILE_ROOT = FILE_ROOT.slice(5);
+  
+  output[FILE_ROOT] = {};
+
+  for (let i = 0; i < file_list_lines.length; i++) {
+    if (file_list_lines[i].endsWith("/")) {
+      const type = file_list_lines[i].slice(0, -1);
+      output[FILE_ROOT][type] = {};
+      continue;
+    }
+    const si = file_list_lines[i].indexOf("/");
+    if (si == -1) {
+      continue; // bad entry
+    }
+    const type = file_list_lines[i].substring(0, si);
+    const id = file_list_lines[i].substring(si+1);
+    output[FILE_ROOT][type][id] = 0;
+  }
+  return output;
+}
+
+
+async function populate(initial_load) {
+  let files;
+  try {
+    let response = await fetch(`${base_url}/file_list`);
+    if (!response.ok) {
+      throw new Error("Error fetching /file_list");
+    }
+
+    // a lot of html and javascript was already written for processing json file lists but it was
+    // decided that using a text file list would keep things simpler in the microcontroller code.
+    // converting a text file list to an object, so it can be processed using code already written
+    // for processing a json /file_list. this leaves option the option open for returning to a json
+    // file list in the microcontroller code in the future.
+    response_text = await response.text();
+    files = convert_to_object(response_text);
+    
+    //files = await response.json();
+    
+    if (Object.keys(files).length === 0 && files.constructor === Object) {
+      throw new Error("Error file list is empty.");
+    }
+    
+  }
+  catch(e) {
+    console.error(e);
+    files = null; // files = {}; if (files) is true so use null
+    // this is not a fatal error. device can still operate normally without any files.
+  }
+
+  if (initial_load) {
+    populate_layers(files);
+  }
+  populate_animation_list(files);
+}
+
+
 function run() {
   create_layers_ui();
-  populate_layers();
-  populate_animation_list();
+  populate(true);
 }
 
 window.addEventListener("load", run);

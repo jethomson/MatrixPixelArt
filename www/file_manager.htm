@@ -20,6 +20,14 @@
     -webkit-touch-callout: none;
     -webkit-tap-highlight-color: transparent;
   }
+  
+  a:link {
+    color: #1E90FF;
+  }
+
+  a:visited {
+    color: #9370DB;
+  }
 
   #return_main_menu {
     float: left;
@@ -38,6 +46,7 @@
     width: 100%;
     display: block;
     white-space: nowrap;
+    padding-left: 1em;
   }
   .grid-item-button {
     font-weight: bold;
@@ -68,6 +77,14 @@
   button:hover {
     background: #0e70a4;
   }
+  
+  .bred {
+    background: #d43535;
+  }
+
+  .bred:hover {
+    background: #931f1f;
+  }
   </style>
 </head>
 <body>
@@ -77,17 +94,33 @@
     </svg>
   </a>
 
-  <h3>Deleting files takes awhile. Reload this page to see an updated file list.</h3>
-  <form id="delete_form" method="POST" action="delete"></form>
+  <h3>Deleting files or rebuilding the file list can take awhile. Reload this page to see an updated file list.</h3>
+
+  <form id="delete_form" method="POST" action="delete"></form> <!-- delete using a list of files in a string -->
+  <!--form id="delete_form" method="POST" onsubmit="event.preventDefault(); post_data()"--> <!-- delete using a list of files in json -->
   <div id="container" class="grid-container">
+    <div class="grid-item-button">
+      <button id="delete_btn" type="submit" form="delete_form" class="bred">Queue File(s) For Deletion</button>
+    </div>
+
     <div id="checkbox_div"></div>
 
     <div class="grid-item-button">
-      <button id="delete_btn" type="submit" form="delete_form">Queue File(s) For Deletion</button>
+      <button id="delete_btn" type="submit" form="delete_form" class="bred">Queue File(s) For Deletion</button>
+    </div>
+    <div class="grid-item-button">
+      <br><br>
+      <h7>Rebuilding the file list is only necessary if the file list becomes out of sync with the actual file system contents because of power loss or crash.</h7>
+      <button id="rebuild_btn" onclick="request_rebuild()">Rebuild File List</button>
     </div>
   </div>
 
   <script>
+  // minifier code breaks code when some escape sequences (e.g. backslash n) are used
+  const newline_char = String.fromCharCode(10);
+  const return_char = String.fromCharCode(13);
+  //const tab_char = String.fromCharCode(9)
+
   base_url = "";
   if (window.location.protocol == "file:") {
     // makes for easier debugging.
@@ -96,103 +129,213 @@
     base_url = "http://pixelart.local";
   }
 
-  function insert_file_list(responseText) {
+  /*
+  async function post_data() {
+    const marked_files = document.querySelectorAll('input[type="checkbox"]:checked');
+    
+    let delete_files = {};
+    for (mf of marked_files) {
+      const type = mf.getAttribute("data-type");
+      const id = mf.getAttribute("data-id");
+      if (!Array.isArray(delete_files[type])) {
+        delete_files[type] = []; 
+      }
+      if (delete_files[type][0] != "") {
+        // [""] means delete everything in directory so no point in adding individual files to list
+        delete_files[type].push(id);
+      }
+    }
+
+    console.log(JSON.stringify(delete_files));
+    const response = await fetch(base_url+"/delete", {method: "POST", body: JSON.stringify(delete_files)});
+  }
+  */
+
+
+  let url_string = "";
+  function create_checkbox(root, type, id, size) {
+    let path = root + "/" + type + "/" + id;
+    if (!path.endsWith("/")) {
+      path += ".json";
+    }
+    
+    let name = type;
+    if (id != "") {
+      name += "/"+id;
+    }
+
+    let row = document.createElement("div");
+    row.classList.add("grid-checkbox-row");
+    let checkbox_input = document.createElement("input");
+    checkbox_input.setAttribute("type", "checkbox");
+    checkbox_input.setAttribute("id", path);
+    checkbox_input.setAttribute("name", name);
+    checkbox_input.setAttribute("data-type", type);
+    checkbox_input.setAttribute("data-id", id);
+    checkbox_input.setAttribute("data-size", size);
+    checkbox_input.setAttribute("form", "delete_form");
+  
+    row.appendChild(checkbox_input);
+
+    let label_anchor = document.createElement("a");
+  
+    let label_text = path;
+    if (!path.endsWith("/")) {
+      label_anchor.classList.add("span-regular-file");
+      label_href = base_url+encodeURIComponent(label_text).replaceAll("%2F", "/");
+      label_anchor.href = label_href;
+      //label_text = "├──"+label_text;
+      //label_text = "\\___"+label_text;
+      if (size) {
+        label_text += ` (${size} bytes)`;
+      }
+
+      if (!base_url) {
+        url_string += `http://${location.hostname}`;
+      }
+      url_string += `${label_href} `;
+    }
+    label_anchor.appendChild(document.createTextNode(label_text));
+    
+    if (path.endsWith("/")) {
+      //label_anchor.style.whiteSpace = "pre";
+      const span = document.createElement('span');
+      span.style.whiteSpace = "pre";
+      span.textContent = '    (delete all files in folder, but keep folder)';
+      span.style.color = 'gray';
+      span.style.fontStyle = 'italic';
+      label_anchor.appendChild(span);
+    }
+
+    row.appendChild(label_anchor);
+    return row;
+  }
+
+
+  function sort_nested_object(obj) {
+    if (typeof obj === "object" && obj !== null) {
+      const sorted = {};
+      Object.keys(obj).sort().forEach(key => {
+        sorted[key] = sort_nested_object(obj[key]);
+      });
+      return sorted;
+    }
+    return obj; // primitive value
+  }
+
+
+  function insert_file_list(files) {
     let container = document.getElementById("container");
     let form = document.getElementById("delete_form");
     let insert_point = document.getElementById("insert_file_list_before_here");
-    
-    let newline = String.fromCharCode(10);
-    let tab = String.fromCharCode(9)
 
     let checkbox_div = document.getElementById("checkbox_div");
-    let url_string = ""
-    if (responseText != "") {
-      let files = responseText.split(newline);
-      files.sort(function (a, b) {
-        let depth_a = (a.split("/").length - 1);
-        let depth_b = (b.split("/").length - 1);
-        if (depth_a === depth_b) {
-          return a.localeCompare(b);
-        }
-        else {
-          return depth_a - depth_b;
-        }
+
+    let num_files_added = 0;
+    if (files) {
+      files = sort_nested_object(files);
+      const FILE_ROOT = Object.keys(files)[0];
+
+      Object.keys(files[FILE_ROOT]).forEach(type => {
+        let checkbox_row = create_checkbox(FILE_ROOT, type, "", -1);
+        checkbox_div.appendChild(checkbox_row);
+        Object.keys(files[FILE_ROOT][type]).forEach(id => {
+          let size = files[FILE_ROOT][type][id];
+          let checkbox_row = create_checkbox(FILE_ROOT, type, id, size);
+          checkbox_div.appendChild(checkbox_row);
+          num_files_added++;
+        });        
       });
-      for (let i in files) {
-        if (files[i] != "") {
-          console.log(files[i]);
-          let row = document.createElement("div");
-          row.classList.add("grid-checkbox-row");
-          let checkbox_input = document.createElement("input");
-          checkbox_input.setAttribute("type", "checkbox");
-          checkbox_input.setAttribute("id", files[i]);
-          checkbox_input.setAttribute("name", files[i]);
-          checkbox_input.setAttribute("form", "delete_form");
-  
-          row.appendChild(checkbox_input);
 
-          let label_anchor = document.createElement("a");
-  
-          let label_text = files[i];
-          if (label_text.indexOf(tab) > -1) {
-            label_anchor.classList.add("span-regular-file");
-            label_href = base_url+encodeURIComponent(label_text.substring(0, label_text.indexOf(tab))).replaceAll("%2F", "/");
-            label_anchor.href = label_href;
-            //label_text = "├──"+label_text;
-            //label_text = "\\___"+label_text;
-            label_text = label_text.replace(tab, tab+"(");
-            label_text += " bytes)";
-
-            if (!base_url) {
-              url_string += `http://${location.hostname}`
-            }
-            url_string += `${label_href} `
-          }
-
-          label_anchor.appendChild(document.createTextNode(label_text));
-
-          row.appendChild(label_anchor);
-          checkbox_div.appendChild(row);
-        }
-      }
       // alternate method of backing up data by downloading each json file individually
       if (url_string) {
         console.log("wget --force-directories --wait=2 --limit-rate=20k "+url_string);
       }
     }
-    else {
+    
+    if (num_files_added === 0) {
       let not_found_div = document.createElement("div");
       not_found_div.innerText = "No files found.";
-      not_found_div.style = "color: white; text-align: center; width: 100%;"
+      not_found_div.style = "color: white; text-align: center; width: 100%;";
       container.insertBefore(not_found_div, insert_point);
     }
-    container.style.visibility = "visible"; 
+    container.style.visibility = "visible";
   }
-
-  async function pull_file_list() {
-    let data = "";
+  
+  
+  async function request_rebuild() {
+    // rebuilding file list takes multiple seconds, so no outcome message is expected
     try {
-      const response = await fetch(base_url+"/file_list");
+      let response = await fetch(`${base_url}/rebuild_file_list`);
       if (!response.ok) {
-        throw new Error("Error fetching from /file_list.");
-      }
-      data = await response.text();
-      if (!data) {
-        throw new Error("Error response text is invalid.");
+        throw new Error("Error fetching /rebuild_file_list");
       }
     }
     catch(e) {
       console.error(e);
-      data = "";
     }
-    return data;
   }
 
-  async function run() {
-    let data = await pull_file_list();
-    if (data && data.length > 0) {
-      insert_file_list(data);
+
+  function convert_to_object(file_list_string) {
+    let output = {};
+    if (file_list_string.length === 0 || !file_list_string.startsWith("ROOT:")) {
+      return output;
     }
+    // guard against return and newline being used to separate lines.
+    file_list_lines = file_list_string.replaceAll(return_char + newline_char, newline_char).split(newline_char);
+    let FILE_ROOT = file_list_lines.shift();
+    FILE_ROOT = FILE_ROOT.slice(5);
+
+    output[FILE_ROOT] = {};
+
+    for (let i = 0; i < file_list_lines.length; i++) {
+      if (file_list_lines[i].endsWith("/")) {
+        const type = file_list_lines[i].slice(0, -1);
+        output[FILE_ROOT][type] = {};
+        continue;
+      }
+      const si = file_list_lines[i].indexOf("/");
+      if (si == -1) {
+        continue; // bad entry
+      }
+      const type = file_list_lines[i].substring(0, si);
+      const id = file_list_lines[i].substring(si+1);
+      output[FILE_ROOT][type][id] = 0;
+    }
+    return output;
+  }
+
+
+  async function run() {
+    let files;
+    try {
+      let response = await fetch(`${base_url}/file_list`);
+      if (!response.ok) {
+        throw new Error("Error fetching /file_list");
+      }
+
+      // a lot of html and javascript was already written for processing json file lists but it was
+      // decided that using a text file list would keep things simpler in the microcontroller code.
+      // converting a text file list to an object, so it can be processed using code already written
+      // for processing a json /file_list. this leaves option the option open for returning to a json
+      // file list in the microcontroller code in the future.
+      response_text = await response.text();
+      files = convert_to_object(response_text);
+
+      //files = await response.json();
+
+      if (Object.keys(files).length === 0 && files.constructor === Object) {
+        throw new Error("Error file list is empty.");
+      }
+    }
+    catch(e) {
+      console.error(e);
+      files = null; // files = {}; if (files) is true so use null
+      // this is not a fatal error. device can still operate normally without any files.
+    }
+
+    insert_file_list(files);
   }
 
   window.addEventListener("load", run);
