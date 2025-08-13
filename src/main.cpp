@@ -248,59 +248,13 @@ void create_dirs(String path) {
 }
 
 
-String gfile_list_text;
-//String gfile_list_json;
-
-/*
-void list_files(void) {
-  File start_dir = LittleFS.open(FILE_ROOT);
-  String gfile_list_text_tmp = "ROOT:" FILE_ROOT;
-  gfile_list_text_tmp += "\n";
-
-  //String gfile_list_json_tmp;
-
-  while (File parent = start_dir.openNextFile()) {
-    if (parent.isDirectory()) {
-      while (File child = parent.openNextFile()) {
-
-        gfile_list_text_tmp += parent.name();
-        gfile_list_text_tmp += "/";
-        gfile_list_text_tmp += child.name();
-        gfile_list_text_tmp += "\t";
-        gfile_list_text_tmp += child.size(); // Well, it's roughly the size of a two-year old child, if the child were liquefied. It's a real bargain at $1.59. 
-        gfile_list_text_tmp += "\n";
-
-        //String type = parent.name();
-        //String id = child.name();
-        //id.remove(id.length()-5); // remove .json extension
-        //if (type == "im" || type == "cm" || type == "an" || type == "pl") {
-        //  gfile_list_json_tmp += "{\"t\":\"";
-        //  gfile_list_json_tmp += type;
-        //  gfile_list_json_tmp += "\",";
-        //  gfile_list_json_tmp += "\"id\":\"";
-        //  gfile_list_json_tmp += id;
-        //  gfile_list_json_tmp += "\"},";
-        //}
-
-        child.close();
-        //delay(1);
-      }
-      parent.close();
-      //delay(1);
-    }
-  }
-  gfile_list_text = gfile_list_text_tmp;
-}
-*/
-
-
 // set has slower access time but uses less memory
 // access time should not be a problem because the number of entries will probably be at most in the low hundreds
 std::set<std::string> gfile_list_set;
 void write_file_list_to_disk(void) {
   File file = LittleFS.open(stored_file_list, "w");
   if (!file) {
-    DEBUG_PRINTLN("Failed to open file for writing");
+    DEBUG_PRINTLN("Failed to open stored file list for writing.");
     return;
   }
 
@@ -463,14 +417,14 @@ std::set<std::string> load_file_list_from_disk(const char* filename) {
     std::set<std::string> result;
     File file = LittleFS.open(filename, "r");
     if (!file) {
-        Serial.println("Failed to open file for reading");
+        DEBUG_PRINTLN("Failed to open stored file list for reading.");
         return result;
     }
 
     while (file.available()) {
         String line = file.readStringUntil('\n');
-        line.trim();  // Remove any trailing newline or whitespace
-        result.insert(line.c_str());  // Convert to std::string
+        line.trim();
+        result.insert(line.c_str());
     }
 
     file.close();
@@ -1293,8 +1247,6 @@ void web_server_station_setup(void) {
     }
 
     if (id != "") {
-      //String fs_path = form_path(type, id, true);
-      //if (save_data(fs_path, json, &message)) {
       if (save_data(type, id, json, &message)) {
         if (load == "true") {
           ui_request.type = type;
@@ -1514,8 +1466,6 @@ void web_server_initiate(void) {
     if (request->hasParam("orientation", true)) {
       AsyncWebParameter* p = request->getParam("orientation", true);
       uint8_t orientation = p->value().toInt();
-      Serial.print("orientation saved: ");
-      Serial.println(orientation);
       preferences.putUChar("orientation", orientation);
     }
 
@@ -1822,25 +1772,18 @@ void setup() {
   }
   DEBUG_PRINTF("\n***** local time: %d/%02d/%02d %02d:%02d:%02d *****\n", local_now.tm_year+1900, local_now.tm_mon+1, local_now.tm_mday, local_now.tm_hour, local_now.tm_min, local_now.tm_sec);
 
-  uint32_t debug_dt = millis();
-
   if (LittleFS.exists(stored_file_list)) {
     // about 50 milliseconds to load from disk
-    debug_dt = millis();
     gfile_list_set.clear();
     gfile_list_set = load_file_list_from_disk(stored_file_list);
     if (gfile_list_set.empty()) {
       // if only line is header (ROOT:...), then frontend javascript code works fine whether header is followed by newline or not
       gfile_list_set.insert("ROOT:" FILE_ROOT "\n");
     }
-    Serial.print("load set from stored list: ");
-    Serial.println(millis()-debug_dt);
   }
   else {
     // about 3 to 5 seconds for about 100 files:
     create_file_list();
-    //Serial.print("create_file_list() dt: ");
-    //Serial.println(millis()-debug_dt);
   }
 
   while(!create_patterns_list());
