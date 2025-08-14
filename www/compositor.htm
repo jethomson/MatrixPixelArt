@@ -261,7 +261,6 @@ async function save() {
     // but they are not. Using encodeURIComponent() fixes that problem.
     // Perhaps the data has to actually come from form elements to be encoded automatically.
     let body = `t=${type}&id=${cm_id}&json=${encodeURIComponent(json)}`;
-    console.log(body);
 
     let success = false;
     let sb = document.getElementById("saveSvg");
@@ -395,33 +394,52 @@ async function load_composite(el_select) {
 
   for (i in data["l"]) {
     let layer = data["l"][i];
+
+    // initialize all layers to empty
+    // if an effect is referenced in composite but no longer exist then it will not be selected from the available options (i.e. the layer will not be updated)
+    // initializing to empty ensure a previously set layer will not stick around because a composite was loaded with a missing effect
+    let id_select = document.getElementById(`l${i}id`);
+    id_select.selectedIndex = 0;
+    id_select.dispatchEvent(new Event('change'));
+    
     if (layer["t"] === "e") {
-      let id_select = document.getElementById(`l${i}id`);
-      id_select.selectedIndex = 0;
-      id_select.dispatchEvent(new Event('change'));
       continue;
     }
-  
+
+
     if (layer["id"] != "" || !isNaN(layer["id"])) {
+      let found = false;
       let id_select = document.getElementById(`l${i}id`);
       for (let j = 0; j < id_select.options.length; j++) {
         let option = id_select.options[j];
         if (option.value.indexOf(layer["id"]) != -1 && (option.parentElement.id === layer["t"] || layer["t"] === "e")) {
           option.selected = true;
           id_select.dispatchEvent(new Event('change'));
+          found = true;
           break;
         }
       }
+      if (!found) {
+        // if item no longer exists it will not be one of the available options so it cannot be selected
+        console.log(`${layer["id"]} not found in Effect list`);
+      }
     }
 
+
     if (!isNaN(layer["a"])) {
+      let found = false;
       let accent_select = document.getElementById(`l${i}a`);
       for (let j = 0; j < accent_select.options.length; j++) {
         let option = accent_select.options[j];
         if (option.value.indexOf(layer["a"]) != -1) {
           option.selected = true;
+          found = true;
           break;
         }
+      }
+      if (!found) {
+        // if item no longer exists it will not be one of the available options so it cannot be selected
+        console.log(`${layer["a"]} not found in Accent list`);
       }
     }
 
@@ -431,7 +449,6 @@ async function load_composite(el_select) {
       let color_select = document.getElementById(`l${i}c`);
 
       let color = layer["c"];
-      console.log(color);
       let color_type = 1;
       if (color.indexOf("0x") === 0) {
         color_type = 0;
@@ -463,7 +480,6 @@ async function load_composite(el_select) {
 
     if (typeof layer["w"] === "string") {
       let writing = document.getElementById(`l${i}w`);
-      console.log(layer["w"]);
       writing.value = layer["w"];
     }
   }
