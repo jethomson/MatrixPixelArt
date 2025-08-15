@@ -468,7 +468,7 @@ async function populate_art_list(files) {
     if (FILE_ROOT) {
       let art_ul = document.getElementById("art_ul");
       art_ul.innerHTML = "";
-      const types = [{"an":"animation"}, {"cm":"composite"}, {"im":"image"}, {"pl":"playlist"}];
+      const types = [{"an":"animation"}, {"cm":"composite"}, {"im":"image"}];
       types.forEach(type_obj => {
         let type = Object.keys(type_obj)[0];
         if (files[FILE_ROOT][type] && Object.keys(files[FILE_ROOT][type]).length > 0) {
