@@ -916,9 +916,7 @@ bool load_from_playlist(String id) {
 
     //if (playlist_loaded && ((millis()-pm) > item_duration || g_an_loop_countdown == 0)) {
     if (playlist_loaded && (millis()-pm) > item_duration) {
-      pm = millis();
       item_duration = 1000; // set to a safe value which will be replaced below
-
       if(playlist[i].is<JsonVariant>()) {
         JsonVariant item = playlist[i];
         if(load_file(item[F("t")], item[F("id")])) {
@@ -927,6 +925,9 @@ bool load_from_playlist(String id) {
             // it takes a bit under 100 ms to load an image
             // item_durations of around 100 ms and less can cause the display to appear stalled or act erratic and causes a crash
             // therefore the minimum item_duration is limited to 200 ms
+            // as a side note animations can have shorter delays than 200 ms because all of the images are loaded into layers at
+            // the same time and the layers are shown one at time, so individual images are not loaded from disk each time a new
+            // frame of the animation is shown
             item_duration = max(item_duration, min_duration);
             //g_an_loop_countdown = 2;
           }
@@ -942,6 +943,10 @@ bool load_from_playlist(String id) {
       else {
         playlist_enabled = false;
       }
+      // typically I would put this right after the if() check but I think putting it after load_file()
+      // removes some variability in the timing and may result in the art being shown for a period of
+      // time closer to what item_duration specifies
+      pm = millis();
     }
   }
   return refresh_needed;
