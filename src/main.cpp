@@ -78,6 +78,10 @@ uint8_t homogenized_brightness = 255;
 
 bool playlist_enabled = false;
 
+// sli and show_refresh_interval must be global because they need to persistent between calls to show() for animations to work correctly
+uint8_t sli = 0; // layer index for show()
+uint32_t show_refresh_interval = 0; // refresh interval for show()
+
 String art_type = "";
 
 struct {
@@ -104,6 +108,7 @@ void update_file_list(bool action, String type, String id);
 void create_file_list(void);
 void delete_files(String type, String id);
 void handle_delete_list(void);
+std::set<std::string> load_file_list_from_disk(const char* filename);
 bool create_patterns_list(void);
 bool create_accents_list(void);
 bool save_data(String type, String id, String json, String* message = nullptr);
@@ -859,6 +864,7 @@ bool load_collection(String type, String id) {
 }
 
 
+//uint16_t g_an_loop_countdown = 0;
 bool load_from_playlist(String id) {
   const uint32_t min_duration = 200;
   bool refresh_needed = false;
@@ -881,6 +887,7 @@ bool load_from_playlist(String id) {
       item_duration = 0;
       i = 0;
       playlist_loaded = false;
+      //g_an_loop_countdown = 0;
 
       String fs_path = form_path(F("pl"), id, true);
       File file = LittleFS.open(fs_path, "r");
@@ -907,10 +914,9 @@ bool load_from_playlist(String id) {
       }
     }
 
+    //if (playlist_loaded && ((millis()-pm) > item_duration || g_an_loop_countdown == 0)) {
     if (playlist_loaded && (millis()-pm) > item_duration) {
-      pm = millis();
       item_duration = 1000; // set to a safe value which will be replaced below
-
       if(playlist[i].is<JsonVariant>()) {
         JsonVariant item = playlist[i];
         if(load_file(item[F("t")], item[F("id")])) {
@@ -919,7 +925,11 @@ bool load_from_playlist(String id) {
             // it takes a bit under 100 ms to load an image
             // item_durations of around 100 ms and less can cause the display to appear stalled or act erratic and causes a crash
             // therefore the minimum item_duration is limited to 200 ms
+            // as a side note animations can have shorter delays than 200 ms because all of the images are loaded into layers at
+            // the same time and the layers are shown one at time, so individual images are not loaded from disk each time a new
+            // frame of the animation is shown
             item_duration = max(item_duration, min_duration);
+            //g_an_loop_countdown = 2;
           }
           refresh_needed = true;
         }
@@ -933,13 +943,24 @@ bool load_from_playlist(String id) {
       else {
         playlist_enabled = false;
       }
+      // typically I would put this right after the if() check but I think putting it after load_file()
+      // removes some variability in the timing and may result in the art being shown for a period of
+      // time closer to what item_duration specifies
+      pm = millis();
     }
   }
   return refresh_needed;
 }
 
 
+
 bool load_file(String type, String id) {
+  // sli can be left in a unknown state if an animation is ended early, so reset it when loading a new file.
+  // reset show_refresh_interval to 0 when changing what is shown so there is not an unnecessary delay
+  // caused by the previous value of show_refresh_interval.
+  sli = 0;
+  show_refresh_interval = 0;
+
   bool retval = false;
   art_type = type;
   if (type == "im") {
@@ -1533,7 +1554,7 @@ void web_server_initiate(void) {
 // end WiFi scanning code taken from ESPAsyncW3ebServer examples
 
 
-void show(bool refresh_now) {
+void show(void) {
   static uint32_t pm = 0;
 
   bool images_waiting = false;
@@ -1554,10 +1575,10 @@ void show(bool refresh_now) {
 
   // blend block
   uint32_t dt = millis()-pm;
-  static uint32_t refresh_interval = REFRESH_INTERVAL;
-  if ((dt > refresh_interval || refresh_now) && !images_waiting) {
+  if ((dt > show_refresh_interval) && !images_waiting) {
     pm = millis();
     //if (dt > REFRESH_INTERVAL) {
+    //  DEBUG_PRINT("dt: ");
     //  DEBUG_PRINTLN(dt);
     //}
     gdynamic_hue+=3;
@@ -1567,28 +1588,26 @@ void show(bool refresh_now) {
 
     bool first_layer = true;
     CRGBA pixel;
-    static uint8_t i = 0;
     while (true) {
-      if (layers[i] != nullptr) {
-        if (layers[i]->get_type() == Image_t) {
+      if (layers[sli] != nullptr) {
+        if (layers[sli]->get_type() == Image_t) {
           // it is possible the image may never load, so after so many attempts the image was
           // marked as broken (-1) by get_image_status()
-          int8_t image_status = layers[i]->get_image_status();
+          int8_t image_status = layers[sli]->get_image_status();
           if (image_status == -1) {
             continue; // skip showing the image, but show the rest of the layers.
           }
         }
         if (first_layer) {
           first_layer = false;
-          refresh_now = false;
           // data in leds[] is written to a black background for first layer
           // tried white and black bitmasks but clear() is around 10-50 microseconds faster
           FastLED.clear();
         }
-        for (uint16_t j = 0; j < NUM_LEDS; j++) {
-          pixel = layers[i]->get_pixel(j);
-          CRGB bgpixel = leds[j];
-          if (layers[i]->is_xray_pattern()) {
+        for (uint16_t pi = 0; pi < NUM_LEDS; pi++) {
+          pixel = layers[sli]->get_pixel(pi);
+          CRGB bgpixel = leds[pi];
+          if (layers[sli]->is_xray_pattern()) {
             // most effects have active pixels that are colored and are opaque or semitransparent.
             // the active pixels are surrounded by negative space which is fully transparent black.
             // this allows layers to be drawn on top of each other to combine effects.
@@ -1621,17 +1640,21 @@ void show(bool refresh_now) {
             }
           }
           // effectively merge pixel that is combination of previous layers with pixel from current layer. flatten.
-          leds[j] = nblend(bgpixel, (CRGB)pixel, pixel.a);
+          leds[pi] = nblend(bgpixel, (CRGB)pixel, pixel.a);
         }
-        refresh_interval = layers[i]->display_duration;
+        show_refresh_interval = layers[sli]->display_duration;
       }
       else if (art_type == "an") {
         // empty (nullptr) layers need to have a duration of 0 in order to not stall the gif-like animation
-        refresh_interval = 0;
+        show_refresh_interval = 0;
       }
 
-      i = (i + 1) % NUM_LAYERS;
-      if (i == 0 || art_type == "an") {
+      sli = (sli + 1) % NUM_LAYERS;
+      //if (sli == 0 && art_type == "an") {
+      //  g_an_loop_countdown--;
+      //  break;
+      //}
+      if (sli == 0 || art_type == "an") {
         break;
       }
     }
@@ -1816,9 +1839,9 @@ void loop() {
     pm = millis();
     snprintf(heap_free, sizeof(heap_free), "heap free: %lu", esp_get_free_heap_size());
 
-#if defined(DEBUG_CONSOLE)
-    DEBUG_PRINTLN(heap_free);
-#endif
+//#if defined(DEBUG_CONSOLE)
+//    DEBUG_PRINTLN(heap_free);
+//#endif
 
 #if DEBUG_LOG == 1
     if (hp_cnt == 0) {
@@ -1839,8 +1862,8 @@ void loop() {
     ESP.restart();
   }
 
-  bool refresh_now = load_from_playlist();
-  show(refresh_now);
+  load_from_playlist();
+  show();
 
   if (grebuild_file_list) {
     grebuild_file_list = false;

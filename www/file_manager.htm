@@ -227,7 +227,6 @@
   function insert_file_list(files) {
     let container = document.getElementById("container");
     let form = document.getElementById("delete_form");
-    let insert_point = document.getElementById("insert_file_list_before_here");
 
     let checkbox_div = document.getElementById("checkbox_div");
 
@@ -257,7 +256,7 @@
       let not_found_div = document.createElement("div");
       not_found_div.innerText = "No files found.";
       not_found_div.style = "color: white; text-align: center; width: 100%;";
-      container.insertBefore(not_found_div, insert_point);
+      container.insertBefore(not_found_div, checkbox_div);
     }
     container.style.visibility = "visible";
   }
