@@ -864,14 +864,15 @@ bool load_collection(String type, String id) {
 }
 
 
-//uint16_t g_an_loop_countdown = 0;
+uint16_t pl_item_loop_countdown = 0;
 bool load_from_playlist(String id) {
-  const uint32_t min_duration = 200;
+  const uint32_t min_interval = 200; // milliseconds
+  const uint16_t min_loops = 1;
   bool refresh_needed = false;
   if (playlist_enabled) {
     static String resume_id;
     static uint32_t pm = 0;
-    static uint32_t item_duration = 0;
+    static uint32_t item_interval = 0;
     static uint8_t i = 0;
     static JsonArray playlist;
     static bool playlist_loaded = false;
@@ -883,11 +884,11 @@ bool load_from_playlist(String id) {
       // calling with an id that is not blank means we want to load a new playlist so reinitialize everything
       playlist_enabled = false;
       resume_id = id;
-      pm = 0; // using zero pm and item_duration ensures first item will be loaded immediately next time load_from_playlist() is called
-      item_duration = 0;
+      pm = 0; // using zero pm and item_interval ensures first item will be loaded immediately next time load_from_playlist() is called
+      item_interval = 0;
+      pl_item_loop_countdown = 0;
       i = 0;
       playlist_loaded = false;
-      //g_an_loop_countdown = 0;
 
       String fs_path = form_path(F("pl"), id, true);
       File file = LittleFS.open(fs_path, "r");
@@ -914,27 +915,39 @@ bool load_from_playlist(String id) {
       }
     }
 
-    //if (playlist_loaded && ((millis()-pm) > item_duration || g_an_loop_countdown == 0)) {
-    if (playlist_loaded && (millis()-pm) > item_duration) {
-      item_duration = 1000; // set to a safe value which will be replaced below
+    // there are two different ways to control how long a playlist item is show: by time or by loops for animations
+    // normally I would think to use || in a situation like this but && works better
+    // when an item is shown for an amount of time item_interval is set and pl_item_loop_countdown is always zero
+    // when an item is shown for a number of loops item_interval is always zero and pl_item_loop_countdown is set 
+    // this approach helps ensure the two different methods do not interfere with each other
+    if (playlist_loaded && (millis()-pm) > item_interval && pl_item_loop_countdown == 0) {
+      item_interval = 1000; // set to a safe value which will be replaced below
       if(playlist[i].is<JsonVariant>()) {
         JsonVariant item = playlist[i];
         if(load_file(item[F("t")], item[F("id")])) {
           if(item[F("d")].is<JsonInteger>()) {
-            item_duration = item[F("d")];
-            // it takes a bit under 100 ms to load an image
-            // item_durations of around 100 ms and less can cause the display to appear stalled or act erratic and causes a crash
-            // therefore the minimum item_duration is limited to 200 ms
-            // as a side note animations can have shorter delays than 200 ms because all of the images are loaded into layers at
-            // the same time and the layers are shown one at time, so individual images are not loaded from disk each time a new
-            // frame of the animation is shown
-            item_duration = max(item_duration, min_duration);
-            //g_an_loop_countdown = 2;
+            if (item[F("t")] == "an") {
+              pl_item_loop_countdown = item[F("d")];
+              pl_item_loop_countdown = max(pl_item_loop_countdown, min_loops);
+              item_interval = 0;
+            }
+            else {
+              item_interval = item[F("d")];
+              // it takes a bit under 100 ms to load an image
+              // item_intervals of around 100 ms and less can cause the display to appear stalled or act erratic and causes a crash
+              // therefore the minimum item_interval is limited to 200 ms
+              // as a side note animations can have shorter delays than 200 ms because all of the images are loaded into layers at
+              // the same time and the layers are shown one at time, so individual images are not loaded from disk each time a new
+              // frame of the animation is shown
+              item_interval = max(item_interval, min_interval);
+              pl_item_loop_countdown = 0;
+            }
           }
           refresh_needed = true;
         }
         else {
-          item_duration = 0;
+          item_interval = 0;
+          pl_item_loop_countdown = 0;
         }
         if (playlist.size() > 0) {
           i = (i+1) % playlist.size();
@@ -945,7 +958,7 @@ bool load_from_playlist(String id) {
       }
       // typically I would put this right after the if() check but I think putting it after load_file()
       // removes some variability in the timing and may result in the art being shown for a period of
-      // time closer to what item_duration specifies
+      // time closer to what item_interval specifies
       pm = millis();
     }
   }
@@ -955,11 +968,12 @@ bool load_from_playlist(String id) {
 
 
 bool load_file(String type, String id) {
-  // sli can be left in a unknown state if an animation is ended early, so reset it when loading a new file.
   // reset show_refresh_interval to 0 when changing what is shown so there is not an unnecessary delay
   // caused by the previous value of show_refresh_interval.
-  sli = 0;
   show_refresh_interval = 0;
+  // sli and pl_item_loop_countdown can be left in a unknown state if an animation is ended early, so reset them when loading a new file.
+  sli = 0;
+  pl_item_loop_countdown = 0;
 
   bool retval = false;
   art_type = type;
@@ -1650,10 +1664,10 @@ void show(void) {
       }
 
       sli = (sli + 1) % NUM_LAYERS;
-      //if (sli == 0 && art_type == "an") {
-      //  g_an_loop_countdown--;
-      //  break;
-      //}
+      if (sli == 0 && art_type == "an") {
+        pl_item_loop_countdown--;
+        break;
+      }
       if (sli == 0 || art_type == "an") {
         break;
       }
