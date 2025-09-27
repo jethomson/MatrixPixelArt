@@ -26,7 +26,7 @@ def minify(source, target, env):
     # if DEBUG_LOG is not set to 1 in platformio.ini (-DDEBUG_LOG=1) then save some space by not including debug_log.htm
     html_files = [path for path in Path(SRC_DIR).glob('*.htm') if 'debug_log.htm' not in path.name]
 
-  #html_files = [Path('www', 'compositor.htm')] # run on single file for testing
+  #html_files = [Path('www', 'config.htm')] # run on single file for testing
   if html_files:
     dest = Path(DEST_DIR)
     shutil.rmtree(dest, ignore_errors=True)
