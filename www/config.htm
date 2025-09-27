@@ -46,7 +46,11 @@
     grid-column-start: 6;
     text-align: left;
   }
-  
+
+  #dimensions {
+    text-align:left
+  }
+
   #dimensions,
   .wide-input {
     grid-column-start: 2;
@@ -58,6 +62,7 @@
   }  
 
   label {
+    vertical-align: middle;
     margin: auto 0px;
   }
 
@@ -96,17 +101,6 @@
   button:hover {
     background: #0e70a4;
   }
-
-  .w3r-offscreen {
-    border: 0; /* Comment: Removes any border */
-    clip: rect(0 0 0 0); /* Comment: Clips the element to be invisible */
-    height: 1px; /* Comment: Sets the height of the element to 1 pixel */
-    margin: -1px; /* Comment: Offsets the element by -1 pixel to hide it from view */
-    overflow: hidden; /* Comment: Hides any overflowing content */
-    padding: 0; /* Comment: Removes padding */
-    position: absolute; /* Comment: Positions the element absolutely */
-    width: 1px; /* Comment: Sets the width of the element to 1 pixel */
-  }
   </style>
 </head>
 
@@ -119,6 +113,7 @@
 
   <h3>Enter your configuration data here.</h3>
   <h5>
+  Previously saved values will be filled in automatically, but may take a moment to load.<br>
   If a field is left blank the previously saved value for that field will not be overwritten by Save.<br>
   Setting the timezone will be easier after your device is connected to the WiFi.<br>
   If the IANA Timezone is blank it will be filled in automatically based on your IP address.<br>
@@ -156,15 +151,15 @@
     
     <label class="item-a">Matrix</label>
     <section id="dimensions" style="text-align:left">
-    <input id="rows" type="number" form="save_config" name="rows" pattern="[0-9]*" min=1 maxlength="4" title="Number of rows or height of matrix">
-    <label> x </label>
-    <input id="columns" type="number" form="save_config" name="columns" pattern="[0-9]*" min=1 maxlength="4" title="Number of columns or width of matrix">
-    <label>(rows x columns)</label>
-    <select id="orientation" form="save_config" name="orientation" required>
-      <option value="" disabled>Select orientation</option>
-      <option value=0 selected autocomplete="off">Native</option>
-      <option value=1>Rotated 90° Counterclockwise</option>
-    </select>
+      <input id="rows" type="number" form="save_config" name="rows" pattern="[0-9]*" min=1 maxlength="4" title="Number of rows or height of matrix">
+      <label> x </label>
+      <input id="columns" type="number" form="save_config" name="columns" pattern="[0-9]*" min=1 maxlength="4" title="Number of columns or width of matrix">
+      <label>(rows x columns)</label>
+      <select id="orientation" form="save_config" name="orientation" required>
+        <option value="" disabled>Select orientation</option>
+        <option value=0 selected autocomplete="off">Native</option>
+        <option value=1>Rotated 90° Counterclockwise</option>
+      </select>
     </section>
     <label class="item-a">IANA Timezone</label>
     <input id="iana_tz" class="wide-input" form="save_config" name="iana_tz" placeholder="enter IANA timezone here" onchange="handle_iana_tz_change(false)" autocomplete="off">
