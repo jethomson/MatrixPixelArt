@@ -110,10 +110,7 @@ The device can create its own WiFi network or it can connect to your established
 You can control the device by connecting directly to its WiFi network, but you will be able to access the device more easily and be able to use the time and date features if you connect it to your WiFi network.
 
 Find the WiFi network named PixelArt and connect to it.
-You may get a dialog message like: "The network has no internet access. Stay connected?"
-If so, answer Yes. I do not recommend marking the box "[ ] Don't ask again for this network"
-In a web browser, open the site pixelart.local or 192.168.4.1.
-Open the Configuration page.
+The Configuration page will pop up automatically*.
 Enter your WiFi network information (SSID and password).
 The rest of the fields may be ignored for now.
 Click Save.
@@ -122,6 +119,12 @@ The PixeArt WiFi network should no longer be visible in your list of available n
 It will appear again if the device no longer has access to your WiFi network (e.g. password changed).
 
 Now any computer or phone on your WiFi network will be able to control the device be visiting pixelart.local.
+
+*If the Configuration page does not pop up automatically after connecting to PixelArt try the following.
+You may get a dialog message like: "The network has no internet access. Stay connected?"
+If so, answer Yes. I do not recommend marking the box "[ ] Don't ask again for this network"
+In a web browser, open the site pixelart.local or 192.168.4.1.
+Open the Configuration page.
 
 **Setting the timezone**
 

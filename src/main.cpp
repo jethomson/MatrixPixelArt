@@ -29,7 +29,8 @@
 //#define LED_STRIP_MILLIAMPS 1300  // USB power supply.
 // the highest current I can measure at full brightness with every pixel white is 2.150 A.
 // this measurement does not agree with the power usage calculated by calculate_unscaled_power_mW() nor commonly given methods for estimating LED power usage.
-#define LED_STRIP_MILLIAMPS 3750  // 75% (safety margin) of 5000 mA power supply.
+//#define LED_STRIP_MILLIAMPS 3750  // 75% (safety margin) of 5000 mA power supply.
+#define LED_STRIP_MILLIAMPS 375  // 75% (safety margin) of 500 mA for a standard USB port a computer.
 
 #define HOMOGENIZE_BRIGHTNESS true
 
@@ -1484,18 +1485,20 @@ void web_server_initiate(void) {
 
     if (request->hasParam("rows", true)) {
       AsyncWebParameter* p = request->getParam("rows", true);
-      uint8_t num_rows = p->value().toInt();
+      int num_rows = p->value().toInt();
       if (0 < num_rows && num_rows <= 32) {
         preferences.putUChar("rows", num_rows);
       }
+      // else preferences library will DEFAULT_NUM_ROWS
     }
 
     if (request->hasParam("columns", true)) {
       AsyncWebParameter* p = request->getParam("columns", true);
-      uint8_t num_cols = p->value().toInt();
+      int num_cols = p->value().toInt();
       if (0 < num_cols && num_cols <= 32) {
         preferences.putUChar("columns", num_cols);
       }
+      // else preferences library will DEFAULT_NUM_COLS
     }
 
     if (request->hasParam("orientation", true)) {
@@ -1556,10 +1559,10 @@ void web_server_initiate(void) {
     json = String();
   });
 
-  if (ON_STA_FILTER) {
+  if (WiFi.status() == WL_CONNECTED) {
     web_server_station_setup();
   }
-  else if (ON_AP_FILTER) {
+  else {
     web_server_ap_setup();
   }
 
@@ -1840,6 +1843,22 @@ void setup() {
 #if DEBUG_LOG == 1
   write_log("setup finished");
 #endif
+
+  //uint8_t i = 0;
+  //for (; i < 144; i++) {
+  //  leds[i] = CRGB::Red;
+  //  FastLED.show();
+  //  delay(50);
+  //}
+  ////for (; i < 160; i++) {
+  //for (; i < 150; i++) {
+  //  leds[i] = CRGB::Red;
+  //  FastLED.show();
+  //  delay(500);
+  //}
+  //while(true) {
+  //  delay(10);
+  //}
 }
 
 
