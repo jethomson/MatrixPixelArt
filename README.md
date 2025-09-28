@@ -81,7 +81,8 @@ Hot glue does not stick well to the flexible PCB, so I put double sided tape on 
 <br>
 The capacitor is not strictly necessary. I added it to troubleshoot the resetting issue which turned out to be caused by the poor screw terminal connector that came with the power supply so the capacitor was not the ultimate fix.
 <br>
-My ESP32 board requests a max current of 136 mA from my computer, so I am able to safely program and test with the LEDs drawing current. However your board and USB power supply may not set safe current limits. Ideally you would program the ESP32 before attaching the LED matrix, and only power the LEDs with the 5V power supply wires which do not pass current through the ESP32's thinner PCB traces.
+The max current the LEDs will draw is set to a default of 375 mA. The max current can be increased on the configuration page, but should only be increased when the device is not powered over USB.
+If the device ever needs to be reprogrammed please remember to lower the max current setting before connecting it to your computer.
 <br>
 
 ESP32 to LED matrix wiring

@@ -30,7 +30,7 @@
 // the highest current I can measure at full brightness with every pixel white is 2.150 A.
 // this measurement does not agree with the power usage calculated by calculate_unscaled_power_mW() nor commonly given methods for estimating LED power usage.
 //#define LED_STRIP_MILLIAMPS 3750  // 75% (safety margin) of 5000 mA power supply.
-#define LED_STRIP_MILLIAMPS 375  // 75% (safety margin) of 500 mA for a standard USB port a computer.
+//#define LED_STRIP_MILLIAMPS 375  // 75% (safety margin) of 500 mA for a standard USB port a computer.
 
 #define HOMOGENIZE_BRIGHTNESS true
 
@@ -64,6 +64,7 @@ uint8_t NUM_ROWS = 0;
 uint8_t NUM_COLS = 0;
 uint16_t NUM_LEDS = 0;
 uint8_t ORIENTATION = 0;
+uint32_t LED_STRIP_MILLIAMPS = 375;  // 75% (safety margin) of 500 mA for a standard USB port a computer.
 
 CRGB* leds; // output
 
@@ -1450,6 +1451,8 @@ void web_server_initiate(void) {
     config += preferences.getUChar("columns", DEFAULT_NUM_ROWS);
     config += "\",\"orientation\":\"";
     config += preferences.getUChar("orientation", DEFAULT_ORIENTATION);
+    config += "\",\"max_current\":\"";
+    config += preferences.getUInt("max_current", DEFAULT_MAX_CURRENT);
     config += "\"}";
     preferences.end();
     DEBUG_PRINTLN(config);
@@ -1505,6 +1508,12 @@ void web_server_initiate(void) {
       AsyncWebParameter* p = request->getParam("orientation", true);
       uint8_t orientation = p->value().toInt();
       preferences.putUChar("orientation", orientation);
+    }
+
+    if (request->hasParam("max_current", true)) {
+      AsyncWebParameter* p = request->getParam("max_current", true);
+      uint32_t max_current = p->value().toInt();
+      preferences.putUInt("max_current", max_current);
     }
 
     if (request->hasParam("iana_tz", true)) {
@@ -1701,6 +1710,7 @@ void setup() {
   NUM_COLS = preferences.getUChar("columns", DEFAULT_NUM_COLS);
   ORIENTATION = preferences.getUChar("orientation", DEFAULT_ORIENTATION);
   NUM_LEDS = NUM_ROWS*NUM_COLS;
+  LED_STRIP_MILLIAMPS = preferences.getUInt("max_current", DEFAULT_MAX_CURRENT);
   leds = (CRGB*)malloc(NUM_ROWS*NUM_COLS*sizeof(CRGB));
 
   for (uint8_t i = 0; i < NUM_LAYERS; i++) {

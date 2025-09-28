@@ -115,6 +115,8 @@
   <h5>
   Previously saved values will be filled in automatically, but may take a moment to load.<br>
   If a field is left blank the previously saved value for that field will not be overwritten by Save.<br>
+  The Max Current defaults to an amount that is safe for powering over USB (375 mA).<br>
+  If you are using a separate power supply the Max Current can be increased for a brighter image.<br>
   Setting the timezone will be easier after your device is connected to the WiFi.<br>
   If the IANA Timezone is blank it will be filled in automatically based on your IP address.<br>
   The POSIX Timezone is derived from the IANA Timezone.
@@ -161,6 +163,10 @@
         <option value=1>Rotated 90° Counterclockwise</option>
       </select>
     </section>
+
+    <label class="item-a">Max Current (mA)</label>
+    <input id="max_current" class="wide-input" form="save_config" name="max_current" placeholder="enter max current to use" autocomplete="off">
+
     <label class="item-a">IANA Timezone</label>
     <input id="iana_tz" class="wide-input" form="save_config" name="iana_tz" placeholder="enter IANA timezone here" onchange="handle_iana_tz_change(false)" autocomplete="off">
 
@@ -339,6 +345,8 @@ async function get_config() {
       break;
     }
   }
+  
+  document.getElementById("max_current").value = data["max_current"];
 
 }
 
