@@ -40,6 +40,14 @@ Playlists of images, composites, and animated images may also be created.
 ![animated pixel art of Link's death](https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/link_death_medium.gif "Animation of Link's death made from several still images")
 
 ---
+<br>
+
+**Glow In The Dark:**<br>
+The X-ray effects will reveal the layer beneath it pixel by pixel. When this is paired with a diffuser printed with glow in the dark filament the hidden image will be revealed when the effect stops.
+![ghost glowing in the dark from xray effect](https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/ghost_glow.gif "Example of an X-ray effect that reveals hidden image pixel by pixel with a glow in the dark diffuser")
+
+
+---
 ### Programming ESP32
 There are two different ways you can load the code and example files onto the ESP32.
 
@@ -99,6 +107,8 @@ The diffuser should be printed in white and the grid should be printed in black.
 A diffuser printed from white filament looks better than one printed from clear filament.
 The grid should be black to prevent light bleed and give the images displayed a distinctive pixel art look.
 <br>
+If you print the diffuser with two layers of glow in the dark filament and one layer of white you can use X-ray effects to reveal glow in the dark images!
+<br>
 
 <img src="https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/enclosure.png" width="60%">
 
@@ -110,10 +120,7 @@ The device can create its own WiFi network or it can connect to your established
 You can control the device by connecting directly to its WiFi network, but you will be able to access the device more easily and be able to use the time and date features if you connect it to your WiFi network.
 
 Find the WiFi network named PixelArt and connect to it.
-You may get a dialog message like: "The network has no internet access. Stay connected?"
-If so, answer Yes. I do not recommend marking the box "[ ] Don't ask again for this network"
-In a web browser, open the site pixelart.local or 192.168.4.1.
-Open the Configuration page.
+The Configuration page will pop up automatically*.
 Enter your WiFi network information (SSID and password).
 The rest of the fields may be ignored for now.
 Click Save.
@@ -122,6 +129,12 @@ The PixeArt WiFi network should no longer be visible in your list of available n
 It will appear again if the device no longer has access to your WiFi network (e.g. password changed).
 
 Now any computer or phone on your WiFi network will be able to control the device be visiting pixelart.local.
+
+*If the Configuration page does not pop up automatically after connecting to PixelArt try the following.
+You may get a dialog message like: "The network has no internet access. Stay connected?"
+If so, answer Yes. I do not recommend marking the box "[ ] Don't ask again for this network"
+In a web browser, open the site pixelart.local or 192.168.4.1.
+Open the Configuration page.
 
 **Setting the timezone**
 

@@ -138,9 +138,9 @@ async function get_ip() {
     return
   }
 
-    console.log(data);
-    let el_ip = document.getElementById("ip");
-    el_ip.innerHTML = data["IP"];
+  console.log(data);
+  let el_ip = document.getElementById("ip");
+  el_ip.innerHTML = data["IP"];
 }
 
 window.addEventListener("load", get_ip);
