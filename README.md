@@ -40,6 +40,14 @@ Playlists of images, composites, and animated images may also be created.
 ![animated pixel art of Link's death](https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/link_death_medium.gif "Animation of Link's death made from several still images")
 
 ---
+<br>
+
+**Glow In The Dark:**<br>
+The X-ray effects will reveal the layer beneath it pixel by pixel. When this is paired with a diffuser printed with glow in the dark filament the hidden image will be revealed when the effect stops.
+![ghost glowing in the dark from xray effect](https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/ghost_glow.gif "Example of an X-ray effect that reveals hidden image pixel by pixel with a glow in the dark diffuser")
+
+
+---
 ### Programming ESP32
 There are two different ways you can load the code and example files onto the ESP32.
 
@@ -98,6 +106,8 @@ You should edit the model to add a color change where the grid starts.
 The diffuser should be printed in white and the grid should be printed in black.
 A diffuser printed from white filament looks better than one printed from clear filament.
 The grid should be black to prevent light bleed and give the images displayed a distinctive pixel art look.
+<br>
+If you print the diffuser with two layers of glow in the dark filament and one layer of white you can use X-ray effects to reveal glow in the dark images!
 <br>
 
 <img src="https://raw.githubusercontent.com/jethomson/jethomson.github.io/refs/heads/main/MatrixPixelArt_images/enclosure.png" width="60%">
