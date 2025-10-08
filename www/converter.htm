@@ -983,7 +983,6 @@
         let ss = gId("saveSvg");
         ss.setAttribute("fill", prsCol);
         let el_btn_save_text = document.getElementById('btn_save_text');
-        let btn_text = el_btn_save_text.innerText;
         el_btn_save_text.innerText = "Saving";
         try {
           if (devMode) console.log(i);
@@ -1009,7 +1008,7 @@
         if (success) {
           ss.setAttribute("fill", "#056b0a");
           el_btn_save_text.innerText = "Saved";
-          setTimeout(function(){el_btn_save_text.innerText = btn_text;}, 1000);
+          setTimeout(function(){el_btn_save_text.innerText = "Save";}, 1000);
         }
         else {
           ss.setAttribute("fill", "#6b050c");

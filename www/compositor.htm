@@ -266,7 +266,6 @@ async function save() {
     let sb = document.getElementById("saveSvg");
     sb.setAttribute("fill", "#cccccc");
     let el_btn_save_text = document.getElementById('btn_save_text');
-    let btn_text = el_btn_save_text.innerText;
     el_btn_save_text.innerText = "Saving";
 
     try {
@@ -290,7 +289,7 @@ async function save() {
     if (success) {
       sb.setAttribute("fill", "#056b0a");
       el_btn_save_text.innerText = "Saved";
-      setTimeout(function(){el_btn_save_text.innerText = btn_text;}, 1000);
+      setTimeout(function(){el_btn_save_text.innerText = "Save";}, 1000);
       setTimeout(function(){populate(false)}, 3000);
     }
     else {
