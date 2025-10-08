@@ -1400,7 +1400,10 @@ void ReAnimator::breathing(uint16_t interval) {
 
     if (finished_waiting(interval)) {
         extern uint8_t homogenized_brightness;
-        uint8_t max_brightness = homogenized_brightness;
+        // for low values of max current homogenized brightness will be too low to get a good breathing effect
+        // therefore set a lower bound of 128 for peak brightness of the triangle wave.
+        // this will not result in exceeding the max current limits.
+        uint8_t max_brightness = max(homogenized_brightness, (uint8_t)128);
         layer_brightness = scale8(triwave8(delta), max_brightness-min_brightness)+min_brightness;
         delta++;
     }
