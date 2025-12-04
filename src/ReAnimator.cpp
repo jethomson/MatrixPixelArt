@@ -1399,11 +1399,26 @@ void ReAnimator::breathing(uint16_t interval) {
     static uint8_t delta = 0; // goes up to 255 then overflows back to 0
 
     if (finished_waiting(interval)) {
-        extern uint8_t homogenized_brightness;
+        // when using FastLED.setBrightness() to achieve a breathing effect it does not make sense to go
+        // above the max allowed brightness (homogenized_brightness). going higher than homogenized_brightness
+        // results in a bad breathing effect because those brightness levels are never shown but they still take
+        // up time so the breathing pattern looks more like a triangle waves with the upper peaks chopped off.
+        // that is the brightness plateaus and stays stuck at the same level for a while instead of always changing
+        //
+        // however since layer_brightness is used in nscale8() (see get_pixel()) and not FastLED.setBrightness() and
+        // FastLED.setBrightness(homogenized_brightness) is called after the layers are combined, the breathing layer
+        // ends up appearing too dim. for this code, setting max_brightness to 255 does not result in the breathing
+        // effect plateauing at homogenized_brightness
+
+        // per the above comment this approach is not necessary.
+        // leaving this code here so I don't forget it is unnecessary and add it back.
+        //extern uint8_t homogenized_brightness;
         // for low values of max current homogenized brightness will be too low to get a good breathing effect
         // therefore set a lower bound of 128 for peak brightness of the triangle wave.
         // this will not result in exceeding the max current limits.
-        uint8_t max_brightness = max(homogenized_brightness, (uint8_t)128);
+        //uint8_t max_brightness = max(homogenized_brightness, (uint8_t)128);
+
+        uint8_t max_brightness = 255;
         layer_brightness = scale8(triwave8(delta), max_brightness-min_brightness)+min_brightness;
         delta++;
     }
